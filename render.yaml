@@ -4,24 +4,22 @@ databases:
   - name: milson-pipeline-db
     databaseName: milson_pipeline
     user: milson
-    plan: basic-256mb
+    plan: free
 
 services:
   - type: web
     name: milson-project-pipeline
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: >-
       cd client && npm ci && npm run build &&
       cd ../server && npm ci && npm run build
     startCommand: cd server && npm start
     healthCheckPath: /api/health
-    # Uploaded documents live on a persistent disk until cloud storage is added.
-    disk:
-      name: milson-uploads
-      mountPath: /var/data/uploads
-      sizeGB: 10
+    # Free instances cannot mount a persistent disk, so uploads live on the
+    # instance filesystem and are lost on restart. Upgrade the plan and add a
+    # disk (or switch STORAGE_DRIVER to cloud storage) before real use.
     envVars:
       - key: NODE_VERSION
         value: 20.18.1
@@ -36,7 +34,7 @@ services:
       - key: STORAGE_DRIVER
         value: local
       - key: STORAGE_DIR
-        value: /var/data/uploads
+        value: /opt/render/project/src/uploads
       - key: CLIENT_DIST
         value: /opt/render/project/src/client/dist
       - key: SEED_ADMIN_EMAIL

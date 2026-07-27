@@ -104,10 +104,15 @@ png, jpg, jpeg, docx, xlsx.
 
 ## Deployment (Render)
 
-Deploy `render.yaml` as a Blueprint. It provisions the PostgreSQL instance, a persistent
-disk for uploads and the web service, wiring `DATABASE_URL` automatically and generating
+Deploy `render.yaml` as a Blueprint. It provisions the PostgreSQL instance and the web
+service on Render's free plans, wiring `DATABASE_URL` automatically and generating
 `JWT_SECRET`. The API applies the schema and seeds users on every boot, so deploys need no
 manual migration step. Express serves the built SPA from `CLIENT_DIST` in production.
+
+Free-plan caveats: free instances cannot mount a persistent disk, so uploaded documents are
+lost when the service restarts, and free PostgreSQL instances expire after 30 days. Before
+production use, move the service to a paid plan and add a disk at `/var/data/uploads`
+(setting `STORAGE_DIR` to match), or implement a cloud `DocumentStorage` driver.
 
 ## Checks
 
