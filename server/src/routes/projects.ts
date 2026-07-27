@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { queryOne } from '../db/pool';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
-import { listActivity, logActivity } from '../services/activityService';
+import { listActivity, logActivity, toActivityDto } from '../services/activityService';
 import {
   createProject,
   getProject,
@@ -66,7 +66,8 @@ router.get(
 router.get(
   '/:id/activity',
   asyncHandler(async (req, res) => {
-    res.json(await listActivity({ entityType: 'project', entityId: Number(req.params.id) }));
+    const records = await listActivity({ entityType: 'project', entityId: Number(req.params.id) });
+    res.json(records.map(toActivityDto));
   }),
 );
 

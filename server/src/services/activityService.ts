@@ -43,6 +43,20 @@ export async function logActivity(input: LogInput): Promise<void> {
   }
 }
 
+/** Maps a database row to the camelCase API shape. */
+export function toActivityDto(row: ActivityRecord) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    userName: row.user_name,
+    action: row.action,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    detail: row.detail,
+    createdAt: row.created_at,
+  };
+}
+
 /** Lists activity, optionally scoped to a single entity. */
 export async function listActivity(options: {
   entityType?: string;

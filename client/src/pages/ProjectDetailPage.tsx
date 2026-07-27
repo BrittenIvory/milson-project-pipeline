@@ -222,7 +222,7 @@ export default function ProjectDetailPage() {
 
       {tab === 'documents' && (
         <Card>
-          <DocumentsPanel projectId={projectId} />
+          <DocumentsPanel projectId={projectId} onChanged={load} />
         </Card>
       )}
 

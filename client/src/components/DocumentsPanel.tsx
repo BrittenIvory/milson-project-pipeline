@@ -8,7 +8,14 @@ import { formatBytes, formatDateTime } from '../lib/format';
 import type { ProjectDocument } from '../types';
 
 /** Upload / download / delete project documents. */
-export default function DocumentsPanel({ projectId }: { projectId: number }) {
+export default function DocumentsPanel({
+  projectId,
+  /** Called after a document changes so the parent can refresh its activity feed. */
+  onChanged,
+}: {
+  projectId: number;
+  onChanged?: () => void;
+}) {
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
@@ -40,6 +47,7 @@ export default function DocumentsPanel({ projectId }: { projectId: number }) {
     try {
       await documentsApi.upload(projectId, file);
       await load();
+      onChanged?.();
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to upload file'));
     } finally {
@@ -54,6 +62,7 @@ export default function DocumentsPanel({ projectId }: { projectId: number }) {
     try {
       await documentsApi.remove(projectId, doc.id);
       await load();
+      onChanged?.();
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to delete file'));
     } finally {
