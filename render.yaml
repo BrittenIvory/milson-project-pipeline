@@ -1,0 +1,45 @@
+# Render blueprint for the Milson Project Pipeline.
+# One web service (Express API + built React SPA) and one managed PostgreSQL DB.
+databases:
+  - name: milson-pipeline-db
+    databaseName: milson_pipeline
+    user: milson
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: milson-project-pipeline
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: >-
+      cd client && npm ci && npm run build &&
+      cd ../server && npm ci && npm run build
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    # Uploaded documents live on a persistent disk until cloud storage is added.
+    disk:
+      name: milson-uploads
+      mountPath: /var/data/uploads
+      sizeGB: 10
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.1
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: milson-pipeline-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_DRIVER
+        value: local
+      - key: STORAGE_DIR
+        value: /var/data/uploads
+      - key: CLIENT_DIST
+        value: /opt/render/project/src/client/dist
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
