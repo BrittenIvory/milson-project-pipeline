@@ -1,0 +1,45 @@
+# Render blueprint for the Milson Project Pipeline.
+# One web service (Express API + built React SPA) and one managed PostgreSQL DB.
+databases:
+  - name: milson-pipeline-db
+    databaseName: milson_pipeline
+    user: milson
+    plan: free
+
+services:
+  - type: web
+    name: milson-project-pipeline
+    runtime: node
+    plan: free
+    region: oregon
+    # --include=dev is required: Render sets NODE_ENV=production, which would
+    # otherwise make npm skip the devDependencies that vite and tsc live in.
+    buildCommand: >-
+      cd client && npm ci --include=dev && npm run build &&
+      cd ../server && npm ci --include=dev && npm run build
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    # Free instances cannot mount a persistent disk, so uploads live on the
+    # instance filesystem and are lost on restart. Upgrade the plan and add a
+    # disk (or switch STORAGE_DRIVER to cloud storage) before real use.
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.1
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: milson-pipeline-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_DRIVER
+        value: local
+      - key: STORAGE_DIR
+        value: /opt/render/project/src/uploads
+      - key: CLIENT_DIST
+        value: /opt/render/project/src/client/dist
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
