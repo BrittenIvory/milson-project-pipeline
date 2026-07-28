@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   BarChart3,
@@ -8,11 +8,12 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Search,
   Settings,
   Truck,
   X,
 } from 'lucide-react';
+import GlobalSearch from './GlobalSearch';
+import NotificationBell from './NotificationBell';
 import { useAuth } from '../context/AuthContext';
 import { ROLE_LABELS } from '../lib/constants';
 
@@ -28,9 +29,7 @@ const navItems = [
 /** Application shell: left navigation, top bar with global search, content area. */
 export default function AppLayout() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [term, setTerm] = useState('');
 
   const initials = (user?.fullName ?? '')
     .split(' ')
@@ -38,11 +37,6 @@ export default function AppLayout() {
     .slice(0, 2)
     .join('')
     .toUpperCase();
-
-  const submitSearch = (event: React.FormEvent) => {
-    event.preventDefault();
-    navigate(`/search?q=${encodeURIComponent(term)}`);
-  };
 
   return (
     <div className="flex h-full">
@@ -131,15 +125,10 @@ export default function AppLayout() {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <form onSubmit={submitSearch} className="relative max-w-lg flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={term}
-              onChange={(e) => setTerm(e.target.value)}
-              placeholder="Search projects, customers, part numbers…"
-              className="input pl-9"
-            />
-          </form>
+          <GlobalSearch />
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">

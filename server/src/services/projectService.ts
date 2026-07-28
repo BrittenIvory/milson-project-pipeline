@@ -113,14 +113,52 @@ export async function nextProjectNumber(): Promise<string> {
   return `P-${String(Number(row?.nextval ?? 1)).padStart(4, '0')}`;
 }
 
-export async function listProjects(options: {
+export interface ProjectFilters {
   search?: string;
   stage?: string;
   customerId?: number;
+  engineerId?: number;
+  salesId?: number;
+  priority?: string;
+  material?: string;
+  castingProcess?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  targetFrom?: string;
+  targetTo?: string;
   includeArchived?: boolean;
-}) {
+}
+
+/** Columns the project list can be sorted by, mapped to their SQL expression. */
+const SORTABLE_COLUMNS: Record<string, string> = {
+  projectNumber: 'p.project_number',
+  customerName: 'c.company_name',
+  customerPartNumber: 'p.customer_part_number',
+  projectName: 'p.project_name',
+  currentStage: 'p.current_stage',
+  assignedEngineerName: 'e.full_name',
+  assignedSalesName: 's.full_name',
+  priority: `CASE p.priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END`,
+  targetQuoteDate: 'p.target_quote_date',
+  createdAt: 'p.created_at',
+  updatedAt: 'p.updated_at',
+};
+
+/**
+ * Builds the shared WHERE clause for the project list. Every filter is
+ * optional and they all combine with AND.
+ */
+function buildProjectWhere(options: ProjectFilters) {
   const params: unknown[] = [];
   const where: string[] = [];
+  const eq = (value: unknown, sql: (i: number) => string) => {
+    if (value === undefined || value === null || value === '' || value === 'all') return;
+    params.push(value);
+    where.push(sql(params.length));
+  };
+
   if (!options.includeArchived) where.push('p.is_archived = FALSE');
   if (options.search) {
     params.push(`%${options.search.toLowerCase()}%`);
@@ -129,23 +167,89 @@ export async function listProjects(options: {
         OR LOWER(p.project_name) LIKE $${params.length}
         OR LOWER(c.company_name) LIKE $${params.length}
         OR LOWER(COALESCE(p.customer_part_number,'')) LIKE $${params.length}
-        OR LOWER(COALESCE(p.internal_part_number,'')) LIKE $${params.length})`,
+        OR LOWER(COALESCE(p.internal_part_number,'')) LIKE $${params.length}
+        OR LOWER(COALESCE(p.project_description,'')) LIKE $${params.length})`,
     );
   }
-  if (options.stage && options.stage !== 'all') {
-    params.push(options.stage);
-    where.push(`p.current_stage = $${params.length}`);
-  }
-  if (options.customerId) {
-    params.push(options.customerId);
-    where.push(`p.customer_id = $${params.length}`);
-  }
+  eq(options.stage, (i) => `p.current_stage = $${i}`);
+  eq(options.customerId, (i) => `p.customer_id = $${i}`);
+  eq(options.engineerId, (i) => `p.assigned_engineer_id = $${i}`);
+  eq(options.salesId, (i) => `p.assigned_sales_id = $${i}`);
+  eq(options.priority, (i) => `p.priority = $${i}`);
+  eq(options.material, (i) => `LOWER(COALESCE(p.material,'')) = LOWER($${i})`);
+  eq(options.castingProcess, (i) => `LOWER(COALESCE(p.casting_process,'')) = LOWER($${i})`);
+  eq(options.createdFrom, (i) => `p.created_at >= $${i}::date`);
+  eq(options.createdTo, (i) => `p.created_at < $${i}::date + 1`);
+  eq(options.updatedFrom, (i) => `p.updated_at >= $${i}::date`);
+  eq(options.updatedTo, (i) => `p.updated_at < $${i}::date + 1`);
+  eq(options.targetFrom, (i) => `p.target_quote_date >= $${i}::date`);
+  eq(options.targetTo, (i) => `p.target_quote_date <= $${i}::date`);
+
+  return { params, clause: where.length ? `WHERE ${where.join(' AND ')}` : '' };
+}
+
+export async function listProjects(options: ProjectFilters = {}) {
+  const { params, clause } = buildProjectWhere(options);
   const rows = await query<ProjectRow>(
-    `${SELECT_PROJECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-     ORDER BY p.created_at DESC`,
+    `${SELECT_PROJECT} ${clause} ORDER BY p.created_at DESC`,
     params,
   );
   return rows.map(toProjectDto);
+}
+
+/**
+ * Paginated project list used by the Projects table. Returns the page of rows
+ * plus the total row count so the client can render pagination controls.
+ */
+export async function listProjectsPage(
+  options: ProjectFilters & {
+    sortBy?: string;
+    sortDir?: string;
+    page?: number;
+    pageSize?: number;
+  },
+) {
+  const { params, clause } = buildProjectWhere(options);
+  const page = Math.max(1, options.page ?? 1);
+  const pageSize = Math.min(Math.max(1, options.pageSize ?? 25), 200);
+  const orderBy = SORTABLE_COLUMNS[options.sortBy ?? ''] ?? 'p.created_at';
+  const direction = options.sortDir === 'asc' ? 'ASC' : 'DESC';
+
+  const totalRow = await queryOne<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM projects p
+     JOIN customers c ON c.id = p.customer_id
+     LEFT JOIN users e ON e.id = p.assigned_engineer_id
+     LEFT JOIN users s ON s.id = p.assigned_sales_id ${clause}`,
+    params,
+  );
+  const rows = await query<ProjectRow>(
+    `${SELECT_PROJECT} ${clause}
+     ORDER BY ${orderBy} ${direction} NULLS LAST, p.id DESC
+     LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
+    params,
+  );
+  return {
+    items: rows.map(toProjectDto),
+    total: Number(totalRow?.count ?? 0),
+    page,
+    pageSize,
+  };
+}
+
+/** Distinct materials and casting processes, used to populate filter menus. */
+export async function projectFilterOptions() {
+  const materials = await query<{ value: string }>(
+    `SELECT DISTINCT material AS value FROM projects
+     WHERE material IS NOT NULL AND material <> '' ORDER BY 1`,
+  );
+  const castingProcesses = await query<{ value: string }>(
+    `SELECT DISTINCT casting_process AS value FROM projects
+     WHERE casting_process IS NOT NULL AND casting_process <> '' ORDER BY 1`,
+  );
+  return {
+    materials: materials.map((r) => r.value),
+    castingProcesses: castingProcesses.map((r) => r.value),
+  };
 }
 
 export async function getProject(id: number) {
@@ -226,5 +330,61 @@ export async function projectStats() {
       documents: Number(totals?.documents ?? 0),
     },
     byStage: Object.fromEntries(byStage.map((r) => [r.current_stage, Number(r.count)])),
+  };
+}
+
+/**
+ * Aggregates everything the dashboard needs in a single round trip: stage
+ * counters, month-to-date throughput and the four project spotlight lists.
+ *
+ * "Waiting for action" means an open project whose target quote date has
+ * passed, or that has at least one overdue task.
+ */
+export async function dashboardSummary() {
+  const stats = await projectStats();
+
+  const counts = await queryOne<{ created_this_month: string; completed_this_month: string }>(
+    `SELECT
+       (SELECT COUNT(*)::text FROM projects
+         WHERE is_archived = FALSE AND created_at >= date_trunc('month', NOW())) AS created_this_month,
+       (SELECT COUNT(*)::text FROM projects
+         WHERE is_archived = FALSE AND current_stage = 'completed'
+           AND updated_at >= date_trunc('month', NOW())) AS completed_this_month`,
+  );
+
+  const list = async (extraWhere: string, orderBy: string) =>
+    (
+      await query<ProjectRow>(
+        `${SELECT_PROJECT} WHERE p.is_archived = FALSE AND ${extraWhere}
+         ORDER BY ${orderBy} LIMIT 5`,
+      )
+    ).map(toProjectDto);
+
+  const [recent, recentlyUpdated, upcoming, waiting] = await Promise.all([
+    list('TRUE', 'p.created_at DESC'),
+    list('TRUE', 'p.updated_at DESC'),
+    list(
+      `p.current_stage <> 'completed' AND p.target_quote_date >= CURRENT_DATE`,
+      'p.target_quote_date ASC',
+    ),
+    list(
+      `p.current_stage <> 'completed' AND (
+         p.target_quote_date < CURRENT_DATE
+         OR EXISTS (
+           SELECT 1 FROM tasks t WHERE t.project_id = p.id
+             AND t.status NOT IN ('completed','cancelled')
+             AND t.due_date < CURRENT_DATE))`,
+      'p.target_quote_date ASC NULLS LAST',
+    ),
+  ]);
+
+  return {
+    ...stats,
+    createdThisMonth: Number(counts?.created_this_month ?? 0),
+    completedThisMonth: Number(counts?.completed_this_month ?? 0),
+    recent,
+    recentlyUpdated,
+    upcoming,
+    waiting,
   };
 }

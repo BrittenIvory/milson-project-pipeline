@@ -1,10 +1,16 @@
 import axios, { AxiosError } from 'axios';
 import type {
   ActivityRecord,
+  AppNotification,
   Customer,
+  DashboardSummary,
   Project,
   ProjectDocument,
+  ProjectFilters,
+  ProjectNote,
+  ProjectPage,
   ProjectStats,
+  ProjectTask,
   User,
 } from '../types';
 
@@ -73,13 +79,43 @@ export const projectsApi = {
   nextNumber: () =>
     http.get<{ projectNumber: string }>('/projects/next-number').then((r) => r.data.projectNumber),
   stats: () => http.get<ProjectStats>('/projects/stats').then((r) => r.data),
+  dashboard: () => http.get<DashboardSummary>('/projects/dashboard').then((r) => r.data),
+  filterOptions: () =>
+    http
+      .get<{ materials: string[]; castingProcesses: string[] }>('/projects/filter-options')
+      .then((r) => r.data),
+  /** Paginated, sorted and filtered list used by the Projects table. */
+  page: (params: ProjectFilters & {
+    sortBy?: string;
+    sortDir?: 'asc' | 'desc';
+    page?: number;
+    pageSize?: number;
+  }) =>
+    http
+      .get<ProjectPage>('/projects', { params: { ...params, paginate: true } })
+      .then((r) => r.data),
   activity: (id: number) =>
     http.get<ActivityRecord[]>(`/projects/${id}/activity`).then((r) => r.data),
 };
 
 export const documentsApi = {
-  list: (projectId: number) =>
-    http.get<ProjectDocument[]>(`/projects/${projectId}/documents`).then((r) => r.data),
+  list: (projectId: number, search?: string) =>
+    http
+      .get<ProjectDocument[]>(`/projects/${projectId}/documents`, { params: { search } })
+      .then((r) => r.data),
+  rename: (projectId: number, documentId: number, fileName: string) =>
+    http
+      .patch<ProjectDocument>(`/projects/${projectId}/documents/${documentId}`, { fileName })
+      .then((r) => r.data),
+  /** Opens an inline preview in a new tab; the blob URL carries the auth-fetched bytes. */
+  preview: async (projectId: number, doc: ProjectDocument) => {
+    const response = await http.get(`/projects/${projectId}/documents/${doc.id}/preview`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(response.data as Blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
   upload: (projectId: number, file: File) => {
     const form = new FormData();
     form.append('file', file);
@@ -106,6 +142,42 @@ export const documentsApi = {
 export const activityApi = {
   list: (limit = 25) =>
     http.get<ActivityRecord[]>('/activity', { params: { limit } }).then((r) => r.data),
+};
+
+export type TaskPayload = Pick<
+  ProjectTask,
+  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'priority' | 'status'
+>;
+
+export const tasksApi = {
+  list: (projectId: number) =>
+    http.get<ProjectTask[]>(`/projects/${projectId}/tasks`).then((r) => r.data),
+  create: (projectId: number, payload: TaskPayload) =>
+    http.post<ProjectTask>(`/projects/${projectId}/tasks`, payload).then((r) => r.data),
+  update: (projectId: number, taskId: number, payload: TaskPayload) =>
+    http.put<ProjectTask>(`/projects/${projectId}/tasks/${taskId}`, payload).then((r) => r.data),
+  remove: (projectId: number, taskId: number) =>
+    http.delete(`/projects/${projectId}/tasks/${taskId}`),
+};
+
+export const notesApi = {
+  list: (projectId: number) =>
+    http.get<ProjectNote[]>(`/projects/${projectId}/notes`).then((r) => r.data),
+  create: (projectId: number, body: string) =>
+    http.post<ProjectNote>(`/projects/${projectId}/notes`, { body }).then((r) => r.data),
+  update: (projectId: number, noteId: number, body: string) =>
+    http.put<ProjectNote>(`/projects/${projectId}/notes/${noteId}`, { body }).then((r) => r.data),
+  remove: (projectId: number, noteId: number) =>
+    http.delete(`/projects/${projectId}/notes/${noteId}`),
+};
+
+export const notificationsApi = {
+  list: () =>
+    http
+      .get<{ items: AppNotification[]; unread: number }>('/notifications')
+      .then((r) => r.data),
+  markRead: (id: number) => http.post(`/notifications/${id}/read`),
+  markAllRead: () => http.post('/notifications/read-all'),
 };
 
 export const searchApi = {
