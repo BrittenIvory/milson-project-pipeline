@@ -12,9 +12,11 @@ services:
     runtime: node
     plan: free
     region: oregon
+    # --include=dev is required: Render sets NODE_ENV=production, which would
+    # otherwise make npm skip the devDependencies that vite and tsc live in.
     buildCommand: >-
-      cd client && npm ci && npm run build &&
-      cd ../server && npm ci && npm run build
+      cd client && npm ci --include=dev && npm run build &&
+      cd ../server && npm ci --include=dev && npm run build
     startCommand: cd server && npm start
     healthCheckPath: /api/health
     # Free instances cannot mount a persistent disk, so uploads live on the
