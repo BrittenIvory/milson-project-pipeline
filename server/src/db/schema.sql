@@ -97,3 +97,52 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 
 CREATE INDEX IF NOT EXISTS activity_entity_idx ON activity_logs (entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS activity_created_idx ON activity_logs (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- Phase 2: tasks, notes, notifications.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id               SERIAL PRIMARY KEY,
+  project_id       INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  task_name        TEXT NOT NULL,
+  description      TEXT,
+  assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  due_date         DATE,
+  priority         TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high','critical')),
+  status           TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN (
+                     'not_started','in_progress','waiting','completed','cancelled')),
+  completed_at     TIMESTAMPTZ,
+  created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS tasks_project_idx ON tasks (project_id);
+CREATE INDEX IF NOT EXISTS tasks_assignee_idx ON tasks (assigned_user_id);
+
+CREATE TABLE IF NOT EXISTS project_notes (
+  id         SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  author_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  body       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS project_notes_project_idx ON project_notes (project_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL,
+  title       TEXT NOT NULL,
+  body        TEXT,
+  project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+  entity_type TEXT,
+  entity_id   INTEGER,
+  read_at     TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, created_at DESC);

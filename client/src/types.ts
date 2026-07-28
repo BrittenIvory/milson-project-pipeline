@@ -82,3 +82,77 @@ export interface ProjectStats {
   totals: { projects: number; customers: number; documents: number };
   byStage: Record<string, number>;
 }
+
+export type TaskStatus = 'not_started' | 'in_progress' | 'waiting' | 'completed' | 'cancelled';
+
+export interface ProjectTask {
+  id: number;
+  projectId: number;
+  taskName: string;
+  description: string | null;
+  assignedUserId: number | null;
+  assignedUserName: string | null;
+  dueDate: string | null;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: TaskStatus;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectNote {
+  id: number;
+  projectId: number;
+  authorId: number | null;
+  authorName: string | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  projectId: number | null;
+  entityType: string | null;
+  entityId: number | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** Aggregated payload behind the dashboard. */
+export interface DashboardSummary extends ProjectStats {
+  createdThisMonth: number;
+  completedThisMonth: number;
+  recent: Project[];
+  recentlyUpdated: Project[];
+  upcoming: Project[];
+  waiting: Project[];
+}
+
+/** Filters accepted by the project list endpoint. */
+export interface ProjectFilters {
+  search?: string;
+  stage?: string;
+  customerId?: number | '';
+  engineerId?: number | '';
+  salesId?: number | '';
+  priority?: string;
+  material?: string;
+  castingProcess?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  targetFrom?: string;
+  targetTo?: string;
+}
+
+export interface ProjectPage {
+  items: Project[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

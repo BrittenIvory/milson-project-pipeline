@@ -1,4 +1,10 @@
-import { CUSTOMER_STATUSES, PRIORITIES, PROJECT_STAGES } from './constants';
+import {
+  CLOSED_TASK_STATUSES,
+  CUSTOMER_STATUSES,
+  PRIORITIES,
+  PROJECT_STAGES,
+  TASK_STATUSES,
+} from './constants';
 
 /** Formats an ISO timestamp as a short local date. */
 export function formatDate(value: string | null | undefined): string {
@@ -56,3 +62,18 @@ export const customerStatusMeta = (value: string) =>
     label: value,
     tone: 'bg-slate-100 text-slate-600',
   };
+
+export const taskStatusMeta = (value: string) =>
+  TASK_STATUSES.find((s) => s.value === value) ?? {
+    value,
+    label: value,
+    tone: 'bg-slate-100 text-slate-600',
+  };
+
+/** True when an open task's due date is in the past. */
+export function isOverdue(dueDate: string | null, status: string): boolean {
+  if (!dueDate || CLOSED_TASK_STATUSES.includes(status)) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(dueDate) < today;
+}

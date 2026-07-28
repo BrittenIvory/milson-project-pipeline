@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/errors';
 import activityRouter from './routes/activity';
 import authRouter from './routes/auth';
 import customersRouter from './routes/customers';
+import notificationsRouter from './routes/notifications';
 import projectsRouter from './routes/projects';
 import searchRouter from './routes/search';
 import usersRouter from './routes/users';
@@ -23,6 +24,7 @@ export function createApp(): Express {
   app.use('/api/customers', customersRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/activity', activityRouter);
+  app.use('/api/notifications', notificationsRouter);
   app.use('/api/search', searchRouter);
 
   // In production the API also serves the built single-page frontend.

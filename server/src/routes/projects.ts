@@ -3,15 +3,21 @@ import { queryOne } from '../db/pool';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { listActivity, logActivity, toActivityDto } from '../services/activityService';
+import { notify } from '../services/notificationService';
 import {
   createProject,
+  dashboardSummary,
   getProject,
   listProjects,
+  listProjectsPage,
+  projectFilterOptions,
   projectSchema,
   projectStats,
   updateProject,
 } from '../services/projectService';
 import documentsRouter from './documents';
+import notesRouter from './notes';
+import tasksRouter from './tasks';
 
 const router = Router();
 router.use(requireAuth);
@@ -23,6 +29,22 @@ router.get(
   '/stats',
   asyncHandler(async (_req, res) => {
     res.json(await projectStats());
+  }),
+);
+
+/** Everything the dashboard renders, in one request. */
+router.get(
+  '/dashboard',
+  asyncHandler(async (_req, res) => {
+    res.json(await dashboardSummary());
+  }),
+);
+
+/** Distinct materials / casting processes for the filter menus. */
+router.get(
+  '/filter-options',
+  asyncHandler(async (_req, res) => {
+    res.json(await projectFilterOptions());
   }),
 );
 
@@ -41,17 +63,49 @@ router.get(
   }),
 );
 
+/** Reads a string query parameter, ignoring arrays and empty values. */
+const str = (value: unknown): string | undefined =>
+  typeof value === 'string' && value !== '' ? value : undefined;
+const num = (value: unknown): number | undefined =>
+  typeof value === 'string' && value !== '' ? Number(value) : undefined;
+
+/**
+ * Project list. Returns a plain array by default and a `{ items, total }`
+ * page when `paginate=true`, so existing callers keep working.
+ */
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    res.json(
-      await listProjects({
-        search: typeof req.query.search === 'string' ? req.query.search : undefined,
-        stage: typeof req.query.stage === 'string' ? req.query.stage : undefined,
-        customerId: req.query.customerId ? Number(req.query.customerId) : undefined,
-        includeArchived: req.query.includeArchived === 'true',
-      }),
-    );
+    const filters = {
+      search: str(req.query.search),
+      stage: str(req.query.stage),
+      customerId: num(req.query.customerId),
+      engineerId: num(req.query.engineerId),
+      salesId: num(req.query.salesId),
+      priority: str(req.query.priority),
+      material: str(req.query.material),
+      castingProcess: str(req.query.castingProcess),
+      createdFrom: str(req.query.createdFrom),
+      createdTo: str(req.query.createdTo),
+      updatedFrom: str(req.query.updatedFrom),
+      updatedTo: str(req.query.updatedTo),
+      targetFrom: str(req.query.targetFrom),
+      targetTo: str(req.query.targetTo),
+      includeArchived: req.query.includeArchived === 'true',
+    };
+    if (req.query.paginate === 'true') {
+      res.json(
+        await listProjectsPage({
+          ...filters,
+          sortBy: str(req.query.sortBy),
+          sortDir: str(req.query.sortDir),
+          page: num(req.query.page),
+          pageSize: num(req.query.pageSize),
+        }),
+      );
+      return;
+    }
+    res.json(await listProjects(filters));
   }),
 );
 
@@ -91,18 +145,43 @@ router.put(
   '/:id',
   canEditProjects,
   asyncHandler(async (req, res) => {
+    const before = await getProject(Number(req.params.id));
     const project = await updateProject(Number(req.params.id), projectSchema.parse(req.body));
+    const stageChanged = before.currentStage !== project.currentStage;
     await logActivity({
       actor: req.user ?? null,
-      action: 'Project Updated',
+      action: stageChanged ? 'Stage Updated' : 'Project Updated',
       entityType: 'project',
       entityId: project.id,
-      detail: `${project.projectNumber} - ${project.projectName}`,
+      detail: stageChanged
+        ? `${project.projectNumber}: ${before.currentStage} → ${project.currentStage}`
+        : `${project.projectNumber} - ${project.projectName}`,
     });
+
+    // Keep the assigned engineer and salesperson aware of changes.
+    const watchers = new Set(
+      [project.assignedEngineerId, project.assignedSalesId].filter(
+        (id): id is number => typeof id === 'number',
+      ),
+    );
+    for (const userId of watchers) {
+      await notify({
+        userId,
+        actorId: req.user?.id,
+        type: stageChanged ? 'stage_updated' : 'project_updated',
+        title: stageChanged ? 'Project stage updated' : 'Project updated',
+        body: `${project.projectNumber} — ${project.projectName}`,
+        projectId: project.id,
+        entityType: 'project',
+        entityId: project.id,
+      });
+    }
     res.json(project);
   }),
 );
 
 router.use('/:projectId/documents', documentsRouter);
+router.use('/:projectId/tasks', tasksRouter);
+router.use('/:projectId/notes', notesRouter);
 
 export default router;

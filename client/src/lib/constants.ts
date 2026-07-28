@@ -41,3 +41,15 @@ export const ACCEPTED_FILE_EXTENSIONS = [
 
 /** Roles permitted to create/edit projects and customers. */
 export const EDITOR_ROLES: Role[] = ['administrator', 'engineering', 'sales', 'production'];
+
+/** Task workflow statuses with badge colours. */
+export const TASK_STATUSES = [
+  { value: 'not_started', label: 'Not Started', tone: 'bg-slate-100 text-slate-700' },
+  { value: 'in_progress', label: 'In Progress', tone: 'bg-blue-100 text-blue-700' },
+  { value: 'waiting', label: 'Waiting', tone: 'bg-amber-100 text-amber-700' },
+  { value: 'completed', label: 'Completed', tone: 'bg-emerald-100 text-emerald-700' },
+  { value: 'cancelled', label: 'Cancelled', tone: 'bg-slate-100 text-slate-500' },
+] as const;
+
+/** Statuses that take a task out of the active pipeline. */
+export const CLOSED_TASK_STATUSES = ['completed', 'cancelled'];

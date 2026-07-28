@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { z } from 'zod';
 import { config } from '../config';
 import { query, queryOne } from '../db/pool';
 import { requireRole } from '../middleware/auth';
@@ -32,6 +33,10 @@ const router = Router({ mergeParams: true });
 
 const canManageDocuments = requireRole('engineering', 'sales', 'production', 'quality');
 
+const renameSchema = z.object({
+  fileName: z.string().trim().min(1, 'File name is required').max(255),
+});
+
 function toDocumentDto(row: DocumentRow) {
   return {
     id: row.id,
@@ -56,11 +61,14 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const projectId = projectIdOf(req.params as Record<string, string>);
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     const rows = await query<DocumentRow>(
       `SELECT d.*, u.full_name AS uploaded_by_name
        FROM documents d LEFT JOIN users u ON u.id = d.uploaded_by
-       WHERE d.project_id = $1 ORDER BY d.created_at DESC`,
-      [projectId],
+       WHERE d.project_id = $1
+         ${search ? 'AND LOWER(d.file_name) LIKE $2' : ''}
+       ORDER BY d.created_at DESC`,
+      search ? [projectId, `%${search.toLowerCase()}%`] : [projectId],
     );
     res.json(rows.map(toDocumentDto));
   }),
@@ -116,6 +124,59 @@ router.get(
     res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(row.file_name)}"`);
     storage.createReadStream(row.storage_key).pipe(res);
+  }),
+);
+
+/**
+ * Streams the file inline so the browser can preview PDFs and images in a new
+ * tab. Falls back to the same bytes as the download endpoint for other types.
+ */
+router.get(
+  '/:documentId/preview',
+  asyncHandler(async (req, res) => {
+    const projectId = projectIdOf(req.params as Record<string, string>);
+    const row = await queryOne<DocumentRow>(
+      'SELECT * FROM documents WHERE id = $1 AND project_id = $2',
+      [Number(req.params.documentId), projectId],
+    );
+    if (!row) throw new HttpError(404, 'Document not found');
+    if (!(await storage.exists(row.storage_key))) {
+      throw new HttpError(410, 'Stored file is no longer available');
+    }
+    res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'inline');
+    storage.createReadStream(row.storage_key).pipe(res);
+  }),
+);
+
+/** Renames a document. The stored object key is deliberately left untouched. */
+router.patch(
+  '/:documentId',
+  canManageDocuments,
+  asyncHandler(async (req, res) => {
+    const projectId = projectIdOf(req.params as Record<string, string>);
+    const fileName = renameSchema.parse(req.body).fileName;
+    const existing = await queryOne<DocumentRow>(
+      'SELECT * FROM documents WHERE id = $1 AND project_id = $2',
+      [Number(req.params.documentId), projectId],
+    );
+    if (!existing) throw new HttpError(404, 'Document not found');
+    if (extensionOf(fileName) !== existing.extension) {
+      throw new HttpError(400, 'The file extension cannot be changed');
+    }
+    const row = await queryOne<DocumentRow>(
+      `UPDATE documents SET file_name = $3 WHERE id = $1 AND project_id = $2
+       RETURNING *, (SELECT full_name FROM users WHERE id = uploaded_by) AS uploaded_by_name`,
+      [existing.id, projectId, fileName],
+    );
+    await logActivity({
+      actor: req.user ?? null,
+      action: 'Document Renamed',
+      entityType: 'project',
+      entityId: projectId,
+      detail: `${existing.file_name} → ${fileName}`,
+    });
+    res.json(toDocumentDto(row as DocumentRow));
   }),
 );
 

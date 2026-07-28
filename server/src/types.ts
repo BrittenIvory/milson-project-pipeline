@@ -28,3 +28,12 @@ export interface AuthUser {
   fullName: string;
   role: Role;
 }
+
+export const TASK_STATUSES = [
+  'not_started',
+  'in_progress',
+  'waiting',
+  'completed',
+  'cancelled',
+] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
