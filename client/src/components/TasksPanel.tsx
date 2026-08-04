@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage, taskCommentsApi, tasksApi, usersApi } from '../lib/api';
 import type { TaskPayload } from '../lib/api';
-import { PRIORITIES, PROJECT_STAGES, TASK_STATUSES } from '../lib/constants';
+import { CLOSED_TASK_STATUSES, PRIORITIES, PROJECT_STAGES, TASK_STATUSES } from '../lib/constants';
 import { formatDate, formatDateTime, isOverdue, priorityMeta, stageMeta } from '../lib/format';
 import type { ProjectTask, ProjectTaskComment, User } from '../types';
 
@@ -81,6 +81,7 @@ export default function TasksPanel({
   const [editingComment, setEditingComment] = useState<number | null>(null);
   const [editingBody, setEditingBody] = useState('');
   const [pendingCommentDelete, setPendingCommentDelete] = useState<ProjectTaskComment | null>(null);
+  const [collapsedOverride, setCollapsedOverride] = useState<Record<string, boolean>>({});
   const commentRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
 
   const load = useCallback(async () => {
@@ -255,21 +256,35 @@ export default function TasksPanel({
               ? { label: 'Other', tone: 'bg-slate-100 text-slate-700' }
               : stageMeta(group.key);
             const active = group.key === currentStage;
+            const doneCount = group.tasks.filter((task) => CLOSED_TASK_STATUSES.includes(task.status)).length;
+            const allDone = group.tasks.length > 0 && doneCount === group.tasks.length;
+            const collapsed = collapsedOverride[group.key] ?? (allDone && !active);
             return (
               <section key={group.key} className={clsx(
                 'overflow-hidden rounded-2xl border bg-white',
                 active ? 'border-brand-300 ring-2 ring-brand-100' : 'border-slate-200',
               )}>
-                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCollapsedOverride((current) => ({
+                    ...current,
+                    [group.key]: !collapsed,
+                  }))}
+                  className="flex w-full items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-left"
+                >
                   <div className="flex items-center gap-2">
+                    {collapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                     <span className={clsx('rounded-full px-2.5 py-1 text-xs font-medium', meta.tone)}>
                       {meta.label}
                     </span>
                     {active && <span className="text-[11px] font-medium text-brand-700">Active stage</span>}
                   </div>
-                  <span className="text-xs text-slate-500">{group.tasks.length}</span>
-                </div>
-                <ul className="divide-y divide-slate-100">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    {allDone && <span>{doneCount}/{group.tasks.length} done</span>}
+                    <span>{group.tasks.length}</span>
+                  </div>
+                </button>
+                {!collapsed && <ul className="divide-y divide-slate-100">
                   {group.tasks.map((task) => {
                     const overdue = isOverdue(task.dueDate, task.status);
                     const taskComments = comments[task.id] ?? [];
@@ -378,7 +393,7 @@ export default function TasksPanel({
                       </li>
                     );
                   })}
-                </ul>
+                </ul>}
               </section>
             );
           })}
