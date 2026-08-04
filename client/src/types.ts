@@ -83,11 +83,12 @@ export interface ProjectStats {
   byStage: Record<string, number>;
 }
 
-export type TaskStatus = 'not_started' | 'in_progress' | 'waiting' | 'completed' | 'cancelled';
+export type TaskStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'not_applicable';
 
 export interface ProjectTask {
   id: number;
   projectId: number;
+  stage: string | null;
   taskName: string;
   description: string | null;
   assignedUserId: number | null;
@@ -96,6 +97,16 @@ export interface ProjectTask {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: TaskStatus;
   completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectTaskComment {
+  id: number;
+  taskId: number;
+  authorId: number | null;
+  authorName: string | null;
+  body: string;
   createdAt: string;
   updatedAt: string;
 }

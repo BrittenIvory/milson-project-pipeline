@@ -6,6 +6,7 @@ import { PRIORITIES, TASK_STATUSES } from '../types';
 export interface TaskRow {
   id: number;
   project_id: number;
+  stage: string | null;
   task_name: string;
   description: string | null;
   assigned_user_id: number | null;
@@ -48,6 +49,7 @@ export function toTaskDto(row: TaskRow) {
     dueDate: row.due_date,
     priority: row.priority,
     status: row.status,
+    stage: row.stage,
     completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -57,7 +59,7 @@ export function toTaskDto(row: TaskRow) {
 export async function listTasks(projectId: number) {
   const rows = await query<TaskRow>(
     `${SELECT_TASK} WHERE t.project_id = $1
-     ORDER BY (t.status IN ('completed','cancelled')), t.due_date NULLS LAST, t.id`,
+     ORDER BY (t.status IN ('completed','not_applicable')), t.due_date NULLS LAST, t.id`,
     [projectId],
   );
   return rows.map(toTaskDto);
@@ -72,11 +74,11 @@ export async function getTask(projectId: number, id: number) {
   return toTaskDto(row);
 }
 
-export async function createTask(projectId: number, input: TaskInput, createdBy: number) {
+export async function createTask(projectId: number, input: TaskInput, createdBy: number, stage: string) {
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO tasks (project_id, task_name, description, assigned_user_id, due_date, priority,
-       status, completed_at, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+       status, completed_at, created_by, stage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
     [
       projectId,
       input.taskName,
@@ -87,6 +89,7 @@ export async function createTask(projectId: number, input: TaskInput, createdBy:
       input.status,
       input.status === 'completed' ? new Date().toISOString() : null,
       createdBy,
+      stage,
     ],
   );
   return getTask(projectId, (inserted as { id: number }).id);

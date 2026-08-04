@@ -112,7 +112,7 @@ export async function sweepTaskDueNotifications(): Promise<void> {
        FROM tasks t
        JOIN projects p ON p.id = t.project_id
        WHERE t.assigned_user_id IS NOT NULL
-         AND t.status NOT IN ('completed','cancelled')
+         AND t.status NOT IN ('completed','not_applicable')
          AND t.due_date IS NOT NULL
          AND t.due_date <= CURRENT_DATE + 1
          AND NOT EXISTS (

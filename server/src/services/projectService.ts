@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { pool, query, queryOne } from '../db/pool';
 import { HttpError } from '../middleware/errors';
 import { PRIORITIES, PROJECT_STAGES } from '../types';
+import { seedStageTasks } from './workflowService';
 
 export interface ProjectRow {
   id: number;
@@ -57,7 +58,7 @@ export const projectSchema = z.object({
   priority: z.enum(PRIORITIES).default('medium'),
   targetQuoteDate: emptyToNull(z.string()).optional(),
   notes: z.string().trim().max(5000).optional().nullable(),
-  currentStage: z.enum(PROJECT_STAGES).default('intake'),
+  currentStage: z.enum(PROJECT_STAGES).default('pipeline'),
 });
 
 export type ProjectInput = z.infer<typeof projectSchema>;
@@ -287,7 +288,9 @@ export async function createProject(input: ProjectInput, createdBy: number) {
       input.notes ?? null, input.currentStage, createdBy,
     ],
   );
-  return getProject((inserted as { id: number }).id);
+  const projectId = (inserted as { id: number }).id;
+  await seedStageTasks(projectId, input.currentStage);
+  return getProject(projectId);
 }
 
 export async function updateProject(id: number, input: ProjectInput) {
@@ -372,7 +375,7 @@ export async function dashboardSummary() {
          p.target_quote_date < CURRENT_DATE
          OR EXISTS (
            SELECT 1 FROM tasks t WHERE t.project_id = p.id
-             AND t.status NOT IN ('completed','cancelled')
+             AND t.status NOT IN ('completed','not_applicable')
              AND t.due_date < CURRENT_DATE))`,
       'p.target_quote_date ASC NULLS LAST',
     ),

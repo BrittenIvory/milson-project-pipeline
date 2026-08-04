@@ -15,6 +15,7 @@ import {
   projectStats,
   updateProject,
 } from '../services/projectService';
+import { seedStageTasks } from '../services/workflowService';
 import documentsRouter from './documents';
 import notesRouter from './notes';
 import tasksRouter from './tasks';
@@ -148,6 +149,7 @@ router.put(
     const before = await getProject(Number(req.params.id));
     const project = await updateProject(Number(req.params.id), projectSchema.parse(req.body));
     const stageChanged = before.currentStage !== project.currentStage;
+    if (stageChanged) await seedStageTasks(project.id, project.currentStage);
     await logActivity({
       actor: req.user ?? null,
       action: stageChanged ? 'Stage Updated' : 'Project Updated',

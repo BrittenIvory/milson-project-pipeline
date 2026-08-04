@@ -11,6 +11,7 @@ import type {
   ProjectPage,
   ProjectStats,
   ProjectTask,
+  ProjectTaskComment,
   User,
 } from '../types';
 
@@ -158,6 +159,26 @@ export const tasksApi = {
     http.put<ProjectTask>(`/projects/${projectId}/tasks/${taskId}`, payload).then((r) => r.data),
   remove: (projectId: number, taskId: number) =>
     http.delete(`/projects/${projectId}/tasks/${taskId}`),
+};
+
+export const taskCommentsApi = {
+  list: (projectId: number, taskId: number) =>
+    http
+      .get<ProjectTaskComment[]>(`/projects/${projectId}/tasks/${taskId}/comments`)
+      .then((r) => r.data),
+  create: (projectId: number, taskId: number, body: string) =>
+    http
+      .post<ProjectTaskComment>(`/projects/${projectId}/tasks/${taskId}/comments`, { body })
+      .then((r) => r.data),
+  update: (projectId: number, taskId: number, commentId: number, body: string) =>
+    http
+      .put<ProjectTaskComment>(
+        `/projects/${projectId}/tasks/${taskId}/comments/${commentId}`,
+        { body },
+      )
+      .then((r) => r.data),
+  remove: (projectId: number, taskId: number, commentId: number) =>
+    http.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`),
 };
 
 export const notesApi = {
