@@ -37,6 +37,7 @@ export async function maybeAdvanceStage(
     [projectId],
   );
   if (!project || project.current_stage === 'completed') return { advanced: false };
+  await seedStageTasks(projectId, project.current_stage);
   const tasks = await query<{ status: string }>(
     'SELECT status FROM tasks WHERE project_id = $1 AND stage = $2',
     [projectId, project.current_stage],

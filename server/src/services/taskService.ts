@@ -17,6 +17,7 @@ export interface TaskRow {
   created_at: string;
   updated_at: string;
   assigned_user_name?: string | null;
+  comment_count: number;
 }
 
 const emptyToNull = <T extends z.ZodTypeAny>(schema: T) =>
@@ -34,7 +35,8 @@ export const taskSchema = z.object({
 export type TaskInput = z.infer<typeof taskSchema>;
 
 const SELECT_TASK = `
-  SELECT t.*, u.full_name AS assigned_user_name
+  SELECT t.*, u.full_name AS assigned_user_name,
+         (SELECT COUNT(*)::int FROM task_comments c WHERE c.task_id = t.id) AS comment_count
   FROM tasks t LEFT JOIN users u ON u.id = t.assigned_user_id`;
 
 /** Maps a joined task row to the camelCase API shape. */
@@ -50,6 +52,7 @@ export function toTaskDto(row: TaskRow) {
     priority: row.priority,
     status: row.status,
     stage: row.stage,
+    commentCount: row.comment_count,
     completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

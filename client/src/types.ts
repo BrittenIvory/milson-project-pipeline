@@ -89,6 +89,7 @@ export interface ProjectTask {
   id: number;
   projectId: number;
   stage: string | null;
+  commentCount: number;
   taskName: string;
   description: string | null;
   assignedUserId: number | null;
