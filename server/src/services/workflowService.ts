@@ -14,6 +14,14 @@ export const STAGE_TASK_TEMPLATES: Record<string, string[]> = {
 };
 
 export async function seedStageTasks(projectId: number, stage: string): Promise<number> {
+  const marker = await queryOne<{ project_id: number }>(
+    `INSERT INTO project_stage_seeds (project_id, stage)
+     VALUES ($1, $2)
+     ON CONFLICT (project_id, stage) DO NOTHING
+     RETURNING project_id`,
+    [projectId, stage],
+  );
+  if (!marker) return 0;
   const template = STAGE_TASK_TEMPLATES[stage] ?? [];
   if (template.length === 0) return 0;
   const result = await pool.query(
