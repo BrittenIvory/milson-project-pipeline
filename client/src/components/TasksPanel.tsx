@@ -273,6 +273,7 @@ export default function TasksPanel({
                   {group.tasks.map((task) => {
                     const overdue = isOverdue(task.dueDate, task.status);
                     const taskComments = comments[task.id] ?? [];
+                    const commentCount = comments[task.id]?.length ?? task.commentCount;
                     const query = mentionQueries[task.id];
                     const suggestions = query === null || query === undefined
                       ? []
@@ -326,7 +327,7 @@ export default function TasksPanel({
                           className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-brand-700"
                         >
                           {expanded[task.id] ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                          Comments ({taskComments.length})
+                          Comments ({commentCount})
                         </button>
                         {expanded[task.id] && (
                           <div className="mt-3 space-y-3 rounded-xl bg-slate-50 p-3">

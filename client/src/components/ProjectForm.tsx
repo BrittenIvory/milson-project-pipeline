@@ -5,7 +5,7 @@ import type { ProjectPayload } from '../lib/api';
 import { PRIORITIES, PROJECT_STAGES } from '../lib/constants';
 import type { Customer, Project, User } from '../types';
 
-/** Blank project, defaulted to the Intake stage. */
+/** Blank project, defaulted to the Pipeline stage. */
 export const emptyProject: ProjectPayload = {
   customerId: 0,
   customerContact: '',
@@ -25,7 +25,7 @@ export const emptyProject: ProjectPayload = {
   priority: 'medium',
   targetQuoteDate: null,
   notes: '',
-  currentStage: 'intake',
+  currentStage: 'pipeline',
 };
 
 /** Converts an existing project into editable form state. */
