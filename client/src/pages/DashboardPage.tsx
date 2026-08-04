@@ -51,7 +51,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PROJECT_STAGES.map((stage) => (
               <StageCard
                 key={stage.value}

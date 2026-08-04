@@ -342,7 +342,7 @@ export default function ProjectDetailPage() {
       <Suspense fallback={<Card><SkeletonRows rows={4} /></Card>}>
         {tab === 'tasks' && (
           <Card>
-            <TasksPanel projectId={projectId} onChanged={load} />
+            <TasksPanel projectId={projectId} currentStage={project.currentStage} onChanged={load} />
           </Card>
         )}
 

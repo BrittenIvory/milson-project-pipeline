@@ -3,6 +3,7 @@ export type Role = 'administrator' | 'engineering' | 'sales' | 'production' | 'q
 export const ROLES: Role[] = ['administrator', 'engineering', 'sales', 'production', 'quality'];
 
 export const PROJECT_STAGES = [
+  'pipeline',
   'intake',
   'stage_1_engineering',
   'production_team_quoting',
@@ -32,8 +33,8 @@ export interface AuthUser {
 export const TASK_STATUSES = [
   'not_started',
   'in_progress',
-  'waiting',
+  'on_hold',
   'completed',
-  'cancelled',
+  'not_applicable',
 ] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
