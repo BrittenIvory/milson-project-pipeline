@@ -186,9 +186,3 @@ CREATE TABLE IF NOT EXISTS project_stage_seeds (
   seeded_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (project_id, stage)
 );
-
-INSERT INTO project_stage_seeds (project_id, stage)
-SELECT DISTINCT project_id, stage
-FROM tasks
-WHERE stage IS NOT NULL
-ON CONFLICT (project_id, stage) DO NOTHING;
