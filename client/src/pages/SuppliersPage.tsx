@@ -24,6 +24,7 @@ export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<SupplierPayload>(emptySupplier);
@@ -45,6 +46,7 @@ export default function SuppliersPage() {
   const openForm = (supplier?: Supplier) => {
     setEditing(supplier ?? null);
     setModalOpen(true);
+    setFormError(null);
     setForm(supplier
       ? {
           name: supplier.name,
@@ -60,6 +62,7 @@ export default function SuppliersPage() {
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
+    setFormError(null);
     try {
       if (editing) await suppliersApi.update(editing.id, form);
       else await suppliersApi.create(form);
@@ -67,7 +70,7 @@ export default function SuppliersPage() {
       setModalOpen(false);
       await load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to save supplier'));
+      setFormError(apiErrorMessage(err, 'Unable to save supplier'));
     } finally {
       setSaving(false);
     }
@@ -114,6 +117,7 @@ export default function SuppliersPage() {
         footer={<><Button variant="secondary" type="button" onClick={() => { setEditing(null); setModalOpen(false); }}>Cancel</Button><Button type="submit" form="supplier-form" loading={saving}>{editing ? 'Save changes' : 'Create supplier'}</Button></>}
       >
         <form id="supplier-form" onSubmit={save} className="space-y-4">
+          <ErrorBanner message={formError} />
           <Field label="Supplier name"><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Contact name"><TextInput value={form.contactName ?? ''} onChange={(e) => setForm({ ...form, contactName: e.target.value })} /></Field>

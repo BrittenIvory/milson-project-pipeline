@@ -101,25 +101,35 @@ export default function TasksPanel({
 
   const load = useCallback(async () => {
     try {
-      const [taskData, supplierData, quoteData] = await Promise.all([
-        tasksApi.list(projectId),
-        suppliersApi.list(),
-        supplierQuotesApi.list(projectId),
-      ]);
-      setTasks(taskData);
-      setSuppliers(supplierData);
-      setSupplierQuotes(quoteData);
-      setQuotePriceDrafts(Object.fromEntries(
-        quoteData.map((quote) => [quote.supplierId, quote.quotedPrice?.toString() ?? '']),
-      ));
-      setQuoteNoteDrafts(Object.fromEntries(
-        quoteData.map((quote) => [quote.supplierId, quote.quoteNotes ?? '']),
-      ));
+      setTasks(await tasksApi.list(projectId));
       setError(null);
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to load tasks'));
     } finally {
       setLoading(false);
+    }
+    const [supplierResult, quoteResult] = await Promise.allSettled([
+      suppliersApi.list(),
+      supplierQuotesApi.list(projectId),
+    ]);
+    if (supplierResult.status === 'fulfilled') setSuppliers(supplierResult.value);
+    if (quoteResult.status === 'fulfilled') {
+      const quoteData = quoteResult.value;
+      setSupplierQuotes(quoteData);
+      setQuotePriceDrafts((current) => {
+        const next = { ...current };
+        quoteData.forEach((quote) => {
+          if (!(quote.supplierId in next)) next[quote.supplierId] = quote.quotedPrice?.toString() ?? '';
+        });
+        return next;
+      });
+      setQuoteNoteDrafts((current) => {
+        const next = { ...current };
+        quoteData.forEach((quote) => {
+          if (!(quote.supplierId in next)) next[quote.supplierId] = quote.quoteNotes ?? '';
+        });
+        return next;
+      });
     }
   }, [projectId]);
 
