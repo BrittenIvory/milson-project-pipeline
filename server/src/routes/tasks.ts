@@ -6,6 +6,7 @@ import { notify } from '../services/notificationService';
 import { getProject } from '../services/projectService';
 import { maybeAdvanceStage } from '../services/workflowService';
 import taskCommentsRouter from './taskComments';
+import { stageLabel } from '../types';
 import type { AuthUser } from '../types';
 import {
   createTask,
@@ -33,7 +34,7 @@ async function notifyStageAdvance(
     action: 'Stage Updated',
     entityType: 'project',
     entityId: projectId,
-    detail: `${project.projectNumber}: ${advance.from} → ${advance.to} (all tasks complete)`,
+    detail: `${project.projectNumber}: ${stageLabel(advance.from ?? '')} → ${stageLabel(advance.to ?? '')} (all tasks complete)`,
   });
   const watchers = new Set(
     [project.assignedEngineerId, project.assignedSalesId].filter(
