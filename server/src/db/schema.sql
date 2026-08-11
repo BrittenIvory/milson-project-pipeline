@@ -122,6 +122,41 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE INDEX IF NOT EXISTS tasks_project_idx ON tasks (project_id);
 CREATE INDEX IF NOT EXISTS tasks_assignee_idx ON tasks (assigned_user_id);
 
+-- Supplier directory and project-specific supplier quote tracking.
+CREATE TABLE IF NOT EXISTS suppliers (
+  id           SERIAL PRIMARY KEY,
+  name         TEXT NOT NULL UNIQUE,
+  contact_name TEXT,
+  email        TEXT,
+  phone        TEXT,
+  notes        TEXT,
+  is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS suppliers_active_idx ON suppliers (is_active, name);
+
+CREATE TABLE IF NOT EXISTS project_supplier_quotes (
+  id           SERIAL PRIMARY KEY,
+  project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  supplier_id  INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+  selected     BOOLEAN NOT NULL DEFAULT FALSE,
+  quoted_price NUMERIC(12,2),
+  currency     TEXT NOT NULL DEFAULT 'AUD',
+  quote_notes  TEXT,
+  selected_at  TIMESTAMPTZ,
+  reviewed_at  TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (project_id, supplier_id),
+  CHECK (quoted_price IS NULL OR quoted_price >= 0),
+  CHECK (currency = UPPER(currency) AND char_length(currency) = 3)
+);
+
+CREATE INDEX IF NOT EXISTS project_supplier_quotes_project_idx
+  ON project_supplier_quotes (project_id, selected, updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS project_notes (
   id         SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

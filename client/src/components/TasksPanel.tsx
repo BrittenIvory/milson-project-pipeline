@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import { AlertTriangle, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
@@ -15,11 +16,21 @@ import {
   TextInput,
 } from './ui';
 import { useAuth } from '../context/AuthContext';
-import { apiErrorMessage, taskCommentsApi, tasksApi, usersApi } from '../lib/api';
+import {
+  apiErrorMessage,
+  supplierQuotesApi,
+  suppliersApi,
+  taskCommentsApi,
+  tasksApi,
+  usersApi,
+} from '../lib/api';
 import type { TaskPayload } from '../lib/api';
 import { CLOSED_TASK_STATUSES, PRIORITIES, PROJECT_STAGES, TASK_STATUSES } from '../lib/constants';
 import { formatDate, formatDateTime, isOverdue, priorityMeta, stageMeta } from '../lib/format';
-import type { ProjectTask, ProjectTaskComment, User } from '../types';
+import type { ProjectTask, ProjectTaskComment, Supplier, SupplierQuote, User } from '../types';
+
+const SUPPLIER_SELECTION_TASK = 'Supplier(s) selected';
+const QUOTE_REVIEW_TASK = 'Quote reviewed and accepted';
 
 const emptyTask: TaskPayload = {
   taskName: '',
@@ -68,6 +79,10 @@ export default function TasksPanel({
   const { user } = useAuth();
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierQuotes, setSupplierQuotes] = useState<SupplierQuote[]>([]);
+  const [quotePriceDrafts, setQuotePriceDrafts] = useState<Record<number, string>>({});
+  const [quoteNoteDrafts, setQuoteNoteDrafts] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +101,20 @@ export default function TasksPanel({
 
   const load = useCallback(async () => {
     try {
-      setTasks(await tasksApi.list(projectId));
+      const [taskData, supplierData, quoteData] = await Promise.all([
+        tasksApi.list(projectId),
+        suppliersApi.list(),
+        supplierQuotesApi.list(projectId),
+      ]);
+      setTasks(taskData);
+      setSuppliers(supplierData);
+      setSupplierQuotes(quoteData);
+      setQuotePriceDrafts(Object.fromEntries(
+        quoteData.map((quote) => [quote.supplierId, quote.quotedPrice?.toString() ?? '']),
+      ));
+      setQuoteNoteDrafts(Object.fromEntries(
+        quoteData.map((quote) => [quote.supplierId, quote.quoteNotes ?? '']),
+      ));
       setError(null);
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to load tasks'));
@@ -127,6 +155,42 @@ export default function TasksPanel({
       setError(apiErrorMessage(err, 'Unable to update task'));
     }
   };
+
+  const canManageQuotes = user?.role === 'administrator'
+    || user?.role === 'engineering'
+    || user?.role === 'sales'
+    || user?.role === 'production';
+
+  const saveSupplierQuote = async (
+    supplierId: number,
+    values: { selected: boolean; quotedPrice?: number | null; quoteNotes?: string | null },
+  ) => {
+    try {
+      const saved = await supplierQuotesApi.upsert(projectId, supplierId, {
+        selected: values.selected,
+        quotedPrice: values.quotedPrice ?? null,
+        currency: 'AUD',
+        quoteNotes: values.quoteNotes ?? null,
+      });
+      setSupplierQuotes((current) => {
+        const without = current.filter((quote) => quote.supplierId !== supplierId);
+        return [...without, saved].sort((a, b) => a.supplierName.localeCompare(b.supplierName));
+      });
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to save supplier quote'));
+    }
+  };
+
+  const toggleSupplier = async (supplier: Supplier, selected: boolean) => {
+    const existing = supplierQuotes.find((quote) => quote.supplierId === supplier.id);
+    await saveSupplierQuote(supplier.id, {
+      selected,
+      quotedPrice: existing?.quotedPrice,
+      quoteNotes: existing?.quoteNotes,
+    });
+  };
+
+  const selectedQuotes = supplierQuotes.filter((quote) => quote.selected);
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
@@ -322,6 +386,84 @@ export default function TasksPanel({
                                 </span>
                               )}
                             </div>
+                            {task.taskName === SUPPLIER_SELECTION_TASK && (
+                              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-xs font-semibold text-slate-700">Selected suppliers</p>
+                                    <p className="text-xs text-slate-500">Choose who received a request for quote.</p>
+                                  </div>
+                                  <Link to="/suppliers" className="text-xs font-medium text-brand-700 hover:text-brand-800">Manage suppliers</Link>
+                                </div>
+                                {suppliers.length === 0 ? (
+                                  <p className="text-xs text-slate-500">Add suppliers to the directory before selecting them.</p>
+                                ) : (
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {suppliers.map((supplier) => (
+                                      <label key={supplier.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                        <input
+                                          type="checkbox"
+                                          checked={supplierQuotes.some((quote) => quote.supplierId === supplier.id && quote.selected)}
+                                          disabled={!canManageQuotes}
+                                          onChange={(event) => toggleSupplier(supplier, event.target.checked)}
+                                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200"
+                                        />
+                                        {supplier.name}
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {task.taskName === QUOTE_REVIEW_TASK && (
+                              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <div className="mb-2">
+                                  <p className="text-xs font-semibold text-slate-700">Supplier quotes</p>
+                                  <p className="text-xs text-slate-500">Record the pricing received from each selected supplier.</p>
+                                </div>
+                                {selectedQuotes.length === 0 ? (
+                                  <p className="text-xs text-slate-500">Select suppliers on the “Supplier(s) selected” task first.</p>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {selectedQuotes.map((quote) => (
+                                      <div key={quote.supplierId} className="rounded-lg border border-slate-200 bg-white p-3">
+                                        <div className="mb-2 flex items-center justify-between gap-2">
+                                          <p className="text-sm font-medium text-slate-800">{quote.supplierName}</p>
+                                          {quote.reviewedAt && <span className="text-xs text-emerald-700">Pricing recorded</span>}
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+                                          <TextInput
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Price (AUD)"
+                                            value={quotePriceDrafts[quote.supplierId] ?? ''}
+                                            disabled={!canManageQuotes}
+                                            onChange={(event) => setQuotePriceDrafts((current) => ({ ...current, [quote.supplierId]: event.target.value }))}
+                                          />
+                                          <TextInput
+                                            placeholder="Quote notes or lead time"
+                                            value={quoteNoteDrafts[quote.supplierId] ?? ''}
+                                            disabled={!canManageQuotes}
+                                            onChange={(event) => setQuoteNoteDrafts((current) => ({ ...current, [quote.supplierId]: event.target.value }))}
+                                          />
+                                          <Button
+                                            disabled={!canManageQuotes}
+                                            onClick={() => saveSupplierQuote(quote.supplierId, {
+                                              selected: true,
+                                              quotedPrice: quotePriceDrafts[quote.supplierId] ? Number(quotePriceDrafts[quote.supplierId]) : null,
+                                              quoteNotes: quoteNoteDrafts[quote.supplierId] ?? null,
+                                            })}
+                                          >
+                                            Save
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <button
                             title="Edit task"
