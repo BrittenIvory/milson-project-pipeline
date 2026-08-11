@@ -34,7 +34,7 @@ export default function NewProjectPage() {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="New Project"
-        description="Projects start in the Intake stage and can be moved forward later."
+        description="Projects start in the Pipeline stage and can be moved forward later."
       />
       <ProjectForm
         value={form}

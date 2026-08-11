@@ -16,6 +16,22 @@ export const PROJECT_STAGES = [
 
 export type ProjectStage = (typeof PROJECT_STAGES)[number];
 
+export const STAGE_LABELS: Record<ProjectStage, string> = {
+  pipeline: 'Pipeline',
+  intake: 'Intake',
+  stage_1_engineering: 'Stage 1 Engineering',
+  production_team_quoting: 'Production Team Quoting',
+  sales: 'Sales',
+  stage_2_production: 'Stage 2 Engineering',
+  production: 'Production',
+  qa: 'QA',
+  completed: 'Completed',
+};
+
+export function stageLabel(stage: string): string {
+  return STAGE_LABELS[stage as ProjectStage] ?? stage;
+}
+
 export const PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
 export type Priority = (typeof PRIORITIES)[number];
 

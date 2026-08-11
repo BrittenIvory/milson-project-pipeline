@@ -23,7 +23,7 @@ description: How to bring up and end-to-end test the Milson Project Pipeline app
 - Project numbers auto-generate from a Postgres sequence as `P-%04d` (`services/projectService.ts`); the form pre-fills a disabled field via `GET /api/projects/next-number`. Check `select last_value from project_number_seq;` to predict the next number.
 - Customer numbers are NOT auto-generated — manual required field; duplicates return 409 "Customer number X is already in use".
 - Activity action strings: `Project Created`, `Project Updated`, `Customer Created/Updated/Archived/Restored`, `Document Uploaded`, `Document Deleted`, `Task Created/Updated/Completed/Deleted`, `Comment Added`, `Note Added`, `Stage Updated`, `Document Renamed`.
-- `Stage Updated` activity detail prints the raw DB stage values (e.g. `intake → stage_1_engineering`), not the display labels — cosmetic, don't treat as a data bug.
+- `Stage Updated` activity detail uses the display labels via `stageLabel()` in `server/src/types.ts` (e.g. `Intake → Stage 2 Engineering`), not the raw DB values — assert on labels.
 - Known-bug watchlist: `/api/projects/:id/activity` returns raw snake_case rows so the project Activity tab may show `System · —` instead of user/timestamp; and the Activity tab is only fetched on mount, so document actions require a reload to appear. Verify these are fixed before trusting the tab.
 - File uploads: click "Upload file", then in the GTK file dialog press ctrl+l and type the absolute path + Enter.
 - Responsive test: `wmctrl -r :ACTIVE: -e 0,0,0,430,760` to get a narrow viewport (hamburger appears below the `lg` breakpoint); re-maximize with `wmctrl -r :ACTIVE: -b add,maximized_vert,maximized_horz`.

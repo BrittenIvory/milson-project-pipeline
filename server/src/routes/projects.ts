@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { listActivity, logActivity, toActivityDto } from '../services/activityService';
 import { notify } from '../services/notificationService';
+import { stageLabel } from '../types';
 import {
   createProject,
   dashboardSummary,
@@ -156,7 +157,7 @@ router.put(
       entityType: 'project',
       entityId: project.id,
       detail: stageChanged
-        ? `${project.projectNumber}: ${before.currentStage} → ${project.currentStage}`
+        ? `${project.projectNumber}: ${stageLabel(before.currentStage)} → ${stageLabel(project.currentStage)}`
         : `${project.projectNumber} - ${project.projectName}`,
     });
 
