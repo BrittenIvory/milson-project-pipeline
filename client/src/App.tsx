@@ -9,6 +9,7 @@ import PlaceholderPage from './pages/PlaceholderPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
 import SearchPage from './pages/SearchPage';
+import SuppliersPage from './pages/SuppliersPage';
 
 /** Route table. Everything except /login sits behind ProtectedRoute. */
 export default function App() {
@@ -26,12 +27,7 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route
             path="/suppliers"
-            element={
-              <PlaceholderPage
-                title="Suppliers"
-                description="Supplier records and supplier quoting arrive in a later phase."
-              />
-            }
+            element={<SuppliersPage />}
           />
           <Route
             path="/reports"

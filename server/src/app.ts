@@ -10,6 +10,7 @@ import customersRouter from './routes/customers';
 import notificationsRouter from './routes/notifications';
 import projectsRouter from './routes/projects';
 import searchRouter from './routes/search';
+import suppliersRouter from './routes/suppliers';
 import usersRouter from './routes/users';
 
 /** Builds the Express application (kept separate from bootstrap for testing). */
@@ -26,6 +27,7 @@ export function createApp(): Express {
   app.use('/api/activity', activityRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/search', searchRouter);
+  app.use('/api/suppliers', suppliersRouter);
 
   // In production the API also serves the built single-page frontend.
   if (fs.existsSync(config.clientDist)) {

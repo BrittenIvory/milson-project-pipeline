@@ -12,6 +12,8 @@ import type {
   ProjectStats,
   ProjectTask,
   ProjectTaskComment,
+  Supplier,
+  SupplierQuote,
   User,
 } from '../types';
 
@@ -47,6 +49,19 @@ export const authApi = {
 export const usersApi = {
   list: (role?: string) =>
     http.get<User[]>('/users', { params: { role } }).then((r) => r.data),
+};
+
+export type SupplierPayload = Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>;
+
+export const suppliersApi = {
+  list: (includeInactive = false) =>
+    http
+      .get<Supplier[]>('/suppliers', { params: { includeInactive } })
+      .then((r) => r.data),
+  create: (payload: SupplierPayload) =>
+    http.post<Supplier>('/suppliers', payload).then((r) => r.data),
+  update: (id: number, payload: SupplierPayload) =>
+    http.put<Supplier>(`/suppliers/${id}`, payload).then((r) => r.data),
 };
 
 export type CustomerPayload = Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>;
@@ -179,6 +194,24 @@ export const taskCommentsApi = {
       .then((r) => r.data),
   remove: (projectId: number, taskId: number, commentId: number) =>
     http.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`),
+};
+
+export type SupplierQuotePayload = Pick<
+  SupplierQuote,
+  'selected' | 'quotedPrice' | 'currency' | 'quoteNotes'
+>;
+
+export const supplierQuotesApi = {
+  list: (projectId: number) =>
+    http
+      .get<SupplierQuote[]>(`/projects/${projectId}/supplier-quotes`)
+      .then((r) => r.data),
+  upsert: (projectId: number, supplierId: number, payload: SupplierQuotePayload) =>
+    http
+      .put<SupplierQuote>(`/projects/${projectId}/supplier-quotes/${supplierId}`, payload)
+      .then((r) => r.data),
+  remove: (projectId: number, supplierId: number) =>
+    http.delete(`/projects/${projectId}/supplier-quotes/${supplierId}`),
 };
 
 export const notesApi = {

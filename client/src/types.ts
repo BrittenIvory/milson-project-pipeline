@@ -112,6 +112,32 @@ export interface ProjectTaskComment {
   updatedAt: string;
 }
 
+export interface Supplier {
+  id: number;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupplierQuote {
+  id: number;
+  projectId: number;
+  supplierId: number;
+  supplierName: string;
+  selected: boolean;
+  quotedPrice: number | null;
+  currency: string;
+  quoteNotes: string | null;
+  selectedAt: string | null;
+  reviewedAt: string | null;
+  updatedAt: string;
+}
+
 export interface ProjectNote {
   id: number;
   projectId: number;

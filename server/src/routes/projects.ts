@@ -19,6 +19,7 @@ import {
 import { seedStageTasks } from '../services/workflowService';
 import documentsRouter from './documents';
 import notesRouter from './notes';
+import supplierQuotesRouter from './supplierQuotes';
 import tasksRouter from './tasks';
 
 const router = Router();
@@ -186,5 +187,6 @@ router.put(
 router.use('/:projectId/documents', documentsRouter);
 router.use('/:projectId/tasks', tasksRouter);
 router.use('/:projectId/notes', notesRouter);
+router.use('/:projectId/supplier-quotes', supplierQuotesRouter);
 
 export default router;
