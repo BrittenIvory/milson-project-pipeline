@@ -107,12 +107,15 @@ export default function TasksPanel({
     setQuoteDataAvailable(false);
     setQuoteError(null);
     try {
-      setTasks(await tasksApi.list(projectId));
+      const taskData = await tasksApi.list(projectId);
+      if (currentLoadId !== quoteLoadId.current) return;
+      setTasks(taskData);
       setError(null);
     } catch (err) {
+      if (currentLoadId !== quoteLoadId.current) return;
       setError(apiErrorMessage(err, 'Unable to load tasks'));
     } finally {
-      setLoading(false);
+      if (currentLoadId === quoteLoadId.current) setLoading(false);
     }
     const [supplierResult, quoteResult] = await Promise.allSettled([
       suppliersApi.list(),
