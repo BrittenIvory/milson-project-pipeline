@@ -83,6 +83,8 @@ export default function TasksPanel({
   const [supplierQuotes, setSupplierQuotes] = useState<SupplierQuote[]>([]);
   const [quotePriceDrafts, setQuotePriceDrafts] = useState<Record<number, string>>({});
   const [quoteNoteDrafts, setQuoteNoteDrafts] = useState<Record<number, string>>({});
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteDataAvailable, setQuoteDataAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +102,8 @@ export default function TasksPanel({
   const commentRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
 
   const load = useCallback(async () => {
+    setQuoteDataAvailable(false);
+    setQuoteError(null);
     try {
       setTasks(await tasksApi.list(projectId));
       setError(null);
@@ -131,9 +135,19 @@ export default function TasksPanel({
         return next;
       });
     }
+    if (supplierResult.status === 'rejected' || quoteResult.status === 'rejected') {
+      setQuoteError('Supplier quoting data is unavailable. Refresh before changing supplier selections or pricing.');
+    } else {
+      setQuoteDataAvailable(true);
+    }
   }, [projectId]);
 
   useEffect(() => {
+    setQuotePriceDrafts({});
+    setQuoteNoteDrafts({});
+    setSuppliers([]);
+    setSupplierQuotes([]);
+    setQuoteDataAvailable(false);
     load();
     usersApi.list().then(setUsers).catch(() => undefined);
   }, [load]);
@@ -192,6 +206,7 @@ export default function TasksPanel({
   };
 
   const toggleSupplier = async (supplier: Supplier, selected: boolean) => {
+    if (!quoteDataAvailable) return;
     const existing = supplierQuotes.find((quote) => quote.supplierId === supplier.id);
     await saveSupplierQuote(supplier.id, {
       selected,
@@ -318,6 +333,7 @@ export default function TasksPanel({
       </div>
 
       <ErrorBanner message={error} />
+      <ErrorBanner message={quoteError} />
 
       {loading ? (
         <SkeletonRows rows={4} />
@@ -414,7 +430,7 @@ export default function TasksPanel({
                                         <input
                                           type="checkbox"
                                           checked={supplierQuotes.some((quote) => quote.supplierId === supplier.id && quote.selected)}
-                                          disabled={!canManageQuotes}
+                                          disabled={!canManageQuotes || !quoteDataAvailable}
                                           onChange={(event) => toggleSupplier(supplier, event.target.checked)}
                                           className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200"
                                         />
@@ -448,17 +464,17 @@ export default function TasksPanel({
                                             step="0.01"
                                             placeholder="Price (AUD)"
                                             value={quotePriceDrafts[quote.supplierId] ?? ''}
-                                            disabled={!canManageQuotes}
+                                            disabled={!canManageQuotes || !quoteDataAvailable}
                                             onChange={(event) => setQuotePriceDrafts((current) => ({ ...current, [quote.supplierId]: event.target.value }))}
                                           />
                                           <TextInput
                                             placeholder="Quote notes or lead time"
                                             value={quoteNoteDrafts[quote.supplierId] ?? ''}
-                                            disabled={!canManageQuotes}
+                                            disabled={!canManageQuotes || !quoteDataAvailable}
                                             onChange={(event) => setQuoteNoteDrafts((current) => ({ ...current, [quote.supplierId]: event.target.value }))}
                                           />
                                           <Button
-                                            disabled={!canManageQuotes}
+                                            disabled={!canManageQuotes || !quoteDataAvailable}
                                             onClick={() => saveSupplierQuote(quote.supplierId, {
                                               selected: true,
                                               quotedPrice: quotePriceDrafts[quote.supplierId] ? Number(quotePriceDrafts[quote.supplierId]) : null,
