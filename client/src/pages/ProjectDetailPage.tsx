@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Download, Pencil } from 'lucide-react';
 import ProjectForm, { projectToPayload } from '../components/ProjectForm';
 import {
   Badge,
@@ -14,7 +14,7 @@ import {
   Spinner,
 } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
-import { apiErrorMessage, projectsApi } from '../lib/api';
+import { apiErrorMessage, documentsApi, projectsApi } from '../lib/api';
 import type { ProjectPayload } from '../lib/api';
 import { PRIORITIES, PROJECT_STAGES } from '../lib/constants';
 import { formatDate, formatDateTime, orDash, priorityMeta, stageMeta } from '../lib/format';
@@ -86,6 +86,7 @@ export default function ProjectDetailPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quoteBusy, setQuoteBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -145,6 +146,20 @@ export default function ProjectDetailPage() {
       setError(apiErrorMessage(err, 'Unable to update project'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const generateQuickQuote = async () => {
+    setQuoteBusy(true);
+    setError(null);
+    try {
+      const document = await projectsApi.generateQuickQuote(projectId);
+      await documentsApi.download(projectId, document);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to generate estimate PDF'));
+    } finally {
+      setQuoteBusy(false);
     }
   };
 
@@ -220,6 +235,9 @@ export default function ProjectDetailPage() {
         </div>
         {canEdit && (
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" loading={quoteBusy} onClick={generateQuickQuote}>
+              <Download className="h-4 w-4" /> Estimate PDF
+            </Button>
             <Select
               aria-label="Current stage"
               value={project.currentStage}

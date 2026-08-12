@@ -112,6 +112,8 @@ export const projectsApi = {
       .then((r) => r.data),
   activity: (id: number) =>
     http.get<ActivityRecord[]>(`/projects/${id}/activity`).then((r) => r.data),
+  generateQuickQuote: (id: number) =>
+    http.post<ProjectDocument>(`/projects/${id}/quick-quote`).then((r) => r.data),
 };
 
 export const documentsApi = {
