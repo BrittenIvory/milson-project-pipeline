@@ -78,11 +78,19 @@ CREATE TABLE IF NOT EXISTS documents (
   mime_type      TEXT,
   extension      TEXT,
   size_bytes     BIGINT NOT NULL,
+  document_kind  TEXT NOT NULL DEFAULT 'uploaded',
   uploaded_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS documents_project_idx ON documents (project_id);
+
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS document_kind TEXT NOT NULL DEFAULT 'uploaded';
+ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_document_kind_check;
+ALTER TABLE documents ADD CONSTRAINT documents_document_kind_check
+  CHECK (document_kind IN ('uploaded', 'generated_estimate'));
+CREATE UNIQUE INDEX IF NOT EXISTS documents_one_generated_estimate_idx
+  ON documents (project_id) WHERE document_kind = 'generated_estimate';
 
 CREATE TABLE IF NOT EXISTS activity_logs (
   id          SERIAL PRIMARY KEY,

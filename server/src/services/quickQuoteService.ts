@@ -67,6 +67,7 @@ interface DocumentRow {
   mime_type: string | null;
   extension: string | null;
   size_bytes: string;
+  document_kind: string;
   uploaded_by: number | null;
   created_at: string;
   uploaded_by_name?: string | null;
@@ -251,26 +252,42 @@ export async function generateQuickQuoteDocument(project: QuoteProject, uploaded
   const data = createQuotePdf(project, quote);
   const key = await storage.save(project.id, fileName, data);
   const existing = await queryOne<DocumentRow>(
-    'SELECT * FROM documents WHERE project_id = $1 AND file_name = $2',
-    [project.id, fileName],
+    `SELECT * FROM documents
+     WHERE project_id = $1 AND document_kind = 'generated_estimate'`,
+    [project.id],
   );
 
   if (existing) {
-    await storage.remove(existing.storage_key);
     const updated = await queryOne<DocumentRow>(
       `UPDATE documents SET storage_key=$3, storage_driver=$4, mime_type=$5,
-         extension=$6, size_bytes=$7, uploaded_by=$8, created_at=NOW()
+         extension=$6, size_bytes=$7, document_kind='generated_estimate',
+         uploaded_by=$8, created_at=NOW()
        WHERE id=$1 AND project_id=$2 RETURNING *`,
       [existing.id, project.id, key, storage.driver, 'application/pdf', 'pdf', data.length, uploadedBy],
     );
-    return updated ? toDocumentDto(updated) : null;
+    if (!updated) {
+      await storage.remove(key).catch(() => undefined);
+      throw new Error('Unable to update generated estimate document');
+    }
+    await storage.remove(existing.storage_key).catch(() => undefined);
+    return toDocumentDto(updated);
   }
 
-  const inserted = await queryOne<DocumentRow>(
-    `INSERT INTO documents (project_id, file_name, storage_key, storage_driver, mime_type,
-       extension, size_bytes, uploaded_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [project.id, fileName, key, storage.driver, 'application/pdf', 'pdf', data.length, uploadedBy],
-  );
-  return inserted ? toDocumentDto(inserted) : null;
+  let inserted: DocumentRow | null;
+  try {
+    inserted = await queryOne<DocumentRow>(
+      `INSERT INTO documents (project_id, file_name, storage_key, storage_driver, mime_type,
+         extension, size_bytes, document_kind, uploaded_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'generated_estimate',$8) RETURNING *`,
+      [project.id, fileName, key, storage.driver, 'application/pdf', 'pdf', data.length, uploadedBy],
+    );
+  } catch (err) {
+    await storage.remove(key).catch(() => undefined);
+    throw err;
+  }
+  if (!inserted) {
+    await storage.remove(key).catch(() => undefined);
+    throw new Error('Unable to create generated estimate document');
+  }
+  return toDocumentDto(inserted);
 }

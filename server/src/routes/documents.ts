@@ -18,6 +18,7 @@ interface DocumentRow {
   mime_type: string | null;
   extension: string | null;
   size_bytes: string;
+  document_kind: string;
   uploaded_by: number | null;
   created_at: string;
   uploaded_by_name?: string | null;
@@ -91,8 +92,8 @@ router.post(
     const key = await storage.save(projectId, req.file.originalname, req.file.buffer);
     const row = await queryOne<DocumentRow>(
       `INSERT INTO documents (project_id, file_name, storage_key, storage_driver, mime_type,
-         extension, size_bytes, uploaded_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+         extension, size_bytes, document_kind, uploaded_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'uploaded',$8) RETURNING *`,
       [
         projectId, req.file.originalname, key, storage.driver, req.file.mimetype,
         extension, req.file.size, req.user?.id ?? null,
