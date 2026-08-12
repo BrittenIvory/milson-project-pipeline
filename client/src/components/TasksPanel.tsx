@@ -100,8 +100,10 @@ export default function TasksPanel({
   const [pendingCommentDelete, setPendingCommentDelete] = useState<ProjectTaskComment | null>(null);
   const [collapsedOverride, setCollapsedOverride] = useState<Record<string, boolean>>({});
   const commentRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
+  const quoteLoadId = useRef(0);
 
   const load = useCallback(async () => {
+    const currentLoadId = ++quoteLoadId.current;
     setQuoteDataAvailable(false);
     setQuoteError(null);
     try {
@@ -116,6 +118,7 @@ export default function TasksPanel({
       suppliersApi.list(),
       supplierQuotesApi.list(projectId),
     ]);
+    if (currentLoadId !== quoteLoadId.current) return;
     if (supplierResult.status === 'fulfilled') setSuppliers(supplierResult.value);
     if (quoteResult.status === 'fulfilled') {
       const quoteData = quoteResult.value;
