@@ -130,7 +130,7 @@ export default function ProjectDetailPage() {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [project?.partImageFileName, projectId]);
+  }, [project?.partImageFileName, project?.partImageSizeBytes, project?.updatedAt, projectId]);
 
   const setTab = (next: Tab) => {
     const params = new URLSearchParams(searchParams);

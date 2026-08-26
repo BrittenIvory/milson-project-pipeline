@@ -152,8 +152,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const projectId = Number(req.params.id);
     const project = await getProject(projectId);
-    if (!req.file || !req.file.mimetype.startsWith('image/')) {
-      res.status(400).json({ error: 'Upload a PNG, JPEG, or other image file' });
+    if (!req.file || !['image/png', 'image/jpeg', 'image/jpg'].includes(req.file.mimetype)) {
+      res.status(400).json({ error: 'Upload a PNG or JPEG image file' });
       return;
     }
     const key = await storage.save(projectId, req.file.originalname, req.file.buffer);
@@ -179,9 +179,14 @@ router.post(
       detail: `${project.projectNumber} - ${req.file.originalname}`,
     });
     const refreshedProject = await getProject(projectId);
-    await generateQuickQuoteDocument(refreshedProject, req.user!.id);
-    if (previousKey && previousKey !== key) {
-      await storage.remove(previousKey).catch(() => undefined);
+    try {
+      await generateQuickQuoteDocument(refreshedProject, req.user!.id);
+    } catch (error) {
+      console.error('Unable to refresh estimate after part image upload', error);
+    } finally {
+      if (previousKey && previousKey !== key) {
+        await storage.remove(previousKey).catch(() => undefined);
+      }
     }
     res.json(refreshedProject);
   }),
@@ -214,7 +219,11 @@ router.delete(
       detail: 'Project part image',
     });
     const refreshedProject = await getProject(projectId);
-    await generateQuickQuoteDocument(refreshedProject, req.user!.id);
+    try {
+      await generateQuickQuoteDocument(refreshedProject, req.user!.id);
+    } catch (error) {
+      console.error('Unable to refresh estimate after part image deletion', error);
+    }
     res.status(204).end();
   }),
 );

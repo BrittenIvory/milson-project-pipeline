@@ -220,8 +220,17 @@ function imagePdfObject(data: Buffer, mimeType: string): { object: string; comma
       if ([0xc0, 0xc1, 0xc2, 0xc3].includes(marker)) {
         const height = data.readUInt16BE(index + 5);
         const width = data.readUInt16BE(index + 7);
+        const components = data[index + 9];
+        const colorSpace = components === 1
+          ? '/DeviceGray'
+          : components === 3
+            ? '/DeviceRGB'
+            : components === 4
+              ? '/DeviceCMYK'
+              : null;
+        if (!colorSpace) return null;
         return {
-          object: `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${data.length * 2 + 1} >>\nstream\n${data.toString('hex')}>\nendstream`,
+          object: `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace ${colorSpace} /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${data.length * 2 + 1} >>\nstream\n${data.toString('hex')}>\nendstream`,
           command: 'q 195 0 0 120 60 390 cm /Im1 Do Q',
         };
       }
