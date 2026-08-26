@@ -82,6 +82,7 @@ export type ProjectPayload = Omit<
   Project,
   | 'id' | 'projectNumber' | 'customerName' | 'customerNumber' | 'assignedEngineerName'
   | 'assignedSalesName' | 'isArchived' | 'createdAt' | 'updatedAt'
+  | 'partImageFileName' | 'partImageMimeType' | 'partImageSizeBytes'
 >;
 
 export const projectsApi = {
@@ -114,6 +115,16 @@ export const projectsApi = {
     http.get<ActivityRecord[]>(`/projects/${id}/activity`).then((r) => r.data),
   generateQuickQuote: (id: number) =>
     http.post<ProjectDocument>(`/projects/${id}/quick-quote`).then((r) => r.data),
+  uploadPartImage: (id: number, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return http.post<Project>(`/projects/${id}/part-image`, form).then((r) => r.data);
+  },
+  removePartImage: (id: number) => http.delete(`/projects/${id}/part-image`),
+  getPartImage: async (id: number) => {
+    const response = await http.get(`/projects/${id}/part-image`, { responseType: 'blob' });
+    return URL.createObjectURL(response.data as Blob);
+  },
 };
 
 export const documentsApi = {
@@ -164,7 +175,7 @@ export const activityApi = {
 
 export type TaskPayload = Pick<
   ProjectTask,
-  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'priority' | 'status'
+  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'startDate' | 'completedDate' | 'priority' | 'status'
 >;
 
 export const tasksApi = {

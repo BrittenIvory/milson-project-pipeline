@@ -51,6 +51,9 @@ export interface Project {
   priority: 'low' | 'medium' | 'high' | 'critical';
   targetQuoteDate: string | null;
   notes: string | null;
+  partImageFileName: string | null;
+  partImageMimeType: string | null;
+  partImageSizeBytes: number | null;
   currentStage: string;
   isArchived: boolean;
   createdAt: string;
@@ -95,6 +98,8 @@ export interface ProjectTask {
   assignedUserId: number | null;
   assignedUserName: string | null;
   dueDate: string | null;
+  startDate: string | null;
+  completedDate: string | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: TaskStatus;
   completedAt: string | null;

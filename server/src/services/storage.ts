@@ -14,6 +14,7 @@ export interface DocumentStorage {
   save(projectId: number, fileName: string, data: Buffer): Promise<string>;
   /** Returns a readable stream for a stored object. */
   createReadStream(key: string): NodeJS.ReadableStream;
+  read(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
 }
@@ -44,6 +45,10 @@ class LocalDiskStorage implements DocumentStorage {
 
   createReadStream(key: string): NodeJS.ReadableStream {
     return fs.createReadStream(this.absolute(key));
+  }
+
+  async read(key: string): Promise<Buffer> {
+    return fs.promises.readFile(this.absolute(key));
   }
 
   async remove(key: string): Promise<void> {

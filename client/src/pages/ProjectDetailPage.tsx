@@ -1,7 +1,7 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
-import { ArrowLeft, Download, Pencil } from 'lucide-react';
+import { ArrowLeft, Download, Pencil, Trash2, Upload } from 'lucide-react';
 import ProjectForm, { projectToPayload } from '../components/ProjectForm';
 import {
   Badge,
@@ -87,6 +87,9 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(false);
+  const [partImageUrl, setPartImageUrl] = useState<string | null>(null);
+  const [partImageBusy, setPartImageBusy] = useState(false);
+  const partImageInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -107,6 +110,27 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | null = null;
+    if (project?.partImageFileName) {
+      projectsApi.getPartImage(projectId).then((url) => {
+        if (active) {
+          objectUrl = url;
+          setPartImageUrl(url);
+        } else URL.revokeObjectURL(url);
+      }).catch(() => {
+        if (active) setPartImageUrl(null);
+      });
+    } else {
+      setPartImageUrl(null);
+    }
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [project?.partImageFileName, projectId]);
 
   const setTab = (next: Tab) => {
     const params = new URLSearchParams(searchParams);
@@ -160,6 +184,31 @@ export default function ProjectDetailPage() {
       setError(apiErrorMessage(err, 'Unable to generate estimate PDF'));
     } finally {
       setQuoteBusy(false);
+    }
+  };
+
+  const uploadPartImage = async (file: File) => {
+    setPartImageBusy(true);
+    setError(null);
+    try {
+      await projectsApi.uploadPartImage(projectId, file);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to upload part image'));
+    } finally {
+      setPartImageBusy(false);
+    }
+  };
+
+  const removePartImage = async () => {
+    setPartImageBusy(true);
+    try {
+      await projectsApi.removePartImage(projectId);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to remove part image'));
+    } finally {
+      setPartImageBusy(false);
     }
   };
 
@@ -318,6 +367,48 @@ export default function ProjectDetailPage() {
                 {orDash(project.projectDescription)}
               </p>
             </div>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">Part image</h2>
+                <p className="mt-1 text-xs text-slate-500">Used as the project profile image and included in estimate PDFs.</p>
+              </div>
+              {canEdit && (
+                <Button variant="secondary" loading={partImageBusy} onClick={() => partImageInput.current?.click()}>
+                  <Upload className="h-4 w-4" /> {project.partImageFileName ? 'Replace image' : 'Upload image'}
+                </Button>
+              )}
+            </div>
+            <input
+              ref={partImageInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void uploadPartImage(file);
+                event.target.value = '';
+              }}
+            />
+            <div className="mt-4 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+              {partImageUrl ? (
+                <img src={partImageUrl} alt={`${project.projectName} part`} className="max-h-64 max-w-full object-contain" />
+              ) : (
+                <p className="text-sm text-slate-500">No part image uploaded yet.</p>
+              )}
+            </div>
+            {project.partImageFileName && (
+              <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
+                <span className="truncate">{project.partImageFileName}</span>
+                {canEdit && (
+                  <button type="button" onClick={removePartImage} className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700">
+                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                  </button>
+                )}
+              </div>
+            )}
           </Card>
 
           <div className="space-y-4">

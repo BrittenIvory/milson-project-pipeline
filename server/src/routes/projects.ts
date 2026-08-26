@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import multer from 'multer';
+import { config } from '../config';
 import { queryOne } from '../db/pool';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
@@ -18,6 +20,7 @@ import {
   updateProject,
 } from '../services/projectService';
 import { seedStageTasks } from '../services/workflowService';
+import { storage } from '../services/storage';
 import documentsRouter from './documents';
 import notesRouter from './notes';
 import supplierQuotesRouter from './supplierQuotes';
@@ -25,6 +28,10 @@ import tasksRouter from './tasks';
 
 const router = Router();
 router.use(requireAuth);
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: Math.min(config.maxUploadBytes, 10 * 1024 * 1024) },
+});
 
 /** Roles allowed to create or edit projects (administrators always allowed). */
 const canEditProjects = requireRole('engineering', 'sales', 'production');
@@ -117,6 +124,98 @@ router.get(
   '/:id',
   asyncHandler(async (req, res) => {
     res.json(await getProject(Number(req.params.id)));
+  }),
+);
+
+router.get(
+  '/:id/part-image',
+  asyncHandler(async (req, res) => {
+    const project = await getProject(Number(req.params.id));
+    if (!project.partImageStorageKey || !project.partImageMimeType) {
+      res.status(404).json({ error: 'No part image uploaded' });
+      return;
+    }
+    if (!(await storage.exists(project.partImageStorageKey))) {
+      res.status(410).json({ error: 'Stored part image is no longer available' });
+      return;
+    }
+    res.setHeader('Content-Type', project.partImageMimeType);
+    res.setHeader('Content-Disposition', 'inline');
+    storage.createReadStream(project.partImageStorageKey).pipe(res);
+  }),
+);
+
+router.post(
+  '/:id/part-image',
+  canEditProjects,
+  imageUpload.single('file'),
+  asyncHandler(async (req, res) => {
+    const projectId = Number(req.params.id);
+    const project = await getProject(projectId);
+    if (!req.file || !req.file.mimetype.startsWith('image/')) {
+      res.status(400).json({ error: 'Upload a PNG, JPEG, or other image file' });
+      return;
+    }
+    const key = await storage.save(projectId, req.file.originalname, req.file.buffer);
+    const previousKey = project.partImageStorageKey;
+    const updated = await queryOne<{ id: number }>(
+      `UPDATE projects
+       SET part_image_storage_key=$2, part_image_file_name=$3, part_image_mime_type=$4,
+           part_image_size_bytes=$5, updated_at=NOW()
+       WHERE id=$1
+       RETURNING id`,
+      [projectId, key, req.file.originalname, req.file.mimetype, req.file.size],
+    );
+    if (!updated) {
+      await storage.remove(key).catch(() => undefined);
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+    await logActivity({
+      actor: req.user ?? null,
+      action: 'Part Image Uploaded',
+      entityType: 'project',
+      entityId: projectId,
+      detail: `${project.projectNumber} - ${req.file.originalname}`,
+    });
+    const refreshedProject = await getProject(projectId);
+    await generateQuickQuoteDocument(refreshedProject, req.user!.id);
+    if (previousKey && previousKey !== key) {
+      await storage.remove(previousKey).catch(() => undefined);
+    }
+    res.json(refreshedProject);
+  }),
+);
+
+router.delete(
+  '/:id/part-image',
+  canEditProjects,
+  asyncHandler(async (req, res) => {
+    const projectId = Number(req.params.id);
+    const existing = await queryOne<{ part_image_storage_key: string | null }>(
+      'SELECT part_image_storage_key FROM projects WHERE id = $1',
+      [projectId],
+    );
+    if (!existing) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+    await queryOne(
+      `UPDATE projects SET part_image_storage_key=NULL, part_image_file_name=NULL,
+       part_image_mime_type=NULL, part_image_size_bytes=NULL, updated_at=NOW() WHERE id=$1 RETURNING id`,
+      [projectId],
+    );
+    if (existing.part_image_storage_key) await storage.remove(existing.part_image_storage_key).catch(() => undefined);
+    await logActivity({
+      actor: req.user ?? null,
+      action: 'Part Image Deleted',
+      entityType: 'project',
+      entityId: projectId,
+      detail: 'Project part image',
+    });
+    const refreshedProject = await getProject(projectId);
+    await generateQuickQuoteDocument(refreshedProject, req.user!.id);
+    res.status(204).end();
   }),
 );
 
