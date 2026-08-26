@@ -120,11 +120,11 @@ export async function updateTask(projectId: number, id: number, input: TaskInput
     input.status === 'completed'
       ? existing.completedAt ?? new Date().toISOString()
       : null;
-  const completedDate = input.completedDate === undefined
-    ? input.status === 'completed'
-      ? existing.completedDate ?? new Date().toISOString().slice(0, 10)
-      : existing.completedDate
-    : input.completedDate;
+  const completedDate = input.status === 'completed' && existing.status !== 'completed' && input.completedDate == null
+    ? existing.completedDate ?? new Date().toISOString().slice(0, 10)
+    : input.completedDate === undefined
+      ? existing.completedDate
+      : input.completedDate;
   await pool.query(
     `UPDATE tasks SET task_name=$3, description=$4, assigned_user_id=$5, due_date=$6, start_date=$7,
        completed_date=$8, requested_date=$9, actual_date=$10, priority=$11, status=$12, completed_at=$13, updated_at=NOW()
