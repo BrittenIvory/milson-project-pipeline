@@ -13,6 +13,8 @@ export interface TaskRow {
   due_date: string | null;
   start_date: string | null;
   completed_date: string | null;
+  requested_date: string | null;
+  actual_date: string | null;
   priority: string;
   status: string;
   completed_at: string | null;
@@ -32,6 +34,8 @@ export const taskSchema = z.object({
   dueDate: emptyToNull(z.string()).optional(),
   startDate: emptyToNull(z.string()).optional(),
   completedDate: emptyToNull(z.string()).optional(),
+  requestedDate: emptyToNull(z.string()).optional(),
+  actualDate: emptyToNull(z.string()).optional(),
   priority: z.enum(PRIORITIES).default('medium'),
   status: z.enum(TASK_STATUSES).default('not_started'),
 });
@@ -55,6 +59,8 @@ export function toTaskDto(row: TaskRow) {
     dueDate: row.due_date,
     startDate: row.start_date,
     completedDate: row.completed_date,
+    requestedDate: row.requested_date,
+    actualDate: row.actual_date,
     priority: row.priority,
     status: row.status,
     stage: row.stage,
@@ -86,8 +92,8 @@ export async function getTask(projectId: number, id: number) {
 export async function createTask(projectId: number, input: TaskInput, createdBy: number, stage: string) {
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO tasks (project_id, task_name, description, assigned_user_id, due_date, start_date,
-       completed_date, priority, status, completed_at, created_by, stage)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+       completed_date, requested_date, actual_date, priority, status, completed_at, created_by, stage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
     [
       projectId,
       input.taskName,
@@ -96,6 +102,8 @@ export async function createTask(projectId: number, input: TaskInput, createdBy:
       input.dueDate ?? null,
       input.startDate ?? null,
       input.completedDate ?? (input.status === 'completed' ? new Date().toISOString().slice(0, 10) : null),
+      input.requestedDate ?? null,
+      input.actualDate ?? null,
       input.priority,
       input.status,
       input.status === 'completed' ? new Date().toISOString() : null,
@@ -114,7 +122,7 @@ export async function updateTask(projectId: number, id: number, input: TaskInput
       : null;
   await pool.query(
     `UPDATE tasks SET task_name=$3, description=$4, assigned_user_id=$5, due_date=$6, start_date=$7,
-       completed_date=$8, priority=$9, status=$10, completed_at=$11, updated_at=NOW()
+       completed_date=$8, requested_date=$9, actual_date=$10, priority=$11, status=$12, completed_at=$13, updated_at=NOW()
      WHERE id=$1 AND project_id=$2`,
     [
       id,
@@ -122,11 +130,13 @@ export async function updateTask(projectId: number, id: number, input: TaskInput
       input.taskName,
       input.description ?? null,
       input.assignedUserId ?? null,
-      input.dueDate ?? null,
-      input.startDate ?? null,
+      input.dueDate ?? existing.dueDate,
+      input.startDate ?? existing.startDate,
       input.status === 'completed'
         ? input.completedDate ?? existing.completedDate ?? new Date().toISOString().slice(0, 10)
-        : null,
+        : input.completedDate ?? existing.completedDate,
+      input.requestedDate ?? existing.requestedDate,
+      input.actualDate ?? existing.actualDate,
       input.priority,
       input.status,
       completedAt,

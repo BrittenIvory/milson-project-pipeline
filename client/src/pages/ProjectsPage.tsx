@@ -88,6 +88,16 @@ export default function ProjectsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
 
+  useEffect(() => {
+    setLayout((current) => {
+      const visible = current.visible.filter((id) => PROJECT_COLUMNS.some((column) => column.id === id));
+      const missing = DEFAULT_VISIBLE_COLUMNS.filter((id) => !visible.includes(id));
+      return missing.length === 0 && visible.length === current.visible.length
+        ? current
+        : { ...current, visible: [...visible, ...missing] };
+    });
+  }, [setLayout]);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
   const [customers, setCustomers] = useState<Customer[]>([]);

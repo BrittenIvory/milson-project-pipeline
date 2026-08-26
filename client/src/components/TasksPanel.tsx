@@ -39,6 +39,8 @@ const emptyTask: TaskPayload = {
   dueDate: '',
   startDate: '',
   completedDate: '',
+  requestedDate: '',
+  actualDate: '',
   priority: 'medium',
   status: 'not_started',
 };
@@ -51,6 +53,8 @@ function taskToPayload(task: ProjectTask): TaskPayload {
     dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
     startDate: task.startDate ? task.startDate.slice(0, 10) : '',
     completedDate: task.completedDate ? task.completedDate.slice(0, 10) : '',
+    requestedDate: task.requestedDate ? task.requestedDate.slice(0, 10) : '',
+    actualDate: task.actualDate ? task.actualDate.slice(0, 10) : '',
     priority: task.priority,
     status: task.status,
   };
@@ -394,7 +398,7 @@ export default function TasksPanel({
                       ? []
                       : users.filter((option) => option.fullName.toLowerCase().includes(query)).slice(0, 5);
                     return (
-                      <li key={task.id} className="px-4 py-3">
+                      <li key={task.id} className={clsx('px-4 py-3', overdue && 'bg-rose-50')}>
                         <div className="flex items-start gap-3">
                           <div className="min-w-0 flex-1">
                             <p className={clsx(
@@ -417,6 +421,8 @@ export default function TasksPanel({
                               <span className="text-xs text-slate-500">{task.assignedUserName ?? 'Unassigned'}</span>
                               {task.startDate && <span className="text-xs text-slate-500">Started {formatDate(task.startDate)}</span>}
                               {task.completedDate && <span className="text-xs text-slate-500">Completed {formatDate(task.completedDate)}</span>}
+                              {task.requestedDate && <span className="text-xs text-slate-500">Requested {formatDate(task.requestedDate)}</span>}
+                              {task.actualDate && <span className="text-xs text-slate-500">Actual {formatDate(task.actualDate)}</span>}
                               {task.dueDate && (
                                 <span className={clsx('inline-flex items-center gap-1 text-xs', overdue ? 'font-medium text-rose-600' : 'text-slate-500')}>
                                   {overdue && <AlertTriangle className="h-3 w-3" />}
@@ -457,10 +463,26 @@ export default function TasksPanel({
                               <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                                 <div className="mb-2">
                                   <p className="text-xs font-semibold text-slate-700">Supplier quotes</p>
-                                  <p className="text-xs text-slate-500">Record the pricing received from each selected supplier.</p>
+                                  <p className="text-xs text-slate-500">Check the supplier you are accepting, then record its pricing.</p>
                                 </div>
+                                {suppliers.length > 0 && (
+                                  <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                                    {suppliers.map((supplier) => (
+                                      <label key={supplier.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                        <input
+                                          type="checkbox"
+                                          checked={supplierQuotes.some((quote) => quote.supplierId === supplier.id && quote.selected)}
+                                          disabled={!canManageQuotes || !quoteDataAvailable}
+                                          onChange={(event) => toggleSupplier(supplier, event.target.checked)}
+                                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200"
+                                        />
+                                        {supplier.name}
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
                                 {selectedQuotes.length === 0 ? (
-                                  <p className="text-xs text-slate-500">Select suppliers on the “Supplier(s) selected” task first.</p>
+                                  <p className="text-xs text-slate-500">Check a supplier above to record its quote.</p>
                                 ) : (
                                   <div className="space-y-3">
                                     {selectedQuotes.map((quote) => (
@@ -594,6 +616,8 @@ export default function TasksPanel({
             <Field label="Due Date"><TextInput type="date" value={form.dueDate ?? ''} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></Field>
             <Field label="Start Date"><TextInput type="date" value={form.startDate ?? ''} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></Field>
             <Field label="Completed Date"><TextInput type="date" value={form.completedDate ?? ''} onChange={(e) => setForm({ ...form, completedDate: e.target.value })} /></Field>
+            <Field label="Requested Date"><TextInput type="date" value={form.requestedDate ?? ''} onChange={(e) => setForm({ ...form, requestedDate: e.target.value })} /></Field>
+            <Field label="Actual Date"><TextInput type="date" value={form.actualDate ?? ''} onChange={(e) => setForm({ ...form, actualDate: e.target.value })} /></Field>
             <Field label="Priority"><Select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as TaskPayload['priority'] })}>{PRIORITIES.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}</Select></Field>
             <Field label="Status"><Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as TaskPayload['status'] })}>{TASK_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</Select></Field>
           </div>

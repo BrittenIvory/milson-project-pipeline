@@ -1,10 +1,42 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import { ArrowDown, ArrowUp, Pin, PinOff } from 'lucide-react';
 import { Badge } from './ui';
+import { projectsApi } from '../lib/api';
 import { formatDate, formatDateTime, orDash, priorityMeta, stageMeta } from '../lib/format';
 import type { Project } from '../types';
+
+function PartImageCell({ project }: { project: Project }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | null = null;
+    if (project.partImageFileName) {
+      projectsApi.getPartImage(project.id).then((nextUrl) => {
+        if (active) {
+          objectUrl = nextUrl;
+          setUrl(nextUrl);
+        } else URL.revokeObjectURL(nextUrl);
+      }).catch(() => {
+        if (active) setUrl(null);
+      });
+    } else {
+      setUrl(null);
+    }
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [project.id, project.partImageFileName, project.partImageSizeBytes, project.updatedAt]);
+
+  return url ? (
+    <img src={url} alt={`${project.projectNumber} part`} className="h-12 w-16 rounded-md object-contain" />
+  ) : (
+    <span className="text-slate-400">—</span>
+  );
+}
 
 export interface ProjectColumn {
   id: string;
@@ -25,6 +57,12 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
         {p.projectNumber}
       </Link>
     ),
+  },
+  {
+    id: 'partImage',
+    label: 'Part Image',
+    width: 100,
+    render: (p) => <PartImageCell project={p} />,
   },
   { id: 'customerName', label: 'Customer', width: 200, render: (p) => orDash(p.customerName) },
   {

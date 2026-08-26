@@ -297,7 +297,9 @@ export async function createProject(input: ProjectInput, createdBy: number) {
     ],
   );
   const projectId = (inserted as { id: number }).id;
-  await seedStageTasks(projectId, input.currentStage);
+  for (const stage of PROJECT_STAGES) {
+    await seedStageTasks(projectId, stage);
+  }
   return getProject(projectId);
 }
 

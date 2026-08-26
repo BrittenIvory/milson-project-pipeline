@@ -122,6 +122,10 @@ CREATE TABLE IF NOT EXISTS tasks (
   description      TEXT,
   assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   due_date         DATE,
+  start_date       DATE,
+  completed_date   DATE,
+  requested_date   DATE,
+  actual_date      DATE,
   priority         TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high','critical')),
   status           TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN (
                      'not_started','in_progress','on_hold','completed','not_applicable')),
@@ -222,6 +226,8 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_size_bytes BIGINT;
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_date DATE;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS requested_date DATE;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS actual_date DATE;
 
 CREATE TABLE IF NOT EXISTS task_comments (
   id         SERIAL PRIMARY KEY,
@@ -240,3 +246,14 @@ CREATE TABLE IF NOT EXISTS project_stage_seeds (
   seeded_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (project_id, stage)
 );
+
+INSERT INTO tasks (project_id, task_name, stage, status, priority)
+SELECT s.project_id, 'Sample Production Completed', 'production', 'not_started', 'medium'
+FROM project_stage_seeds s
+WHERE s.stage = 'production'
+  AND NOT EXISTS (
+    SELECT 1 FROM tasks t
+    WHERE t.project_id = s.project_id
+      AND t.stage = 'production'
+      AND t.task_name = 'Sample Production Completed'
+  );
