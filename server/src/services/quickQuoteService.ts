@@ -1,5 +1,6 @@
 import { queryOne } from '../db/pool';
 import { storage } from './storage';
+import zlib from 'zlib';
 
 const MACHINING_PERCENTAGE = 18.46;
 const PAINTING_PERCENTAGE = 9.23;
@@ -41,6 +42,8 @@ export interface QuoteProject {
   castingProcess: string | null;
   machiningRequired: boolean;
   paintingRequired: boolean;
+  partImageStorageKey?: string | null;
+  partImageMimeType?: string | null;
 }
 
 export interface QuickQuote {
@@ -207,7 +210,77 @@ function estimateDate() {
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getFullYear()).slice(-2)}`;
 }
 
-export function createQuotePdf(project: QuoteProject, quote: QuickQuote): Buffer {
+function imagePdfObject(data: Buffer, mimeType: string): { object: string; command: string } | null {
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    let index = 2;
+    while (index < data.length) {
+      if (data[index] !== 0xff) { index += 1; continue; }
+      const marker = data[index + 1];
+      const length = data.readUInt16BE(index + 2);
+      if ([0xc0, 0xc1, 0xc2, 0xc3].includes(marker)) {
+        const height = data.readUInt16BE(index + 5);
+        const width = data.readUInt16BE(index + 7);
+        return {
+          object: `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${data.length * 2 + 1} >>\nstream\n${data.toString('hex')}>\nendstream`,
+          command: 'q 195 0 0 120 60 390 cm /Im1 Do Q',
+        };
+      }
+      index += 2 + length;
+    }
+  }
+  if (mimeType === 'image/png' && data[0] === 0x89 && data.subarray(1, 4).toString('ascii') === 'PNG') {
+    const width = data.readUInt32BE(16);
+    const height = data.readUInt32BE(20);
+    const colorType = data[25];
+    if (data[24] === 8 && (colorType === 2 || colorType === 6)) {
+      let offset = 8;
+      const chunks: Buffer[] = [];
+      while (offset < data.length) {
+        const length = data.readUInt32BE(offset);
+        const type = data.toString('ascii', offset + 4, offset + 8);
+        if (type === 'IDAT') chunks.push(data.subarray(offset + 8, offset + 8 + length));
+        offset += length + 12;
+      }
+      const inflated = zlib.inflateSync(Buffer.concat(chunks));
+      const channels = colorType === 6 ? 4 : 3;
+      const rowLength = width * channels;
+      const pixels = Buffer.alloc(height * rowLength);
+      let source = 0;
+      for (let y = 0; y < height; y += 1) {
+        const filter = inflated[source++];
+        const rowStart = y * rowLength;
+        for (let x = 0; x < rowLength; x += 1) {
+          const left = x >= channels ? pixels[rowStart + x - channels] : 0;
+          const above = y > 0 ? pixels[rowStart - rowLength + x] : 0;
+          const upperLeft = y > 0 && x >= channels ? pixels[rowStart - rowLength + x - channels] : 0;
+          const value = inflated[source++];
+          pixels[rowStart + x] = filter === 0 ? value
+            : filter === 1 ? (value + left) & 255
+              : filter === 2 ? (value + above) & 255
+                : filter === 3 ? (value + Math.floor((left + above) / 2)) & 255
+                  : (value + (Math.abs(left - above) <= Math.abs(above - upperLeft)
+                    && Math.abs(left - above) <= Math.abs(left - upperLeft) ? left
+                    : Math.abs(above - upperLeft) <= Math.abs(left - upperLeft) ? above : upperLeft)) & 255;
+        }
+      }
+      const rgb = colorType === 2 ? pixels : Buffer.from(
+        Array.from({ length: width * height * 3 }, (_, index) => pixels[Math.floor(index / 3) * 4 + (index % 3)]),
+      );
+      const scanlines = Buffer.alloc(height * (width * 3 + 1));
+      for (let y = 0; y < height; y += 1) {
+        rgb.copy(scanlines, y * (width * 3 + 1) + 1, y * width * 3, (y + 1) * width * 3);
+      }
+      const compressed = zlib.deflateSync(scanlines);
+      return {
+        object: `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /FlateDecode] /DecodeParms [null << /Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns ${width} >>] /Length ${compressed.length * 2 + 1} >>\nstream\n${compressed.toString('hex')}>\nendstream`,
+        command: 'q 195 0 0 120 60 390 cm /Im1 Do Q',
+      };
+    }
+  }
+  return null;
+}
+
+export async function createQuotePdf(project: QuoteProject, quote: QuickQuote): Promise<Buffer> {
   const title = `${project.projectNumber} - Estimate Quote`;
   const lines = [
     '0.055 0.12 0.17 rg 0 682 612 110 re f',
@@ -221,8 +294,6 @@ export function createQuotePdf(project: QuoteProject, quote: QuickQuote): Buffer
     text('Part details', 50, 578, 12, '0.12 0.15 0.18'),
     text('Estimated unit pricing', 330, 578, 12, '0.12 0.15 0.18'),
     '0.72 0.74 0.76 RG 0.6 w 50 375 215 145 re S',
-    text('Part drawing', 112, 447, 10, '0.48 0.50 0.52'),
-    text('See project documents', 92, 430, 8, '0.48 0.50 0.52'),
     text('Part Number', 50, 350, 8),
     text(project.customerPartNumber ?? 'Not provided', 155, 350, 8),
     rule(342, 50, 300),
@@ -266,15 +337,33 @@ export function createQuotePdf(project: QuoteProject, quote: QuickQuote): Buffer
     text('technical review before a formal quote is issued. All prices are in US dollars.', 330, 58, 6.5),
     text('Estimated unit pricing is FOB Milson Foundry warehouse.', 330, 49, 6.5),
   );
+  let imageObject: string | null = null;
+  if (project.partImageStorageKey && project.partImageMimeType) {
+    const image = imagePdfObject(
+      await storage.read(project.partImageStorageKey),
+      project.partImageMimeType,
+    );
+    if (image) {
+      imageObject = image.object;
+      lines.unshift(image.command);
+    }
+  }
+  if (!imageObject) {
+    lines.push(
+      text('Part drawing', 112, 447, 10, '0.48 0.50 0.52'),
+      text('See project documents', 92, 430, 8, '0.48 0.50 0.52'),
+    );
+  }
 
   const content = `${lines.join('\n')}\n`;
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >>${imageObject ? ' /XObject << /Im1 6 0 R >>' : ''} >> /Contents 5 0 R >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
     `<< /Length ${Buffer.byteLength(content, 'ascii')} >>\nstream\n${content}endstream`,
   ];
+  if (imageObject) objects.push(imageObject);
 
   let pdf = '%PDF-1.4\n';
   const offsets = [0];
@@ -310,7 +399,7 @@ export async function generateQuickQuoteDocument(project: QuoteProject, uploaded
   if (!quote) return null;
 
   const fileName = `${project.projectNumber}-estimate-quote.pdf`;
-  const data = createQuotePdf(project, quote);
+  const data = await createQuotePdf(project, quote);
   const key = await storage.save(project.id, fileName, data);
   const existing = await queryOne<DocumentRow>(
     `SELECT * FROM documents

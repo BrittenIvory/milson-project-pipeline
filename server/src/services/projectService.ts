@@ -25,6 +25,10 @@ export interface ProjectRow {
   priority: string;
   target_quote_date: string | null;
   notes: string | null;
+  part_image_storage_key: string | null;
+  part_image_file_name: string | null;
+  part_image_mime_type: string | null;
+  part_image_size_bytes: string | null;
   current_stage: string;
   is_archived: boolean;
   created_at: string;
@@ -90,6 +94,10 @@ export function toProjectDto(row: ProjectRow) {
     priority: row.priority,
     targetQuoteDate: row.target_quote_date,
     notes: row.notes,
+    partImageStorageKey: row.part_image_storage_key,
+    partImageFileName: row.part_image_file_name,
+    partImageMimeType: row.part_image_mime_type,
+    partImageSizeBytes: row.part_image_size_bytes === null ? null : Number(row.part_image_size_bytes),
     currentStage: row.current_stage,
     isArchived: row.is_archived,
     createdAt: row.created_at,
