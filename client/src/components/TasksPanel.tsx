@@ -26,7 +26,7 @@ import {
 } from '../lib/api';
 import type { TaskPayload } from '../lib/api';
 import { CLOSED_TASK_STATUSES, PRIORITIES, PROJECT_STAGES, TASK_STATUSES } from '../lib/constants';
-import { formatDate, formatDateTime, isOverdue, priorityMeta, stageMeta } from '../lib/format';
+import { formatDateTime, isOverdue, priorityMeta, stageMeta } from '../lib/format';
 import type { ProjectTask, ProjectTaskComment, Supplier, SupplierQuote, User } from '../types';
 
 const SUPPLIER_SELECTION_TASK = 'Supplier(s) selected';
@@ -184,15 +184,18 @@ export default function TasksPanel({
     }
   };
 
-  const updateStatus = async (task: ProjectTask, status: ProjectTask['status']) => {
+  const updateTaskFields = async (task: ProjectTask, changes: Partial<TaskPayload>) => {
     try {
-      await tasksApi.update(projectId, task.id, { ...taskToPayload(task), status });
+      await tasksApi.update(projectId, task.id, { ...taskToPayload(task), ...changes });
       await load();
       onChanged?.();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to update task'));
+      setError(apiErrorMessage(err, 'Unable to update task details'));
     }
   };
+
+  const updateStatus = async (task: ProjectTask, status: ProjectTask['status']) =>
+    updateTaskFields(task, { status });
 
   const canManageQuotes = user?.role === 'administrator'
     || user?.role === 'engineering'
@@ -418,15 +421,40 @@ export default function TasksPanel({
                                 ))}
                               </Select>
                               <Badge tone={priorityMeta(task.priority).tone}>{priorityMeta(task.priority).label}</Badge>
-                              <span className="text-xs text-slate-500">{task.assignedUserName ?? 'Unassigned'}</span>
-                              {task.startDate && <span className="text-xs text-slate-500">Started {formatDate(task.startDate)}</span>}
-                              {task.completedDate && <span className="text-xs text-slate-500">Completed {formatDate(task.completedDate)}</span>}
-                              {task.requestedDate && <span className="text-xs text-slate-500">Requested {formatDate(task.requestedDate)}</span>}
-                              {task.actualDate && <span className="text-xs text-slate-500">Actual {formatDate(task.actualDate)}</span>}
-                              {task.dueDate && (
-                                <span className={clsx('inline-flex items-center gap-1 text-xs', overdue ? 'font-medium text-rose-600' : 'text-slate-500')}>
-                                  {overdue && <AlertTriangle className="h-3 w-3" />}
-                                  Due {formatDate(task.dueDate)}{overdue && ' · Overdue'}
+                              <Select
+                                aria-label={`Assigned user for ${task.taskName}`}
+                                value={task.assignedUserId ?? ''}
+                                onChange={(e) => updateTaskFields(task, {
+                                  assignedUserId: e.target.value ? Number(e.target.value) : null,
+                                })}
+                                className="h-8 w-44 py-1 text-xs"
+                              >
+                                <option value="">Unassigned</option>
+                                {users.map((option) => <option key={option.id} value={option.id}>{option.fullName}</option>)}
+                              </Select>
+                              <label className="flex items-center gap-1 text-xs text-slate-500">
+                                Started
+                                <TextInput
+                                  aria-label={`Start date for ${task.taskName}`}
+                                  type="date"
+                                  value={task.startDate?.slice(0, 10) ?? ''}
+                                  onChange={(e) => updateTaskFields(task, { startDate: e.target.value })}
+                                  className="h-8 w-36 py-1 text-xs"
+                                />
+                              </label>
+                              <label className="flex items-center gap-1 text-xs text-slate-500">
+                                Completed
+                                <TextInput
+                                  aria-label={`Completed date for ${task.taskName}`}
+                                  type="date"
+                                  value={task.completedDate?.slice(0, 10) ?? ''}
+                                  onChange={(e) => updateTaskFields(task, { completedDate: e.target.value })}
+                                  className="h-8 w-36 py-1 text-xs"
+                                />
+                              </label>
+                              {overdue && (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-600">
+                                  <AlertTriangle className="h-3 w-3" /> Overdue
                                 </span>
                               )}
                             </div>
@@ -613,11 +641,8 @@ export default function TasksPanel({
             <Field label="Task Name" className="sm:col-span-2"><TextInput value={form.taskName} onChange={(e) => setForm({ ...form, taskName: e.target.value })} placeholder="Review customer drawing" /></Field>
             <Field label="Description" className="sm:col-span-2"><TextArea value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
             <Field label="Assigned User"><Select value={form.assignedUserId ?? ''} onChange={(e) => setForm({ ...form, assignedUserId: e.target.value ? Number(e.target.value) : null })}><option value="">Unassigned</option>{users.map((option) => <option key={option.id} value={option.id}>{option.fullName}</option>)}</Select></Field>
-            <Field label="Due Date"><TextInput type="date" value={form.dueDate ?? ''} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></Field>
             <Field label="Start Date"><TextInput type="date" value={form.startDate ?? ''} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></Field>
             <Field label="Completed Date"><TextInput type="date" value={form.completedDate ?? ''} onChange={(e) => setForm({ ...form, completedDate: e.target.value })} /></Field>
-            <Field label="Requested Date"><TextInput type="date" value={form.requestedDate ?? ''} onChange={(e) => setForm({ ...form, requestedDate: e.target.value })} /></Field>
-            <Field label="Actual Date"><TextInput type="date" value={form.actualDate ?? ''} onChange={(e) => setForm({ ...form, actualDate: e.target.value })} /></Field>
             <Field label="Priority"><Select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as TaskPayload['priority'] })}>{PRIORITIES.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}</Select></Field>
             <Field label="Status"><Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as TaskPayload['status'] })}>{TASK_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</Select></Field>
           </div>
