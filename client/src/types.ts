@@ -100,6 +100,8 @@ export interface ProjectTask {
   dueDate: string | null;
   startDate: string | null;
   completedDate: string | null;
+  requestedDate: string | null;
+  actualDate: string | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: TaskStatus;
   completedAt: string | null;
