@@ -30,6 +30,8 @@ export interface ProjectRow {
   part_image_mime_type: string | null;
   part_image_size_bytes: string | null;
   current_stage: string;
+  stage_started_at: string;
+  current_stage_days: number;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -99,6 +101,8 @@ export function toProjectDto(row: ProjectRow) {
     partImageMimeType: row.part_image_mime_type,
     partImageSizeBytes: row.part_image_size_bytes === null ? null : Number(row.part_image_size_bytes),
     currentStage: row.current_stage,
+    stageStartedAt: row.stage_started_at,
+    currentStageDays: row.current_stage_days,
     isArchived: row.is_archived,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -107,7 +111,8 @@ export function toProjectDto(row: ProjectRow) {
 
 const SELECT_PROJECT = `
   SELECT p.*, c.company_name AS customer_name, c.customer_number,
-         e.full_name AS engineer_name, s.full_name AS sales_name
+         e.full_name AS engineer_name, s.full_name AS sales_name,
+         GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - p.stage_started_at)) / 86400))::int AS current_stage_days
   FROM projects p
   JOIN customers c ON c.id = p.customer_id
   LEFT JOIN users e ON e.id = p.assigned_engineer_id
@@ -311,7 +316,9 @@ export async function updateProject(id: number, input: ProjectInput) {
        internal_part_number=$5, project_name=$6, project_description=$7, annual_usage=$8,
        material=$9, estimated_weight=$10, casting_process=$11, machining_required=$12,
        heat_treatment=$13, painting_required=$14, assigned_engineer_id=$15, assigned_sales_id=$16,
-       priority=$17, target_quote_date=$18, notes=$19, current_stage=$20, updated_at=NOW()
+       priority=$17, target_quote_date=$18, notes=$19, current_stage=$20,
+       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $20 THEN NOW() ELSE stage_started_at END,
+       updated_at=NOW()
      WHERE id=$1`,
     [
       id, input.customerId, input.customerContact ?? null, input.customerPartNumber ?? null,

@@ -274,6 +274,9 @@ export default function ProjectDetailPage() {
             <Badge tone={priorityMeta(project.priority).tone}>
               {priorityMeta(project.priority).label}
             </Badge>
+            <span className="text-xs font-medium text-slate-500">
+              {project.currentStageDays} {project.currentStageDays === 1 ? 'day' : 'days'} in stage
+            </span>
           </div>
           <p className="mt-1 text-sm text-slate-500">
             {project.projectNumber} ·{' '}
@@ -351,6 +354,10 @@ export default function ProjectDetailPage() {
               <DetailItem label="Material" value={orDash(project.material)} />
               <DetailItem label="Estimated Weight" value={orDash(project.estimatedWeight)} />
               <DetailItem label="Casting Process" value={orDash(project.castingProcess)} />
+              <DetailItem
+                label="Days in Current Stage"
+                value={`${project.currentStageDays} ${project.currentStageDays === 1 ? 'day' : 'days'}`}
+              />
               <DetailItem
                 label="Machining Required"
                 value={project.machiningRequired ? 'Yes' : 'No'}

@@ -81,7 +81,7 @@ export const customersApi = {
 export type ProjectPayload = Omit<
   Project,
   | 'id' | 'projectNumber' | 'customerName' | 'customerNumber' | 'assignedEngineerName'
-  | 'assignedSalesName' | 'isArchived' | 'createdAt' | 'updatedAt'
+  | 'assignedSalesName' | 'isArchived' | 'createdAt' | 'updatedAt' | 'stageStartedAt' | 'currentStageDays'
   | 'partImageFileName' | 'partImageMimeType' | 'partImageSizeBytes'
 >;
 
@@ -175,7 +175,7 @@ export const activityApi = {
 
 export type TaskPayload = Pick<
   ProjectTask,
-  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'startDate' | 'completedDate' | 'requestedDate' | 'actualDate' | 'priority' | 'status'
+  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'startDate' | 'completedDate' | 'requestedDate' | 'actualDate' | 'customerQuotePrice' | 'priority' | 'status'
 >;
 
 export const tasksApi = {

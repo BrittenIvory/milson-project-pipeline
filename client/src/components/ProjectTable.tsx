@@ -88,6 +88,12 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
     render: (p) => <Badge tone={stageMeta(p.currentStage).tone}>{stageMeta(p.currentStage).label}</Badge>,
   },
   {
+    id: 'daysInStage',
+    label: 'Days in Stage',
+    width: 120,
+    render: (p) => `${p.currentStageDays} ${p.currentStageDays === 1 ? 'day' : 'days'}`,
+  },
+  {
     id: 'assignedEngineerName',
     label: 'Assigned Engineer',
     width: 170,
