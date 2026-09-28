@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { pool, query, queryOne } from '../db/pool';
 import { HttpError } from '../middleware/errors';
 import { PRIORITIES, PROJECT_STAGES } from '../types';
+import { calculateQuickQuote } from './quickQuoteService';
 import { seedStageTasks } from './workflowService';
 
 export interface ProjectRow {
@@ -71,6 +72,20 @@ export type ProjectInput = z.infer<typeof projectSchema>;
 
 /** Maps a joined project row to the camelCase API shape. */
 export function toProjectDto(row: ProjectRow) {
+  const estimate = calculateQuickQuote({
+    id: row.id,
+    projectNumber: row.project_number,
+    projectName: row.project_name,
+    customerName: row.customer_name ?? null,
+    customerPartNumber: row.customer_part_number,
+    annualUsage: row.annual_usage,
+    material: row.material,
+    estimatedWeight: row.estimated_weight === null ? null : Number(row.estimated_weight),
+    castingProcess: row.casting_process,
+    machiningRequired: row.machining_required,
+    paintingRequired: row.painting_required,
+  });
+
   return {
     id: row.id,
     projectNumber: row.project_number,
@@ -85,6 +100,8 @@ export function toProjectDto(row: ProjectRow) {
     annualUsage: row.annual_usage,
     material: row.material,
     estimatedWeight: row.estimated_weight === null ? null : Number(row.estimated_weight),
+    estimatePartPrice: estimate?.unitPrice ?? null,
+    projectValue: estimate?.totalAnnual ?? null,
     castingProcess: row.casting_process,
     machiningRequired: row.machining_required,
     heatTreatment: row.heat_treatment,

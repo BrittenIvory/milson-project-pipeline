@@ -42,6 +42,14 @@ export function orDash(value: string | number | null | undefined): string {
   return String(value);
 }
 
+export function formatCurrency(value: number | null | undefined, currency = 'AUD'): string {
+  if (value === null || value === undefined) return '—';
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+  }).format(value);
+}
+
 export const stageMeta = (value: string) =>
   PROJECT_STAGES.find((s) => s.value === value) ?? {
     value,

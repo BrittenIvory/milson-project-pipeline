@@ -40,6 +40,8 @@ export interface Project {
   annualUsage: number | null;
   material: string | null;
   estimatedWeight: number | null;
+  estimatePartPrice: number | null;
+  projectValue: number | null;
   castingProcess: string | null;
   machiningRequired: boolean;
   heatTreatment: boolean;
