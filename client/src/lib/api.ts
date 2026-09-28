@@ -82,6 +82,7 @@ export type ProjectPayload = Omit<
   Project,
   | 'id' | 'projectNumber' | 'customerName' | 'customerNumber' | 'assignedEngineerName'
   | 'assignedSalesName' | 'isArchived' | 'createdAt' | 'updatedAt' | 'stageStartedAt' | 'currentStageDays'
+  | 'estimatePartPrice' | 'projectValue'
   | 'partImageFileName' | 'partImageMimeType' | 'partImageSizeBytes'
 >;
 

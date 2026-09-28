@@ -17,7 +17,14 @@ import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage, documentsApi, projectsApi } from '../lib/api';
 import type { ProjectPayload } from '../lib/api';
 import { PRIORITIES, PROJECT_STAGES } from '../lib/constants';
-import { formatDate, formatDateTime, orDash, priorityMeta, stageMeta } from '../lib/format';
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  orDash,
+  priorityMeta,
+  stageMeta,
+} from '../lib/format';
 import type { ActivityRecord, Project } from '../types';
 
 // Heavy panels are code-split so opening a workspace stays fast.
@@ -351,6 +358,8 @@ export default function ProjectDetailPage() {
               <DetailItem label="Project Name" value={project.projectName} />
               <DetailItem label="Internal Part Number" value={orDash(project.internalPartNumber)} />
               <DetailItem label="Annual Usage" value={orDash(project.annualUsage)} />
+              <DetailItem label="Estimate Part Price" value={formatCurrency(project.estimatePartPrice)} />
+              <DetailItem label="Project Value" value={formatCurrency(project.projectValue)} />
               <DetailItem label="Material" value={orDash(project.material)} />
               <DetailItem label="Estimated Weight" value={orDash(project.estimatedWeight)} />
               <DetailItem label="Casting Process" value={orDash(project.castingProcess)} />
