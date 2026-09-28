@@ -152,6 +152,7 @@ const SORTABLE_COLUMNS: Record<string, string> = {
   customerPartNumber: 'p.customer_part_number',
   projectName: 'p.project_name',
   currentStage: 'p.current_stage',
+  daysInStage: 'p.stage_started_at',
   assignedEngineerName: 'e.full_name',
   assignedSalesName: 's.full_name',
   priority: `CASE p.priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END`,
@@ -228,6 +229,9 @@ export async function listProjectsPage(
   const pageSize = Math.min(Math.max(1, options.pageSize ?? 25), 200);
   const orderBy = SORTABLE_COLUMNS[options.sortBy ?? ''] ?? 'p.created_at';
   const direction = options.sortDir === 'asc' ? 'ASC' : 'DESC';
+  const orderDirection = options.sortBy === 'daysInStage'
+    ? (direction === 'ASC' ? 'DESC' : 'ASC')
+    : direction;
 
   const totalRow = await queryOne<{ count: string }>(
     `SELECT COUNT(*)::text AS count FROM projects p
@@ -238,7 +242,7 @@ export async function listProjectsPage(
   );
   const rows = await query<ProjectRow>(
     `${SELECT_PROJECT} ${clause}
-     ORDER BY ${orderBy} ${direction} NULLS LAST, p.id DESC
+     ORDER BY ${orderBy} ${orderDirection} NULLS LAST, p.id DESC
      LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
     params,
   );
