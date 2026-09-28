@@ -31,6 +31,7 @@ import type { ProjectTask, ProjectTaskComment, Supplier, SupplierQuote, User } f
 
 const SUPPLIER_SELECTION_TASK = 'Supplier(s) selected';
 const QUOTE_REVIEW_TASK = 'Quote reviewed and accepted';
+const FORMAL_QUOTE_TASK = 'Formal quote generated';
 
 const emptyTask: TaskPayload = {
   taskName: '',
@@ -41,6 +42,7 @@ const emptyTask: TaskPayload = {
   completedDate: '',
   requestedDate: '',
   actualDate: '',
+  customerQuotePrice: null,
   priority: 'medium',
   status: 'not_started',
 };
@@ -55,6 +57,7 @@ function taskToPayload(task: ProjectTask): TaskPayload {
     completedDate: task.completedDate ? task.completedDate.slice(0, 10) : '',
     requestedDate: task.requestedDate ? task.requestedDate.slice(0, 10) : '',
     actualDate: task.actualDate ? task.actualDate.slice(0, 10) : '',
+    customerQuotePrice: task.customerQuotePrice,
     priority: task.priority,
     status: task.status,
   };
@@ -93,6 +96,7 @@ export default function TasksPanel({
   const [quoteNoteDrafts, setQuoteNoteDrafts] = useState<Record<number, string>>({});
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteDataAvailable, setQuoteDataAvailable] = useState(false);
+  const [customerQuoteDraft, setCustomerQuoteDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +122,8 @@ export default function TasksPanel({
       const taskData = await tasksApi.list(projectId);
       if (currentLoadId !== quoteLoadId.current) return;
       setTasks(taskData);
+      const formalQuoteTask = taskData.find((task) => task.taskName === FORMAL_QUOTE_TASK);
+      setCustomerQuoteDraft(formalQuoteTask?.customerQuotePrice?.toFixed(2) ?? '');
       setError(null);
     } catch (err) {
       if (currentLoadId !== quoteLoadId.current) return;
@@ -233,6 +239,8 @@ export default function TasksPanel({
   };
 
   const selectedQuotes = supplierQuotes.filter((quote) => quote.selected);
+  const formalQuoteTask = tasks.find((task) => task.taskName === FORMAL_QUOTE_TASK);
+  const customerQuotePrice = formalQuoteTask?.customerQuotePrice ?? null;
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
@@ -519,6 +527,16 @@ export default function TasksPanel({
                                           <p className="text-sm font-medium text-slate-800">{quote.supplierName}</p>
                                           {quote.reviewedAt && <span className="text-xs text-emerald-700">Pricing recorded</span>}
                                         </div>
+                                        {quote.quotedPrice !== null && customerQuotePrice !== null && (
+                                          <div className="mb-2 flex flex-wrap gap-3 text-xs text-slate-600">
+                                            <span>Margin: ${(customerQuotePrice - quote.quotedPrice).toFixed(2)} {quote.currency}</span>
+                                            <span>
+                                              Margin %: {customerQuotePrice > 0
+                                                ? `${(((customerQuotePrice - quote.quotedPrice) / customerQuotePrice) * 100).toFixed(1)}%`
+                                                : '—'}
+                                            </span>
+                                          </div>
+                                        )}
                                         <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
                                           <TextInput
                                             type="number"
@@ -548,6 +566,52 @@ export default function TasksPanel({
                                         </div>
                                       </div>
                                     ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {task.taskName === FORMAL_QUOTE_TASK && (
+                              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <p className="text-xs font-semibold text-slate-700">Customer quote and margin</p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Enter the price sent to the customer. Margins are calculated against selected supplier quotes.
+                                </p>
+                                <div className="mt-3 flex flex-wrap items-end gap-2">
+                                  <label className="text-xs text-slate-600">
+                                    Customer quoted price (AUD)
+                                    <TextInput
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={customerQuoteDraft}
+                                      disabled={!canManageQuotes || !quoteDataAvailable}
+                                      onChange={(event) => setCustomerQuoteDraft(event.target.value)}
+                                      className="mt-1 w-48"
+                                    />
+                                  </label>
+                                  <Button
+                                    disabled={!canManageQuotes || !quoteDataAvailable}
+                                    onClick={() => formalQuoteTask && updateTaskFields(formalQuoteTask, {
+                                      customerQuotePrice: customerQuoteDraft === '' ? null : Number(customerQuoteDraft),
+                                    })}
+                                  >
+                                    Save quote
+                                  </Button>
+                                </div>
+                                {selectedQuotes.length > 0 && customerQuoteDraft !== '' && (
+                                  <div className="mt-3 space-y-1 text-xs text-slate-600">
+                                    {selectedQuotes.filter((quote) => quote.quotedPrice !== null).map((quote) => {
+                                      const margin = Number(customerQuoteDraft) - (quote.quotedPrice ?? 0);
+                                      const marginPercent = Number(customerQuoteDraft) > 0
+                                        ? (margin / Number(customerQuoteDraft)) * 100
+                                        : null;
+                                      return (
+                                        <p key={quote.supplierId}>
+                                          {quote.supplierName}: margin ${margin.toFixed(2)} {quote.currency}
+                                          {marginPercent === null ? '' : ` (${marginPercent.toFixed(1)}%)`}
+                                        </p>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>

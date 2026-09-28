@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS projects (
   current_stage        TEXT NOT NULL DEFAULT 'pipeline' CHECK (current_stage IN (
                          'pipeline','intake','stage_1_engineering','production_team_quoting','sales',
                          'stage_2_production','production','qa','completed')),
+  stage_started_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   is_archived          BOOLEAN NOT NULL DEFAULT FALSE,
   created_by           INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -126,6 +127,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   completed_date   DATE,
   requested_date   DATE,
   actual_date      DATE,
+  customer_quote_price NUMERIC(12,2),
   priority         TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high','critical')),
   status           TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN (
                      'not_started','in_progress','on_hold','completed','not_applicable')),
@@ -219,6 +221,9 @@ ALTER TABLE tasks ADD CONSTRAINT tasks_status_check CHECK (status IN (
 ));
 
 ALTER TABLE projects ALTER COLUMN current_stage SET DEFAULT 'pipeline';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS stage_started_at TIMESTAMPTZ;
+UPDATE projects SET stage_started_at = updated_at WHERE stage_started_at IS NULL;
+ALTER TABLE projects ALTER COLUMN stage_started_at SET DEFAULT NOW();
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_storage_key TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_file_name TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_mime_type TEXT;
@@ -228,6 +233,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_date DATE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS requested_date DATE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS actual_date DATE;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS customer_quote_price NUMERIC(12,2);
 
 CREATE TABLE IF NOT EXISTS task_comments (
   id         SERIAL PRIMARY KEY,

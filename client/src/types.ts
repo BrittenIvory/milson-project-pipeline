@@ -55,6 +55,8 @@ export interface Project {
   partImageMimeType: string | null;
   partImageSizeBytes: number | null;
   currentStage: string;
+  stageStartedAt: string;
+  currentStageDays: number;
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -102,6 +104,7 @@ export interface ProjectTask {
   completedDate: string | null;
   requestedDate: string | null;
   actualDate: string | null;
+  customerQuotePrice: number | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: TaskStatus;
   completedAt: string | null;

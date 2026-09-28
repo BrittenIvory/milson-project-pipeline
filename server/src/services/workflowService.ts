@@ -66,7 +66,7 @@ export async function maybeAdvanceStage(
   const index = PROJECT_STAGES.indexOf(project.current_stage);
   const next = PROJECT_STAGES[index + 1];
   if (!next) return { advanced: false };
-  await pool.query('UPDATE projects SET current_stage = $2, updated_at = NOW() WHERE id = $1', [
+  await pool.query('UPDATE projects SET current_stage = $2, stage_started_at = NOW(), updated_at = NOW() WHERE id = $1', [
     projectId,
     next,
   ]);
