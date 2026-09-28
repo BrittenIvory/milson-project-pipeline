@@ -6,6 +6,7 @@ import { Badge } from './ui';
 import { projectsApi } from '../lib/api';
 import { formatDate, formatDateTime, orDash, priorityMeta, stageMeta } from '../lib/format';
 import type { Project } from '../types';
+import ProjectComments from './ProjectComments';
 
 function PartImageCell({ project }: { project: Project }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export interface ProjectColumn {
   label: string;
   /** Default width in pixels; users can resize from the header handle. */
   width: number;
+  sortable?: boolean;
   render: (project: Project) => React.ReactNode;
 }
 
@@ -128,6 +130,13 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
       ) : (
         <Badge tone="bg-emerald-100 text-emerald-700">Active</Badge>
       ),
+  },
+  {
+    id: 'comments',
+    label: 'Comments',
+    width: 150,
+    sortable: false,
+    render: (p) => <ProjectComments projectId={p.id} />,
   },
 ];
 
@@ -222,20 +231,24 @@ export default function ProjectTable({
                   )}
                 >
                   <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onSort(column.id)}
-                      className="flex items-center gap-1 truncate hover:text-slate-800"
-                      title={`Sort by ${column.label}`}
-                    >
+                    {column.sortable === false ? (
                       <span className="truncate">{column.label}</span>
-                      {sortBy === column.id &&
-                        (sortDir === 'asc' ? (
-                          <ArrowUp className="h-3 w-3" />
-                        ) : (
-                          <ArrowDown className="h-3 w-3" />
-                        ))}
-                    </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onSort(column.id)}
+                        className="flex items-center gap-1 truncate hover:text-slate-800"
+                        title={`Sort by ${column.label}`}
+                      >
+                        <span className="truncate">{column.label}</span>
+                        {sortBy === column.id &&
+                          (sortDir === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          ))}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onTogglePin(column.id)}

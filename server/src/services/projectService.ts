@@ -15,6 +15,7 @@ export interface ProjectRow {
   project_name: string;
   project_description: string | null;
   annual_usage: number | null;
+  customer_quote_price: string | null;
   material: string | null;
   estimated_weight: string | null;
   casting_process: string | null;
@@ -85,6 +86,16 @@ export function toProjectDto(row: ProjectRow) {
     machiningRequired: row.machining_required,
     paintingRequired: row.painting_required,
   });
+  const customerQuotePrice =
+    row.customer_quote_price === null ? null : Number(row.customer_quote_price);
+  const projectValue =
+    customerQuotePrice === null
+      ? estimate && !estimate.contactRequired
+        ? estimate.totalAnnual
+        : null
+      : row.annual_usage === null
+        ? null
+        : Math.round(customerQuotePrice * row.annual_usage * 100) / 100;
 
   return {
     id: row.id,
@@ -98,10 +109,17 @@ export function toProjectDto(row: ProjectRow) {
     projectName: row.project_name,
     projectDescription: row.project_description,
     annualUsage: row.annual_usage,
+    customerQuotePrice,
     material: row.material,
     estimatedWeight: row.estimated_weight === null ? null : Number(row.estimated_weight),
     estimatePartPrice: estimate && !estimate.contactRequired ? estimate.unitPrice : null,
-    projectValue: estimate && !estimate.contactRequired ? estimate.totalAnnual : null,
+    projectValue,
+    projectValueCurrency:
+      customerQuotePrice !== null
+        ? 'AUD'
+        : estimate && !estimate.contactRequired
+          ? 'USD'
+          : null,
     castingProcess: row.casting_process,
     machiningRequired: row.machining_required,
     heatTreatment: row.heat_treatment,
@@ -129,6 +147,13 @@ export function toProjectDto(row: ProjectRow) {
 const SELECT_PROJECT = `
   SELECT p.*, c.company_name AS customer_name, c.customer_number,
          e.full_name AS engineer_name, s.full_name AS sales_name,
+         (
+           SELECT t.customer_quote_price
+           FROM tasks t
+           WHERE t.project_id = p.id AND t.task_name = 'Formal quote generated'
+           ORDER BY t.updated_at DESC, t.id DESC
+           LIMIT 1
+         ) AS customer_quote_price,
          GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - p.stage_started_at)) / 86400))::int AS current_stage_days
   FROM projects p
   JOIN customers c ON c.id = p.customer_id
