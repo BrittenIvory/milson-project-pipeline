@@ -10,6 +10,7 @@ import {
   Table as TableIcon,
 } from 'lucide-react';
 import ProjectFilterBar from '../components/ProjectFilterBar';
+import ProjectComments from '../components/ProjectComments';
 import ProjectTable, {
   DEFAULT_VISIBLE_COLUMNS,
   PROJECT_COLUMNS,
@@ -41,28 +42,33 @@ function compact(filters: ProjectFilters): ProjectFilters {
 /** Card representation of a project, used by the optional card view. */
 function ProjectCard({ project }: { project: Project }) {
   return (
-    <Link to={`/projects/${project.id}`} className="card block p-4 transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">{project.projectName}</p>
-          <p className="truncate text-xs text-slate-500">
-            {project.projectNumber} · {orDash(project.customerName)}
-          </p>
+    <div className="card p-4 transition-shadow hover:shadow-md">
+      <Link to={`/projects/${project.id}`} className="block">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900">{project.projectName}</p>
+            <p className="truncate text-xs text-slate-500">
+              {project.projectNumber} · {orDash(project.customerName)}
+            </p>
+          </div>
+          <Badge tone={priorityMeta(project.priority).tone}>
+            {priorityMeta(project.priority).label}
+          </Badge>
         </div>
-        <Badge tone={priorityMeta(project.priority).tone}>
-          {priorityMeta(project.priority).label}
-        </Badge>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge tone={stageMeta(project.currentStage).tone}>
+            {stageMeta(project.currentStage).label}
+          </Badge>
+          <span className="text-xs text-slate-500">
+            Target {formatDate(project.targetQuoteDate)}
+          </span>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">Updated {formatDateTime(project.updatedAt)}</p>
+      </Link>
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        <ProjectComments projectId={project.id} />
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Badge tone={stageMeta(project.currentStage).tone}>
-          {stageMeta(project.currentStage).label}
-        </Badge>
-        <span className="text-xs text-slate-500">
-          Target {formatDate(project.targetQuoteDate)}
-        </span>
-      </div>
-      <p className="mt-3 text-xs text-slate-400">Updated {formatDateTime(project.updatedAt)}</p>
-    </Link>
+    </div>
   );
 }
 

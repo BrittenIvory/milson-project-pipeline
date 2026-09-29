@@ -359,7 +359,11 @@ export default function ProjectDetailPage() {
               <DetailItem label="Internal Part Number" value={orDash(project.internalPartNumber)} />
               <DetailItem label="Annual Usage" value={orDash(project.annualUsage)} />
               <DetailItem label="Estimate Part Price (USD)" value={formatCurrency(project.estimatePartPrice, 'USD')} />
-              <DetailItem label="Project Value (USD)" value={formatCurrency(project.projectValue, 'USD')} />
+              <DetailItem label="Customer Quote Price (AUD)" value={formatCurrency(project.customerQuotePrice, 'AUD')} />
+              <DetailItem
+                label={`Project Value${project.projectValueCurrency ? ` (${project.projectValueCurrency})` : ''}`}
+                value={formatCurrency(project.projectValue, project.projectValueCurrency ?? 'USD')}
+              />
               <DetailItem label="Material" value={orDash(project.material)} />
               <DetailItem label="Estimated Weight" value={orDash(project.estimatedWeight)} />
               <DetailItem label="Casting Process" value={orDash(project.castingProcess)} />

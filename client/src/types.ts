@@ -38,10 +38,12 @@ export interface Project {
   projectName: string;
   projectDescription: string | null;
   annualUsage: number | null;
+  customerQuotePrice: number | null;
   material: string | null;
   estimatedWeight: number | null;
   estimatePartPrice: number | null;
   projectValue: number | null;
+  projectValueCurrency: 'USD' | 'AUD' | null;
   castingProcess: string | null;
   machiningRequired: boolean;
   heatTreatment: boolean;
