@@ -15,18 +15,46 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mentionError, setMentionError] = useState<string | null>(null);
+  const notesLoadVersion = useRef(0);
+  const usersLoadVersion = useRef(0);
 
   useEffect(() => {
     if (!open) return;
+    const notesVersion = ++notesLoadVersion.current;
+    const usersVersion = ++usersLoadVersion.current;
     setLoading(true);
-    Promise.all([notesApi.list(projectId), usersApi.list()])
-      .then(([noteData, userData]) => {
+    setError(null);
+    setMentionError(null);
+    notesApi
+      .list(projectId)
+      .then((noteData) => {
+        if (notesVersion !== notesLoadVersion.current) return;
         setNotes(noteData);
-        setUsers(userData);
-        setError(null);
       })
-      .catch((err) => setError(apiErrorMessage(err, 'Unable to load comments')))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (notesVersion === notesLoadVersion.current) {
+          setError(apiErrorMessage(err, 'Unable to load comments'));
+        }
+      })
+      .finally(() => {
+        if (notesVersion === notesLoadVersion.current) setLoading(false);
+      });
+    usersApi
+      .list()
+      .then((userData) => {
+        if (usersVersion !== usersLoadVersion.current) return;
+        setUsers(userData);
+      })
+      .catch(() => {
+        if (usersVersion === usersLoadVersion.current) {
+          setMentionError('User suggestions are unavailable right now.');
+        }
+      });
+    return () => {
+      notesLoadVersion.current += 1;
+      usersLoadVersion.current += 1;
+    };
   }, [open, projectId]);
 
   const handleDraftChange = (value: string) => {
@@ -43,6 +71,7 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
 
   const addComment = async () => {
     if (!draft.trim()) return;
+    notesLoadVersion.current += 1;
     setSaving(true);
     try {
       const note = await notesApi.create(projectId, draft.trim());
@@ -76,6 +105,7 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
       {open && (
         <div className="mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
           <ErrorBanner message={error} />
+          {mentionError && <p className="mb-2 text-xs text-amber-700">{mentionError}</p>}
           {loading ? (
             <SkeletonRows rows={2} />
           ) : (
