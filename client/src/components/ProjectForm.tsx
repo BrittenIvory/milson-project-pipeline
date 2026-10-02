@@ -105,8 +105,9 @@ export default function ProjectForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <ErrorBanner message={error} />
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <ErrorBanner message={error} />
 
       <Card>
         <h2 className="mb-4 text-sm font-semibold text-slate-900">Project details</h2>
@@ -305,6 +306,7 @@ export default function ProjectForm({
           {submitLabel}
         </Button>
       </div>
+      </form>
       <CustomerFormModal
         open={customerModalOpen}
         customer={null}
@@ -315,6 +317,6 @@ export default function ProjectForm({
           setCustomerModalOpen(false);
         }}
       />
-    </form>
+    </div>
   );
 }
