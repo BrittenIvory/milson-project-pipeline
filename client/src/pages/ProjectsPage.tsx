@@ -26,6 +26,7 @@ import {
 } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage, customersApi, projectsApi, usersApi } from '../lib/api';
+import { PROJECT_STAGES } from '../lib/constants';
 import { formatDate, formatDateTime, orDash, priorityMeta, stageMeta } from '../lib/format';
 import { useDebounced, useLocalStorage } from '../lib/hooks';
 import type { Customer, Project, ProjectFilters, User } from '../types';
@@ -88,7 +89,7 @@ export default function ProjectsPage() {
   const [layout, setLayout] = useLocalStorage('milson.projects.layout', {
     visible: DEFAULT_VISIBLE_COLUMNS,
     widths: {} as Record<string, number>,
-    pinned: ['projectNumber'] as string[],
+    pinned: ['comments', 'projectNumber'] as string[],
   });
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -98,9 +99,13 @@ export default function ProjectsPage() {
     setLayout((current) => {
       const visible = current.visible.filter((id) => PROJECT_COLUMNS.some((column) => column.id === id));
       const missing = DEFAULT_VISIBLE_COLUMNS.filter((id) => !visible.includes(id));
-      return missing.length === 0 && visible.length === current.visible.length
+      const ordered = ['comments', ...visible.filter((id) => id !== 'comments'), ...missing.filter((id) => id !== 'comments')];
+      const pinned = current.pinned.includes('comments')
+        ? current.pinned
+        : ['comments', ...current.pinned];
+      return missing.length === 0 && ordered.join('|') === current.visible.join('|') && pinned.join('|') === current.pinned.join('|')
         ? current
-        : { ...current, visible: [...visible, ...missing] };
+        : { ...current, visible: ordered, pinned };
     });
   }, [setLayout]);
 
@@ -318,10 +323,23 @@ export default function ProjectsPage() {
           onTogglePin={togglePin}
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
+        <div className="space-y-5">
+          {PROJECT_STAGES.map((stage) => {
+            const stageProjects = projects.filter((project) => project.currentStage === stage.value);
+            if (stageProjects.length === 0) return null;
+            return (
+              <section key={stage.value}>
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {stage.label} <span className="font-normal text-slate-400">({stageProjects.length})</span>
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {stageProjects.map((project) => (
+                    <ProjectCard key={project.id} project={project} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       )}
 

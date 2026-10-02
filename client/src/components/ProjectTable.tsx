@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { ArrowDown, ArrowUp, Pin, PinOff } from 'lucide-react';
 import { Badge } from './ui';
 import { projectsApi } from '../lib/api';
+import { PROJECT_STAGES } from '../lib/constants';
 import { formatDate, formatDateTime, orDash, priorityMeta, stageMeta } from '../lib/format';
 import type { Project } from '../types';
 import ProjectComments from './ProjectComments';
@@ -50,6 +51,13 @@ export interface ProjectColumn {
 
 /** Every column the Projects table can show, in default order. */
 export const PROJECT_COLUMNS: ProjectColumn[] = [
+  {
+    id: 'comments',
+    label: 'Comments',
+    width: 150,
+    sortable: false,
+    render: (p) => <ProjectComments projectId={p.id} />,
+  },
   {
     id: 'projectNumber',
     label: 'Project Number',
@@ -130,13 +138,6 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
       ) : (
         <Badge tone="bg-emerald-100 text-emerald-700">Active</Badge>
       ),
-  },
-  {
-    id: 'comments',
-    label: 'Comments',
-    width: 150,
-    sortable: false,
-    render: (p) => <ProjectComments projectId={p.id} />,
   },
 ];
 
@@ -271,28 +272,72 @@ export default function ProjectTable({
           </tr>
         </thead>
         <tbody>
-          {projects.map((project) => (
-            <tr key={project.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-              {columns.map((column) => {
-                const pinned = layout.pinned.includes(column.id);
-                return (
-                  <td
-                    key={column.id}
-                    style={{
-                      width: layout.widths[column.id] ?? column.width,
-                      left: pinned ? offsets[column.id] : undefined,
-                    }}
-                    className={clsx(
-                      'truncate px-4 py-3 text-slate-700',
-                      pinned && 'sticky z-10 bg-white',
-                    )}
-                  >
-                    {column.render(project)}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+          {PROJECT_STAGES.flatMap((stage) => {
+            const stageProjects = projects.filter((project) => project.currentStage === stage.value);
+            if (stageProjects.length === 0) return [];
+            return [
+              <tr key={`stage-${stage.value}`} className="border-b border-slate-200 bg-slate-50">
+                <td colSpan={columns.length} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  {stage.label} <span className="font-normal text-slate-400">({stageProjects.length})</span>
+                </td>
+              </tr>,
+              ...stageProjects.map((project) => (
+                <tr key={project.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  {columns.map((column) => {
+                    const pinned = layout.pinned.includes(column.id);
+                    return (
+                      <td
+                        key={column.id}
+                        style={{
+                          width: layout.widths[column.id] ?? column.width,
+                          left: pinned ? offsets[column.id] : undefined,
+                        }}
+                        className={clsx(
+                          'truncate px-4 py-3 text-slate-700',
+                          pinned && 'sticky z-10 bg-white',
+                        )}
+                      >
+                        {column.render(project)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )),
+            ];
+          })}
+          {projects.some((project) => !PROJECT_STAGES.some((stage) => stage.value === project.currentStage)) && (
+            <>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <td colSpan={columns.length} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Other
+                </td>
+              </tr>
+              {projects
+                .filter((project) => !PROJECT_STAGES.some((stage) => stage.value === project.currentStage))
+                .map((project) => (
+                  <tr key={project.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    {columns.map((column) => {
+                      const pinned = layout.pinned.includes(column.id);
+                      return (
+                        <td
+                          key={column.id}
+                          style={{
+                            width: layout.widths[column.id] ?? column.width,
+                            left: pinned ? offsets[column.id] : undefined,
+                          }}
+                          className={clsx(
+                            'truncate px-4 py-3 text-slate-700',
+                            pinned && 'sticky z-10 bg-white',
+                          )}
+                        >
+                          {column.render(project)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+            </>
+          )}
         </tbody>
       </table>
     </div>
