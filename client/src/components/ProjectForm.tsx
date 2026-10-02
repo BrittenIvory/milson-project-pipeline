@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { Button, Card, Checkbox, ErrorBanner, Field, Select, TextArea, TextInput } from './ui';
 import { customersApi, usersApi } from '../lib/api';
 import type { ProjectPayload } from '../lib/api';
 import { PRIORITIES, PROJECT_STAGES } from '../lib/constants';
 import type { Customer, Project, User } from '../types';
+import CustomerFormModal from './CustomerFormModal';
 
 /** Blank project, defaulted to the Pipeline stage. */
 export const emptyProject: ProjectPayload = {
@@ -78,6 +80,7 @@ export default function ProjectForm({
 }: ProjectFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
 
   useEffect(() => {
     customersApi.list({ status: 'active' }).then(setCustomers);
@@ -112,18 +115,31 @@ export default function ProjectForm({
             <TextInput value={projectNumber} readOnly disabled />
           </Field>
           <Field label="Customer">
-            <Select
-              required
-              value={value.customerId || ''}
-              onChange={(e) => set('customerId', Number(e.target.value))}
-            >
-              <option value="">Select a customer</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.companyName} ({customer.customerNumber})
-                </option>
-              ))}
-            </Select>
+            <div className="flex gap-2">
+              <Select
+                required
+                value={value.customerId || ''}
+                onChange={(e) => set('customerId', Number(e.target.value))}
+                className="min-w-0 flex-1"
+              >
+                <option value="">Select a customer</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.companyName} ({customer.customerNumber})
+                  </option>
+                ))}
+              </Select>
+              <Button
+                type="button"
+                variant="secondary"
+                aria-label="Create customer"
+                title="Create customer"
+                onClick={() => setCustomerModalOpen(true)}
+                className="shrink-0 px-3"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </Field>
           <Field label="Customer Contact">
             <TextInput
@@ -289,6 +305,16 @@ export default function ProjectForm({
           {submitLabel}
         </Button>
       </div>
+      <CustomerFormModal
+        open={customerModalOpen}
+        customer={null}
+        onClose={() => setCustomerModalOpen(false)}
+        onSaved={(customer) => {
+          setCustomers((current) => [...current, customer].sort((a, b) => a.companyName.localeCompare(b.companyName)));
+          set('customerId', customer.id);
+          setCustomerModalOpen(false);
+        }}
+      />
     </form>
   );
 }

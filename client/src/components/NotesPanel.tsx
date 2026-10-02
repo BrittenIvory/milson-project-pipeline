@@ -31,7 +31,7 @@ function NoteBody({ body }: { body: string }) {
   );
 }
 
-/** Threaded project notes with @mention autocomplete, newest first. */
+/** Threaded project comments with @mention autocomplete, newest first. */
 export default function NotesPanel({
   projectId,
   onChanged,
@@ -57,7 +57,7 @@ export default function NotesPanel({
       setNotes(await notesApi.list(projectId));
       setError(null);
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to load notes'));
+        setError(apiErrorMessage(err, 'Unable to load comments'));
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export default function NotesPanel({
       await load();
       onChanged?.();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to add note'));
+      setError(apiErrorMessage(err, 'Unable to add comment'));
     } finally {
       setSaving(false);
     }
@@ -103,7 +103,7 @@ export default function NotesPanel({
       setEditingId(null);
       await load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to update note'));
+      setError(apiErrorMessage(err, 'Unable to update comment'));
     } finally {
       setSaving(false);
     }
@@ -118,7 +118,7 @@ export default function NotesPanel({
       await load();
       onChanged?.();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to delete note'));
+      setError(apiErrorMessage(err, 'Unable to delete comment'));
     } finally {
       setSaving(false);
     }
@@ -132,7 +132,7 @@ export default function NotesPanel({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-slate-900">Notes</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Comments</h2>
         <p className="text-xs text-slate-500">Mention a teammate with @ to notify them.</p>
       </div>
 
@@ -143,7 +143,7 @@ export default function NotesPanel({
           ref={textareaRef}
           value={draft}
           onChange={(e) => handleDraftChange(e.target.value)}
-          placeholder="Add a note… use @ to mention someone"
+          placeholder="Add a comment… use @ to mention someone"
         />
         {suggestions.length > 0 && (
           <div className="absolute z-20 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
@@ -161,7 +161,7 @@ export default function NotesPanel({
         )}
         <div className="mt-2 flex justify-end">
           <Button loading={saving} disabled={!draft.trim()} onClick={addNote}>
-            Add note
+            Add comment
           </Button>
         </div>
       </div>
@@ -169,7 +169,7 @@ export default function NotesPanel({
       {loading ? (
         <SkeletonRows rows={3} />
       ) : notes.length === 0 ? (
-        <EmptyState title="No notes yet" description="Capture decisions and customer feedback." />
+        <EmptyState title="No comments yet" description="Capture decisions and customer feedback." />
       ) : (
         <ul className="space-y-3">
           {notes.map((note) => (
@@ -182,8 +182,8 @@ export default function NotesPanel({
                 {(user?.id === note.authorId || user?.role === 'administrator') && (
                   <div className="flex gap-1">
                     <button
-                      title="Edit note"
-                      aria-label="Edit note"
+                      title="Edit comment"
+                      aria-label="Edit comment"
                       onClick={() => {
                         setEditingId(note.id);
                         setEditingBody(note.body);
@@ -193,8 +193,8 @@ export default function NotesPanel({
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      title="Delete note"
-                      aria-label="Delete note"
+                      title="Delete comment"
+                      aria-label="Delete comment"
                       onClick={() => setPendingDelete(note)}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                     >
@@ -228,8 +228,8 @@ export default function NotesPanel({
 
       <ConfirmDialog
         open={pendingDelete !== null}
-        title="Delete note"
-        message="Delete this note? This cannot be undone."
+        title="Delete comment"
+        message="Delete this comment? This cannot be undone."
         loading={saving}
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}

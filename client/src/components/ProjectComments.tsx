@@ -6,8 +6,10 @@ import { formatDateTime } from '../lib/format';
 import type { ProjectNote, User } from '../types';
 
 export default function ProjectComments({ projectId }: { projectId: number }) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState({ left: 8, top: 8 });
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -15,18 +17,66 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mentionError, setMentionError] = useState<string | null>(null);
+  const notesLoadVersion = useRef(0);
+  const usersLoadVersion = useRef(0);
 
   useEffect(() => {
     if (!open) return;
+    const updatePosition = () => {
+      const button = buttonRef.current;
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      setPopoverPosition({
+        left: Math.max(8, rect.left - 328),
+        top: Math.max(8, Math.min(rect.top, window.innerHeight - 360)),
+      });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const notesVersion = ++notesLoadVersion.current;
+    const usersVersion = ++usersLoadVersion.current;
     setLoading(true);
-    Promise.all([notesApi.list(projectId), usersApi.list()])
-      .then(([noteData, userData]) => {
+    setError(null);
+    setMentionError(null);
+    notesApi
+      .list(projectId)
+      .then((noteData) => {
+        if (notesVersion !== notesLoadVersion.current) return;
         setNotes(noteData);
-        setUsers(userData);
-        setError(null);
       })
-      .catch((err) => setError(apiErrorMessage(err, 'Unable to load comments')))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (notesVersion === notesLoadVersion.current) {
+          setError(apiErrorMessage(err, 'Unable to load comments'));
+        }
+      })
+      .finally(() => {
+        if (notesVersion === notesLoadVersion.current) setLoading(false);
+      });
+    usersApi
+      .list()
+      .then((userData) => {
+        if (usersVersion !== usersLoadVersion.current) return;
+        setUsers(userData);
+      })
+      .catch(() => {
+        if (usersVersion === usersLoadVersion.current) {
+          setMentionError('User suggestions are unavailable right now.');
+        }
+      });
+    return () => {
+      notesLoadVersion.current += 1;
+      usersLoadVersion.current += 1;
+    };
   }, [open, projectId]);
 
   const handleDraftChange = (value: string) => {
@@ -43,6 +93,7 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
 
   const addComment = async () => {
     if (!draft.trim()) return;
+    notesLoadVersion.current += 1;
     setSaving(true);
     try {
       const note = await notesApi.create(projectId, draft.trim());
@@ -65,6 +116,7 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
   return (
     <div className="min-w-[13rem]">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:text-brand-900"
@@ -74,8 +126,12 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
         {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
       </button>
       {open && (
-        <div className="mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div
+          className="fixed z-50 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+          style={{ left: popoverPosition.left, top: popoverPosition.top }}
+        >
           <ErrorBanner message={error} />
+          {mentionError && <p className="mb-2 text-xs text-amber-700">{mentionError}</p>}
           {loading ? (
             <SkeletonRows rows={2} />
           ) : (
