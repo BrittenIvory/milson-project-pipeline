@@ -10,6 +10,7 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [popoverPosition, setPopoverPosition] = useState({ left: 8, top: 8 });
+  const [popoverWidth, setPopoverWidth] = useState(320);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -27,8 +28,9 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
       const button = buttonRef.current;
       if (!button) return;
       const rect = button.getBoundingClientRect();
-      const popupWidth = 320;
+      const popupWidth = Math.min(320, Math.max(0, window.innerWidth - 16));
       const sidebarInset = window.matchMedia('(min-width: 1024px)').matches ? 264 : 8;
+      setPopoverWidth(popupWidth);
       setPopoverPosition({
         left: Math.min(
           Math.max(sidebarInset, rect.left - popupWidth - 8),
@@ -132,8 +134,8 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
       </button>
       {open && (
         <div
-          className="fixed z-50 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
-          style={{ left: popoverPosition.left, top: popoverPosition.top }}
+          className="fixed z-50 max-w-[calc(100vw-1rem)] rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+          style={{ left: popoverPosition.left, top: popoverPosition.top, width: popoverWidth }}
         >
           <ErrorBanner message={error} />
           {mentionError && <p className="mb-2 text-xs text-amber-700">{mentionError}</p>}
