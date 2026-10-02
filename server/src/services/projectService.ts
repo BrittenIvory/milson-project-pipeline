@@ -151,7 +151,7 @@ const SELECT_PROJECT = `
            SELECT t.customer_quote_price
            FROM tasks t
            WHERE t.project_id = p.id AND t.task_name = 'Formal quote generated'
-           ORDER BY t.updated_at DESC, t.id DESC
+           ORDER BY t.created_at, t.id
            LIMIT 1
          ) AS customer_quote_price,
          GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - p.stage_started_at)) / 86400))::int AS current_stage_days
