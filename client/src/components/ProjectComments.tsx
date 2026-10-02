@@ -27,8 +27,13 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
       const button = buttonRef.current;
       if (!button) return;
       const rect = button.getBoundingClientRect();
+      const popupWidth = 320;
+      const sidebarInset = window.matchMedia('(min-width: 1024px)').matches ? 264 : 8;
       setPopoverPosition({
-        left: Math.max(8, rect.left - 328),
+        left: Math.min(
+          Math.max(sidebarInset, rect.left - popupWidth - 8),
+          window.innerWidth - popupWidth - 8,
+        ),
         top: Math.max(8, Math.min(rect.top, window.innerHeight - 360)),
       });
     };
