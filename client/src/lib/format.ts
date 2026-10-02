@@ -42,7 +42,7 @@ export function orDash(value: string | number | null | undefined): string {
   return String(value);
 }
 
-export function formatCurrency(value: number | null | undefined, currency = 'AUD'): string {
+export function formatCurrency(value: number | null | undefined, currency = 'USD'): string {
   if (value === null || value === undefined) return '—';
   return new Intl.NumberFormat(undefined, {
     style: 'currency',

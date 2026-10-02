@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS project_supplier_quotes (
   supplier_id  INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
   selected     BOOLEAN NOT NULL DEFAULT FALSE,
   quoted_price NUMERIC(12,2),
-  currency     TEXT NOT NULL DEFAULT 'AUD',
+  currency     TEXT NOT NULL DEFAULT 'USD',
   quote_notes  TEXT,
   selected_at  TIMESTAMPTZ,
   reviewed_at  TIMESTAMPTZ,

@@ -116,7 +116,7 @@ export function toProjectDto(row: ProjectRow) {
     projectValue,
     projectValueCurrency:
       customerQuotePrice !== null
-        ? 'AUD'
+        ? 'USD'
         : estimate && !estimate.contactRequired
           ? 'USD'
           : null,

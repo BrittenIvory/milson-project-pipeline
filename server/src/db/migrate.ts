@@ -10,6 +10,9 @@ import { STAGE_TASK_TEMPLATES } from '../services/workflowService';
 export async function migrate(): Promise<void> {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   await pool.query(sql);
+  await pool.query(
+    `UPDATE project_supplier_quotes SET currency = 'USD' WHERE currency = 'AUD'`,
+  );
   const pairs = Object.entries(STAGE_TASK_TEMPLATES).flatMap(([stage, names]) =>
     names.map((name) => ({ stage, name })),
   );

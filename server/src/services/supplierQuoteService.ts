@@ -25,7 +25,7 @@ export const supplierQuoteSchema = z.object({
   supplierId: z.coerce.number().int().positive(),
   selected: z.boolean(),
   quotedPrice: optionalMoney,
-  currency: z.string().trim().toUpperCase().length(3).default('AUD'),
+  currency: z.string().trim().toUpperCase().length(3).default('USD'),
   quoteNotes: z.string().trim().max(5000).optional().nullable(),
 });
 

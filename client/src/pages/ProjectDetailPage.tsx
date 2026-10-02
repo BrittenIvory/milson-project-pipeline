@@ -48,7 +48,7 @@ const tabs: { id: Tab; label: string; placeholder?: string }[] = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'documents', label: 'Documents' },
   { id: 'activity', label: 'Activity' },
-  { id: 'notes', label: 'Notes' },
+  { id: 'notes', label: 'Comments' },
   {
     id: 'engineering',
     label: 'Engineering',
@@ -359,7 +359,7 @@ export default function ProjectDetailPage() {
               <DetailItem label="Internal Part Number" value={orDash(project.internalPartNumber)} />
               <DetailItem label="Annual Usage" value={orDash(project.annualUsage)} />
               <DetailItem label="Estimate Part Price (USD)" value={formatCurrency(project.estimatePartPrice, 'USD')} />
-              <DetailItem label="Customer Quote Price (AUD)" value={formatCurrency(project.customerQuotePrice, 'AUD')} />
+              <DetailItem label="Customer Quote Price (USD)" value={formatCurrency(project.customerQuotePrice, 'USD')} />
               <DetailItem
                 label={`Project Value${project.projectValueCurrency ? ` (${project.projectValueCurrency})` : ''}`}
                 value={formatCurrency(project.projectValue, project.projectValueCurrency ?? 'USD')}

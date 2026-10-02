@@ -43,7 +43,7 @@ export interface Project {
   estimatedWeight: number | null;
   estimatePartPrice: number | null;
   projectValue: number | null;
-  projectValueCurrency: 'USD' | 'AUD' | null;
+  projectValueCurrency: 'USD' | null;
   castingProcess: string | null;
   machiningRequired: boolean;
   heatTreatment: boolean;
