@@ -113,6 +113,7 @@ export default function TasksPanel({
   const [collapsedOverride, setCollapsedOverride] = useState<Record<string, boolean>>({});
   const commentRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
   const quoteLoadId = useRef(0);
+  const customerQuoteDraftDirty = useRef(false);
 
   const load = useCallback(async () => {
     const currentLoadId = ++quoteLoadId.current;
@@ -123,7 +124,9 @@ export default function TasksPanel({
       if (currentLoadId !== quoteLoadId.current) return;
       setTasks(taskData);
       const formalQuoteTask = taskData.find((task) => task.taskName === FORMAL_QUOTE_TASK);
-      setCustomerQuoteDraft(formalQuoteTask?.customerQuotePrice?.toFixed(2) ?? '');
+      if (!customerQuoteDraftDirty.current) {
+        setCustomerQuoteDraft(formalQuoteTask?.customerQuotePrice?.toFixed(2) ?? '');
+      }
       setError(null);
     } catch (err) {
       if (currentLoadId !== quoteLoadId.current) return;
@@ -168,6 +171,8 @@ export default function TasksPanel({
     setSuppliers([]);
     setSupplierQuotes([]);
     setQuoteDataAvailable(false);
+    customerQuoteDraftDirty.current = false;
+    setCustomerQuoteDraft('');
     load();
     usersApi.list().then(setUsers).catch(() => undefined);
   }, [load]);
@@ -194,6 +199,7 @@ export default function TasksPanel({
     try {
       await tasksApi.update(projectId, task.id, { ...taskToPayload(task), ...changes });
       await load();
+      if ('customerQuotePrice' in changes) customerQuoteDraftDirty.current = false;
       onChanged?.();
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to update task details'));
@@ -573,13 +579,16 @@ export default function TasksPanel({
                                       min="0"
                                       step="0.01"
                                       value={customerQuoteDraft}
-                                      disabled={!canManageQuotes || !quoteDataAvailable}
-                                      onChange={(event) => setCustomerQuoteDraft(event.target.value)}
+                                      disabled={!canManageQuotes}
+                                      onChange={(event) => {
+                                        customerQuoteDraftDirty.current = true;
+                                        setCustomerQuoteDraft(event.target.value);
+                                      }}
                                       className="mt-1 w-48"
                                     />
                                   </label>
                                   <Button
-                                    disabled={!canManageQuotes || !quoteDataAvailable}
+                                    disabled={!canManageQuotes}
                                     onClick={() => formalQuoteTask && updateTaskFields(formalQuoteTask, {
                                       customerQuotePrice: customerQuoteDraft === '' ? null : Number(customerQuoteDraft),
                                     })}
