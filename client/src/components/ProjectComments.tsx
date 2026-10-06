@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
 import { apiErrorMessage, notesApi, usersApi } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import type { ProjectNote, User } from '../types';
 
+const OPEN_EVENT = 'milson-project-comments-open';
+
 export default function ProjectComments({ projectId }: { projectId: number }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
@@ -21,6 +24,30 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
   const [mentionError, setMentionError] = useState<string | null>(null);
   const notesLoadVersion = useRef(0);
   const usersLoadVersion = useRef(0);
+
+  useEffect(() => {
+    const closeIfAnotherOpened = (event: Event) => {
+      if ((event as CustomEvent<number>).detail !== projectId) setOpen(false);
+    };
+    window.addEventListener(OPEN_EVENT, closeIfAnotherOpened);
+    return () => window.removeEventListener(OPEN_EVENT, closeIfAnotherOpened);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('pointerdown', closeOnOutsidePointer);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('pointerdown', closeOnOutsidePointer);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -120,12 +147,21 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
       ? []
       : users.filter((user) => user.fullName.toLowerCase().includes(mentionQuery)).slice(0, 5);
 
+  const toggleComments = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    window.dispatchEvent(new CustomEvent<number>(OPEN_EVENT, { detail: projectId }));
+    setOpen(true);
+  };
+
   return (
-    <div className="min-w-[13rem]">
+    <div ref={rootRef} className="min-w-[13rem]">
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggleComments}
         className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:text-brand-900"
       >
         <MessageSquare className="h-3.5 w-3.5" />
@@ -137,6 +173,17 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
           className="fixed z-50 max-w-[calc(100vw-1rem)] rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
           style={{ left: popoverPosition.left, top: popoverPosition.top, width: popoverWidth }}
         >
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-700">Project comments</p>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close comments"
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
           <ErrorBanner message={error} />
           {mentionError && <p className="mb-2 text-xs text-amber-700">{mentionError}</p>}
           {loading ? (
