@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
-import { ArrowDown, ArrowUp, Pin, PinOff } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripVertical, Pin, PinOff } from 'lucide-react';
 import { Badge } from './ui';
 import { projectsApi } from '../lib/api';
 import { PROJECT_STAGES } from '../lib/constants';
@@ -169,6 +169,8 @@ interface ProjectTableProps {
   onSort: (columnId: string) => void;
   onWidthChange: (columnId: string, width: number) => void;
   onTogglePin: (columnId: string) => void;
+  /** Called when a header is dropped onto another column to reorder. */
+  onReorderColumn: (draggedId: string, targetId: string) => void;
 }
 
 /**
@@ -183,8 +185,10 @@ export default function ProjectTable({
   onSort,
   onWidthChange,
   onTogglePin,
+  onReorderColumn,
 }: ProjectTableProps) {
   const dragState = useRef<{ id: string; startX: number; startWidth: number } | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const startResize = useCallback(
     (event: React.MouseEvent, column: ProjectColumn) => {
@@ -211,9 +215,12 @@ export default function ProjectTable({
     [layout.widths, onWidthChange],
   );
 
-  const columns = PROJECT_COLUMNS.filter((column) => layout.visible.includes(column.id)).sort(
-    (a, b) => Number(layout.pinned.includes(b.id)) - Number(layout.pinned.includes(a.id)),
-  );
+  // Column order follows the saved `visible` order (drag-reorder writes it back);
+  // pinned columns always render first.
+  const columns = layout.visible
+    .map((id) => PROJECT_COLUMNS.find((column) => column.id === id))
+    .filter((column): column is ProjectColumn => column !== undefined)
+    .sort((a, b) => Number(layout.pinned.includes(b.id)) - Number(layout.pinned.includes(a.id)));
 
   // Pinned columns stick left; each one is offset by the widths before it.
   const offsets: Record<string, number> = {};
@@ -234,16 +241,37 @@ export default function ProjectTable({
               return (
                 <th
                   key={column.id}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData('text/plain', column.id);
+                    event.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    setDragOverId(column.id);
+                  }}
+                  onDragLeave={() => setDragOverId((current) => (current === column.id ? null : current))}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const draggedId = event.dataTransfer.getData('text/plain');
+                    setDragOverId(null);
+                    if (draggedId && draggedId !== column.id) onReorderColumn(draggedId, column.id);
+                  }}
+                  onDragEnd={() => setDragOverId(null)}
                   style={{
                     width: layout.widths[column.id] ?? column.width,
                     left: pinned ? offsets[column.id] : undefined,
                   }}
                   className={clsx(
-                    'group relative select-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500',
+                    'group relative select-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 cursor-grab active:cursor-grabbing',
                     pinned && 'sticky z-10 bg-slate-50',
+                    dragOverId === column.id && 'bg-brand-50 ring-2 ring-inset ring-brand-300',
                   )}
+                  title={`Drag to reorder ${column.label}`}
                 >
                   <div className="flex items-center gap-1.5">
+                    <GripVertical className="h-3 w-3 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
                     {column.sortable === false ? (
                       <span className="truncate">{column.label}</span>
                     ) : (

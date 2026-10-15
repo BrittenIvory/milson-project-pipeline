@@ -207,6 +207,22 @@ export default function ProjectsPage() {
         : [...current.pinned, columnId],
     }));
 
+  /** Moves draggedId to targetId's slot in the rendered (pinned-first) order. */
+  const reorderColumn = (draggedId: string, targetId: string) =>
+    setLayout((current) => {
+      const rendered = PROJECT_COLUMNS.filter((column) => current.visible.includes(column.id))
+        .sort(
+          (a, b) =>
+            Number(current.pinned.includes(b.id)) - Number(current.pinned.includes(a.id)),
+        )
+        .map((column) => column.id);
+      const from = rendered.indexOf(draggedId);
+      const to = rendered.indexOf(targetId);
+      if (from < 0 || to < 0 || from === to) return current;
+      rendered.splice(to, 0, rendered.splice(from, 1)[0]);
+      return { ...current, visible: rendered };
+    });
+
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeFilterCount = Object.keys(compact(filters)).length;
 
@@ -325,6 +341,7 @@ export default function ProjectsPage() {
             setLayout((current) => ({ ...current, widths: { ...current.widths, [id]: width } }))
           }
           onTogglePin={togglePin}
+          onReorderColumn={reorderColumn}
         />
       ) : (
         <div className="space-y-5">
