@@ -234,6 +234,9 @@ function buildProjectWhere(options: ProjectFilters) {
         OR LOWER(c.company_name) LIKE $${params.length}
         OR LOWER(COALESCE(p.customer_part_number,'')) LIKE $${params.length}
         OR LOWER(COALESCE(p.internal_part_number,'')) LIKE $${params.length}
+        OR LOWER(COALESCE(p.customer_machined_part_number,'')) LIKE $${params.length}
+        OR LOWER(COALESCE(p.customer_painted_part_number,'')) LIKE $${params.length}
+        OR LOWER(COALESCE(p.customer_unpainted_part_number,'')) LIKE $${params.length}
         OR LOWER(COALESCE(p.project_description,'')) LIKE $${params.length})`,
     );
   }
