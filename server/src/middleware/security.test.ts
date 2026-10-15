@@ -100,8 +100,18 @@ describe('csrfOriginCheck', () => {
     assert.equal(state.statusCode, 403);
   });
 
-  it('passes mutations without an origin (non-browser clients)', () => {
-    const { passed } = run(csrfOriginCheck, mutation());
+  it('passes origin-less mutations that authenticate with a Bearer token', () => {
+    const req = fakeReq({
+      method: 'POST',
+      headers: { host: 'app.example.com', authorization: 'Bearer abc' },
+    } as Request);
+    const { passed } = run(csrfOriginCheck, req);
     assert.equal(passed, true);
+  });
+
+  it('rejects origin-less cookie-authenticated mutations with 403', () => {
+    const { passed, state } = run(csrfOriginCheck, mutation());
+    assert.equal(passed, false);
+    assert.equal(state.statusCode, 403);
   });
 });

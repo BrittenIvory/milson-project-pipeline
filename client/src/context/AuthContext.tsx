@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../lib/api';
 import { EDITOR_ROLES } from '../lib/constants';
@@ -12,7 +12,7 @@ interface AuthContextValue {
   /** True when the signed-in user is an administrator. */
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
   /** Refresh the profile after changes like a password reset. */
   refresh: () => Promise<void>;
 }
@@ -24,23 +24,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Bumped by login so a session restore started before it cannot overwrite
+  // the freshly signed-in profile when it resolves later.
+  const sessionGeneration = useRef(0);
+
   useEffect(() => {
     // Restore the session on refresh via the httpOnly session cookie.
     authApi
       .me()
-      .then(setUser)
-      .catch(() => setUser(null))
+      .then((u) => {
+        if (sessionGeneration.current === 0) setUser(u);
+      })
+      .catch(() => {
+        if (sessionGeneration.current === 0) setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const { user: profile } = await authApi.login(email, password);
+    sessionGeneration.current += 1;
     setUser(profile);
     return profile;
   }, []);
 
-  const logout = useCallback(() => {
-    authApi.logout().catch(() => undefined);
+  // Await the logout response before clearing the user so a login that
+  // follows cannot have its new cookie deleted by a late logout response.
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Network failure: clear local state anyway; the cookie expires on its own.
+    }
     setUser(null);
   }, []);
 

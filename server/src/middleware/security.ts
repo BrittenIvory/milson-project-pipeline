@@ -20,6 +20,8 @@ interface Bucket {
  */
 export function createRateLimiter({ windowMs, max, key }: RateLimitOptions) {
   const buckets = new Map<string, Bucket>();
+  /** Hard cap on tracked keys so arbitrary emails/IPs cannot exhaust memory. */
+  const MAX_BUCKETS = 10_000;
 
   function middleware(req: Request, res: Response, next: NextFunction): void {
     const now = Date.now();
@@ -28,6 +30,11 @@ export function createRateLimiter({ windowMs, max, key }: RateLimitOptions) {
     if (!bucket || bucket.resetAt <= now) {
       bucket = { count: 0, resetAt: now + windowMs };
       buckets.set(bucketKey, bucket);
+    }
+    if (buckets.size > MAX_BUCKETS) {
+      // Drop expired buckets first, then the oldest ones if still over the cap.
+      for (const [k, b] of buckets) if (b.resetAt <= now) buckets.delete(k);
+      while (buckets.size > MAX_BUCKETS) buckets.delete(buckets.keys().next().value!);
     }
     bucket.count += 1;
     if (bucket.count > max) {
@@ -48,10 +55,9 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /**
  * CSRF protection for the cookie-authenticated session: any mutating request
- * that presents an Origin/Referer must originate from this same host. Requests
- * without an Origin (curl, scripts, mobile clients) can only authenticate with
- * a Bearer token — the session cookie is SameSite=Lax and cannot ride a
- * cross-site form POST anyway, so they are safe to pass through.
+ * that presents an Origin/Referer must originate from this same host. Mutating
+ * requests with no Origin/Referer at all must authenticate with a Bearer token —
+ * a cookie-authenticated mutation that cannot prove its origin is rejected.
  */
 export function csrfOriginCheck(req: Request, res: Response, next: NextFunction): void {
   if (SAFE_METHODS.has(req.method)) {
@@ -60,12 +66,23 @@ export function csrfOriginCheck(req: Request, res: Response, next: NextFunction)
   }
   const source = req.headers.origin ?? req.headers.referer;
   if (!source) {
-    next();
+    // Non-browser clients (curl, scripts) authenticate with a Bearer token and
+    // carry no Origin — let them through. A mutation that would authenticate
+    // via the session cookie without an Origin/Referer is rejected, since the
+    // browser cannot prove which origin initiated it.
+    if ((req.headers.authorization ?? '').startsWith('Bearer ')) {
+      next();
+      return;
+    }
+    res.status(403).json({ error: 'Blocked cross-site request' });
     return;
   }
   try {
-    const host = new URL(source).host;
-    if (host !== req.headers.host) {
+    // Compare hostnames only: in development the Vite proxy forwards requests
+    // with Origin :5174 and Host :3002, and a port mismatch would wrongly 403.
+    const hostname = new URL(source).hostname.toLowerCase();
+    const reqHostname = (req.headers.host ?? '').split(':')[0].toLowerCase();
+    if (hostname !== reqHostname) {
       res.status(403).json({ error: 'Blocked cross-site request' });
       return;
     }

@@ -13,6 +13,8 @@ declare module 'express-serve-static-core' {
 
 interface TokenPayload {
   sub: number;
+  /** Issued-at, seconds since epoch — set automatically by jwt.sign. */
+  iat?: number;
 }
 
 /** Name of the httpOnly session cookie that carries the JWT. */
@@ -27,9 +29,14 @@ export function signToken(userId: number): string {
 
 /** Parses `JWT_EXPIRES_IN` (e.g. '30m', '12h', '7d') into milliseconds. */
 export function sessionMaxAgeMs(): number {
-  const match = /^(\d+)\s*(s|m|h|d)$/.exec(config.jwtExpiresIn.trim());
+  const trimmed = config.jwtExpiresIn.trim();
+  const bare = /^(\d+)$/.exec(trimmed);
+  if (bare) return Number(bare[1]) * 1_000;
+  const match = /^(\d+)\s*(s|m|h|d|w)$/.exec(trimmed);
   if (!match) return 12 * 60 * 60 * 1000;
-  const unit = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[match[2] as 's' | 'm' | 'h' | 'd'];
+  const unit = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000, w: 604_800_000 }[
+    match[2] as 's' | 'm' | 'h' | 'd' | 'w'
+  ];
   return Number(match[1]) * unit;
 }
 
@@ -68,12 +75,26 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       full_name: string;
       role: Role;
       must_change_password: boolean;
+      password_changed_at: Date | null;
     }>(
-      'SELECT id, email, full_name, role, must_change_password FROM users WHERE id = $1 AND is_active = TRUE',
+      'SELECT id, email, full_name, role, must_change_password, password_changed_at FROM users WHERE id = $1 AND is_active = TRUE',
       [payload.sub],
     );
     if (!user) {
       res.status(401).json({ error: 'Account is no longer active' });
+      return;
+    }
+    // Tokens issued before a password change/reset no longer authenticate.
+    if (
+      user.password_changed_at &&
+      (payload.iat ?? 0) * 1000 <= user.password_changed_at.getTime()
+    ) {
+      res.status(401).json({ error: 'Session was invalidated. Please sign in again.' });
+      return;
+    }
+    // Accounts flagged for a password change may only reach the auth endpoints.
+    if (user.must_change_password && !/^\/api\/auth\/(me|logout|change-password)$/.test(req.originalUrl)) {
+      res.status(403).json({ error: 'Password change required', mustChangePassword: true });
       return;
     }
     req.user = {

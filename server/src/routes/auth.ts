@@ -101,7 +101,8 @@ router.post(
 
     const hash = await bcrypt.hash(newPassword, 12);
     await pool.query(
-      'UPDATE users SET password_hash = $1, must_change_password = FALSE, updated_at = NOW() WHERE id = $2',
+      `UPDATE users SET password_hash = $1, must_change_password = FALSE,
+       password_changed_at = NOW(), updated_at = NOW() WHERE id = $2`,
       [hash, req.user!.id],
     );
     await logActivity({
