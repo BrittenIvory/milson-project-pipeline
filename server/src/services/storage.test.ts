@@ -177,9 +177,31 @@ describe('S3DocumentStorage', () => {
 describe('streamToResponse', () => {
   const asResponse = (stream: PassThrough) => stream as unknown as import('express').Response;
 
-  it('destroys the response when the source stream errors', async () => {
+  it('returns a 500 when the source errors before bytes are sent', async () => {
     const source = new PassThrough();
-    const res = new PassThrough();
+    const res = new PassThrough() as PassThrough & {
+      headersSent: boolean;
+      statusCode: number;
+      status(code: number): PassThrough;
+    };
+    res.headersSent = false;
+    res.status = (code: number) => {
+      res.statusCode = code;
+      return res;
+    };
+    streamToResponse(source, asResponse(res));
+
+    source.destroy(new Error('s3 failure'));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(res.statusCode, 500);
+    assert.equal(res.destroyed, false);
+  });
+
+  it('destroys the response when the source stream errors mid-flight', async () => {
+    const source = new PassThrough();
+    const res = new PassThrough() as PassThrough & { headersSent: boolean };
+    res.headersSent = true;
     streamToResponse(source, asResponse(res));
 
     source.destroy(new Error('s3 failure'));

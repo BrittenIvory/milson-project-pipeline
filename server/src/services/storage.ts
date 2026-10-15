@@ -238,7 +238,16 @@ export function streamToResponse(
   res: import('express').Response,
 ): void {
   res.once('close', () => stream.destroy());
-  stream.once('error', () => res.destroy());
+  stream.once('error', () => {
+    // setHeader marks headers but doesn't flush them — while nothing has been
+    // sent the client can still get a real HTTP error instead of a dropped
+    // connection. Once bytes are in flight, only destroy remains.
+    if (!res.headersSent) {
+      res.status(500).end();
+      return;
+    }
+    res.destroy();
+  });
   stream.pipe(res);
 }
 
