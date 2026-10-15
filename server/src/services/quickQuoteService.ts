@@ -1,5 +1,5 @@
 import { queryOne } from '../db/pool';
-import { storage } from './storage';
+import { storage, storageFor } from './storage';
 import zlib from 'zlib';
 
 const MACHINING_PERCENTAGE = 18.46;
@@ -43,6 +43,7 @@ export interface QuoteProject {
   machiningRequired: boolean;
   paintingRequired: boolean;
   partImageStorageKey?: string | null;
+  partImageStorageDriver?: string | null;
   partImageMimeType?: string | null;
 }
 
@@ -349,7 +350,7 @@ export async function createQuotePdf(project: QuoteProject, quote: QuickQuote): 
   let imageObject: string | null = null;
   if (project.partImageStorageKey && project.partImageMimeType) {
     const image = imagePdfObject(
-      await storage.read(project.partImageStorageKey),
+      await storageFor(project.partImageStorageDriver ?? 'local').read(project.partImageStorageKey),
       project.partImageMimeType,
     );
     if (image) {
@@ -409,7 +410,7 @@ export async function generateQuickQuoteDocument(project: QuoteProject, uploaded
 
   const fileName = `${project.projectNumber}-estimate-quote.pdf`;
   const data = await createQuotePdf(project, quote);
-  const key = await storage.save(project.id, fileName, data);
+  const key = await storage.save(project.id, fileName, data, 'application/pdf');
   const existing = await queryOne<DocumentRow>(
     `SELECT * FROM documents
      WHERE project_id = $1 AND document_kind = 'generated_estimate'`,
@@ -428,7 +429,7 @@ export async function generateQuickQuoteDocument(project: QuoteProject, uploaded
       await storage.remove(key).catch(() => undefined);
       throw new Error('Unable to update generated estimate document');
     }
-    await storage.remove(existing.storage_key).catch(() => undefined);
+    await storageFor(existing.storage_driver).remove(existing.storage_key).catch(() => undefined);
     return toDocumentDto(updated);
   }
 
