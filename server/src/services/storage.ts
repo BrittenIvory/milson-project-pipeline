@@ -243,6 +243,8 @@ export function streamToResponse(
     // sent the client can still get a real HTTP error instead of a dropped
     // connection. Once bytes are in flight, only destroy remains.
     if (!res.headersSent) {
+      res.removeHeader('Content-Type');
+      res.removeHeader('Content-Disposition');
       res.status(500).end();
       return;
     }
