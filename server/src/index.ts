@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { config } from './config';
 import { seed } from './db/seed';
 import { sweepTaskDueNotifications } from './services/notificationService';
+import { storage } from './services/storage';
 
 /** How often due/overdue task reminders are generated. */
 const NOTIFICATION_SWEEP_MS = 60 * 60 * 1000;
@@ -14,6 +15,10 @@ async function main(): Promise<void> {
   await seed();
   createApp().listen(config.port, () => {
     console.log(`Milson Project Pipeline API listening on port ${config.port}`);
+    console.log(
+      `Document storage: ${storage.driver}` +
+        (storage.driver === 's3' ? ` (bucket: ${config.awsS3Bucket})` : ` (${config.storageDir})`),
+    );
   });
   await sweepTaskDueNotifications();
   setInterval(sweepTaskDueNotifications, NOTIFICATION_SWEEP_MS).unref();
