@@ -13,6 +13,9 @@ export const emptyProject: ProjectPayload = {
   customerContact: '',
   customerPartNumber: '',
   internalPartNumber: '',
+  customerMachinedPartNumber: '',
+  customerPaintedPartNumber: '',
+  customerUnpaintedPartNumber: '',
   projectName: '',
   projectDescription: '',
   annualUsage: null,
@@ -37,6 +40,9 @@ export function projectToPayload(project: Project): ProjectPayload {
     customerContact: project.customerContact ?? '',
     customerPartNumber: project.customerPartNumber ?? '',
     internalPartNumber: project.internalPartNumber ?? '',
+    customerMachinedPartNumber: project.customerMachinedPartNumber ?? '',
+    customerPaintedPartNumber: project.customerPaintedPartNumber ?? '',
+    customerUnpaintedPartNumber: project.customerUnpaintedPartNumber ?? '',
     projectName: project.projectName,
     projectDescription: project.projectDescription ?? '',
     annualUsage: project.annualUsage,
@@ -165,6 +171,24 @@ export default function ProjectForm({
             <TextInput
               value={value.internalPartNumber ?? ''}
               onChange={(e) => set('internalPartNumber', e.target.value)}
+            />
+          </Field>
+          <Field label="Customer Machined Part Number">
+            <TextInput
+              value={value.customerMachinedPartNumber ?? ''}
+              onChange={(e) => set('customerMachinedPartNumber', e.target.value)}
+            />
+          </Field>
+          <Field label="Customer Painted Part Number">
+            <TextInput
+              value={value.customerPaintedPartNumber ?? ''}
+              onChange={(e) => set('customerPaintedPartNumber', e.target.value)}
+            />
+          </Field>
+          <Field label="Customer Unpainted Part Number">
+            <TextInput
+              value={value.customerUnpaintedPartNumber ?? ''}
+              onChange={(e) => set('customerUnpaintedPartNumber', e.target.value)}
             />
           </Field>
         </div>

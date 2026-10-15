@@ -56,7 +56,13 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
     label: 'Comments',
     width: 150,
     sortable: false,
-    render: (p) => <ProjectComments projectId={p.id} />,
+    render: (p) => (
+      <ProjectComments
+        projectId={p.id}
+        projectNumber={p.projectNumber}
+        partNumber={p.internalPartNumber ?? p.customerPartNumber}
+      />
+    ),
   },
   {
     id: 'projectNumber',
@@ -80,6 +86,12 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
     label: 'Customer Part Number',
     width: 190,
     render: (p) => orDash(p.customerPartNumber),
+  },
+  {
+    id: 'internalPartNumber',
+    label: 'Internal Part Number',
+    width: 190,
+    render: (p) => orDash(p.internalPartNumber),
   },
   {
     id: 'projectName',

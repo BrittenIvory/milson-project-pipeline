@@ -35,6 +35,9 @@ export interface Project {
   customerContact: string | null;
   customerPartNumber: string | null;
   internalPartNumber: string | null;
+  customerMachinedPartNumber: string | null;
+  customerPaintedPartNumber: string | null;
+  customerUnpaintedPartNumber: string | null;
   projectName: string;
   projectDescription: string | null;
   annualUsage: number | null;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
 import { apiErrorMessage, notesApi, usersApi } from '../lib/api';
@@ -7,9 +8,16 @@ import type { ProjectNote, User } from '../types';
 
 const OPEN_EVENT = 'milson-project-comments-open';
 
-export default function ProjectComments({ projectId }: { projectId: number }) {
+interface ProjectCommentsProps {
+  projectId: number;
+  projectNumber: string;
+  partNumber?: string | null;
+}
+
+export default function ProjectComments({ projectId, projectNumber, partNumber }: ProjectCommentsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [popoverPosition, setPopoverPosition] = useState({ left: 8, top: 8 });
@@ -36,7 +44,8 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
   useEffect(() => {
     if (!open) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
@@ -168,13 +177,21 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
         Comments
         {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
       </button>
-      {open && (
+      {open &&
+        createPortal(
         <div
+          ref={popoverRef}
           className="fixed z-50 max-w-[calc(100vw-1rem)] rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
           style={{ left: popoverPosition.left, top: popoverPosition.top, width: popoverWidth }}
         >
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-700">Project comments</p>
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-700">Project comments</p>
+              <p className="truncate text-[11px] text-slate-500">
+                {projectNumber}
+                {partNumber ? ` · ${partNumber}` : ''}
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -241,7 +258,8 @@ export default function ProjectComments({ projectId }: { projectId: number }) {
               </div>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
