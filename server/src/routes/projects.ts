@@ -20,7 +20,7 @@ import {
   updateProject,
 } from '../services/projectService';
 import { seedStageTasks } from '../services/workflowService';
-import { storage, storageFor } from '../services/storage';
+import { storage, storageFor, streamToResponse } from '../services/storage';
 import documentsRouter from './documents';
 import notesRouter from './notes';
 import supplierQuotesRouter from './supplierQuotes';
@@ -142,7 +142,7 @@ router.get(
     }
     res.setHeader('Content-Type', project.partImageMimeType);
     res.setHeader('Content-Disposition', 'inline');
-    imageStorage.createReadStream(project.partImageStorageKey).pipe(res);
+    streamToResponse(imageStorage.createReadStream(project.partImageStorageKey), res);
   }),
 );
 

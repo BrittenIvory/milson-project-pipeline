@@ -22,7 +22,7 @@ export interface DocumentStorage {
   /** Persists bytes and returns the opaque key used to retrieve them later. */
   save(projectId: number, fileName: string, data: Buffer, mimeType?: string): Promise<string>;
   /** Returns a readable stream for a stored object. */
-  createReadStream(key: string): NodeJS.ReadableStream;
+  createReadStream(key: string): Readable;
   read(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
@@ -56,7 +56,7 @@ class LocalDiskStorage implements DocumentStorage {
     return key;
   }
 
-  createReadStream(key: string): NodeJS.ReadableStream {
+  createReadStream(key: string): Readable {
     return fs.createReadStream(this.absolute(key));
   }
 
@@ -123,16 +123,25 @@ export class S3DocumentStorage implements DocumentStorage {
     return key;
   }
 
-  createReadStream(key: string): NodeJS.ReadableStream {
+  createReadStream(key: string): Readable {
     const stream = new PassThrough();
+    let body: Readable | undefined;
+    // A destroyed/closed consumer (e.g. a cancelled HTTP download) must also
+    // release the upstream S3 body so the connection isn't held until timeout.
+    stream.once('close', () => body?.destroy());
     this.client
       .send(new GetObjectCommand({ Bucket: this.bucket, Key: key }))
       .then((result) => {
-        const body = (result as { Body?: Readable }).Body;
+        body = (result as { Body?: Readable }).Body;
         if (!body) {
           stream.destroy(new Error('S3 object has no body'));
           return;
         }
+        if (stream.destroyed) {
+          body.destroy();
+          return;
+        }
+        body.once('error', (err) => stream.destroy(err));
         body.pipe(stream);
       })
       .catch((err) => stream.destroy(err instanceof Error ? err : new Error(String(err))));
@@ -218,6 +227,20 @@ export function storageFor(driver: string): DocumentStorage {
 
 /** Primary storage driver used for all new writes. */
 export const storage = storageFor(config.storageDriver);
+
+/**
+ * Pipes a stored object into an HTTP response. `pipe` alone neither forwards
+ * source errors (which would crash the process on an unhandled 'error') nor
+ * notifies the source on client disconnect — this handles both.
+ */
+export function streamToResponse(
+  stream: Readable,
+  res: import('express').Response,
+): void {
+  res.once('close', () => stream.destroy());
+  stream.once('error', () => res.destroy());
+  stream.pipe(res);
+}
 
 /** File extensions accepted by the document module. */
 export const ALLOWED_EXTENSIONS = [

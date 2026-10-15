@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Readable } from 'node:stream';
-import { S3DocumentStorage, storageFor } from './storage';
+import { PassThrough, Readable } from 'node:stream';
+import { S3DocumentStorage, storageFor, streamToResponse } from './storage';
 
 interface FakeCommand {
   input: Record<string, unknown>;
@@ -65,6 +65,74 @@ describe('S3DocumentStorage', () => {
     assert.equal(Buffer.concat(chunks).toString(), 'chunk1chunk2');
   });
 
+  it('emits an error when GetObject fails instead of crashing', async () => {
+    const { client } = fakeS3(() => {
+      throw err('InternalError');
+    });
+    const s3 = new S3DocumentStorage('milson-docs', client);
+
+    const stream = s3.createReadStream('project-42/file.pdf');
+    await assert.rejects(
+      new Promise((resolve, reject) => {
+        stream.once('error', reject);
+        stream.once('data', resolve);
+        stream.resume();
+      }),
+      /InternalError/,
+    );
+  });
+
+  it('propagates S3 body errors to the consumer stream', async () => {
+    const body = new PassThrough();
+    const { client } = fakeS3(() => ({ Body: body }));
+    const s3 = new S3DocumentStorage('milson-docs', client);
+
+    const stream = s3.createReadStream('project-42/file.pdf');
+    const failure = new Promise<Error>((resolve) => stream.once('error', resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    body.destroy(new Error('connection reset'));
+
+    assert.match((await failure).message, /connection reset/);
+  });
+
+  it('destroys the S3 body when the consumer disconnects mid-stream', async () => {
+    const body = new PassThrough();
+    let bodyDestroyed = false;
+    body.on('close', () => {
+      bodyDestroyed = true;
+    });
+    const { client } = fakeS3(() => ({ Body: body }));
+    const s3 = new S3DocumentStorage('milson-docs', client);
+
+    const stream = s3.createReadStream('project-42/file.pdf');
+    await new Promise((resolve) => setImmediate(resolve)); // let GetObject resolve
+    stream.destroy();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(bodyDestroyed, true);
+  });
+
+  it('cleans up when the consumer is already gone before GetObject resolves', async () => {
+    let resolveSend: (value: unknown) => void = () => undefined;
+    const { client } = fakeS3(
+      () => new Promise((resolve) => { resolveSend = resolve; }),
+    );
+    const s3 = new S3DocumentStorage('milson-docs', client);
+
+    const stream = s3.createReadStream('project-42/file.pdf');
+    stream.destroy();
+
+    const body = new PassThrough();
+    let bodyDestroyed = false;
+    body.on('close', () => {
+      bodyDestroyed = true;
+    });
+    resolveSend({ Body: body });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(bodyDestroyed, true);
+  });
+
   it('reports existence via HeadObject', async () => {
     const { client } = fakeS3((cmd) => {
       if ((cmd.input.Key as string).includes('missing')) throw err('NotFound');
@@ -103,6 +171,32 @@ describe('S3DocumentStorage', () => {
     });
     const s3 = new S3DocumentStorage('milson-docs', client);
     await s3.remove('project-42/gone.pdf');
+  });
+});
+
+describe('streamToResponse', () => {
+  const asResponse = (stream: PassThrough) => stream as unknown as import('express').Response;
+
+  it('destroys the response when the source stream errors', async () => {
+    const source = new PassThrough();
+    const res = new PassThrough();
+    streamToResponse(source, asResponse(res));
+
+    source.destroy(new Error('s3 failure'));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(res.destroyed, true);
+  });
+
+  it('destroys the source stream when the client disconnects', async () => {
+    const source = new PassThrough();
+    const res = new PassThrough();
+    streamToResponse(source, asResponse(res));
+
+    res.destroy();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(source.destroyed, true);
   });
 });
 

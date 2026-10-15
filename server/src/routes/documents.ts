@@ -7,7 +7,13 @@ import { requireRole } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { logActivity } from '../services/activityService';
 import { getProject } from '../services/projectService';
-import { ALLOWED_EXTENSIONS, extensionOf, storage, storageFor } from '../services/storage';
+import {
+  ALLOWED_EXTENSIONS,
+  extensionOf,
+  storage,
+  storageFor,
+  streamToResponse,
+} from '../services/storage';
 
 interface DocumentRow {
   id: number;
@@ -125,7 +131,7 @@ router.get(
     }
     res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(row.file_name)}"`);
-    docStorage.createReadStream(row.storage_key).pipe(res);
+    streamToResponse(docStorage.createReadStream(row.storage_key), res);
   }),
 );
 
@@ -148,7 +154,7 @@ router.get(
     }
     res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
     res.setHeader('Content-Disposition', 'inline');
-    docStorage.createReadStream(row.storage_key).pipe(res);
+    streamToResponse(docStorage.createReadStream(row.storage_key), res);
   }),
 );
 
