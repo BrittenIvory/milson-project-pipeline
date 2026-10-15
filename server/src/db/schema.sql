@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS projects (
   customer_contact     TEXT,
   customer_part_number TEXT,
   internal_part_number TEXT,
+  customer_machined_part_number TEXT,
+  customer_painted_part_number TEXT,
+  customer_unpainted_part_number TEXT,
   project_name         TEXT NOT NULL,
   project_description  TEXT,
   annual_usage         INTEGER,
@@ -228,6 +231,10 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_storage_key TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_file_name TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_mime_type TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_size_bytes BIGINT;
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_machined_part_number TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_painted_part_number TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_unpainted_part_number TEXT;
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_date DATE;

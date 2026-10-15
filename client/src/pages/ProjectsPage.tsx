@@ -67,7 +67,11 @@ function ProjectCard({ project }: { project: Project }) {
         <p className="mt-3 text-xs text-slate-400">Updated {formatDateTime(project.updatedAt)}</p>
       </Link>
       <div className="mt-3 border-t border-slate-100 pt-3">
-        <ProjectComments projectId={project.id} />
+        <ProjectComments
+          projectId={project.id}
+          projectNumber={project.projectNumber}
+          partNumber={project.internalPartNumber ?? project.customerPartNumber}
+        />
       </div>
     </div>
   );

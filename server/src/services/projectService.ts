@@ -12,6 +12,9 @@ export interface ProjectRow {
   customer_contact: string | null;
   customer_part_number: string | null;
   internal_part_number: string | null;
+  customer_machined_part_number: string | null;
+  customer_painted_part_number: string | null;
+  customer_unpainted_part_number: string | null;
   project_name: string;
   project_description: string | null;
   annual_usage: number | null;
@@ -52,6 +55,9 @@ export const projectSchema = z.object({
   customerContact: optionalText,
   customerPartNumber: optionalText,
   internalPartNumber: optionalText,
+  customerMachinedPartNumber: optionalText,
+  customerPaintedPartNumber: optionalText,
+  customerUnpaintedPartNumber: optionalText,
   projectName: z.string().trim().min(1, 'Project name is required').max(200),
   projectDescription: z.string().trim().max(5000).optional().nullable(),
   annualUsage: emptyToNull(z.coerce.number().int().min(0)).optional(),
@@ -106,6 +112,9 @@ export function toProjectDto(row: ProjectRow) {
     customerContact: row.customer_contact,
     customerPartNumber: row.customer_part_number,
     internalPartNumber: row.internal_part_number,
+    customerMachinedPartNumber: row.customer_machined_part_number,
+    customerPaintedPartNumber: row.customer_painted_part_number,
+    customerUnpaintedPartNumber: row.customer_unpainted_part_number,
     projectName: row.project_name,
     projectDescription: row.project_description,
     annualUsage: row.annual_usage,
@@ -192,6 +201,7 @@ const SORTABLE_COLUMNS: Record<string, string> = {
   projectNumber: 'p.project_number',
   customerName: 'c.company_name',
   customerPartNumber: 'p.customer_part_number',
+  internalPartNumber: 'p.internal_part_number',
   projectName: 'p.project_name',
   currentStage: 'p.current_stage',
   assignedEngineerName: 'e.full_name',
@@ -327,15 +337,18 @@ export async function createProject(input: ProjectInput, createdBy: number) {
   const projectNumber = await nextProjectNumber();
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO projects (project_number, customer_id, customer_contact, customer_part_number,
-       internal_part_number, project_name, project_description, annual_usage, material,
+       internal_part_number, customer_machined_part_number, customer_painted_part_number,
+       customer_unpainted_part_number, project_name, project_description, annual_usage, material,
        estimated_weight, casting_process, machining_required, heat_treatment, painting_required,
        assigned_engineer_id, assigned_sales_id, priority, target_quote_date, notes, current_stage,
        created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
      RETURNING id`,
     [
       projectNumber, input.customerId, input.customerContact ?? null,
-      input.customerPartNumber ?? null, input.internalPartNumber ?? null, input.projectName,
+      input.customerPartNumber ?? null, input.internalPartNumber ?? null,
+      input.customerMachinedPartNumber ?? null, input.customerPaintedPartNumber ?? null,
+      input.customerUnpaintedPartNumber ?? null, input.projectName,
       input.projectDescription ?? null, input.annualUsage ?? null, input.material ?? null,
       input.estimatedWeight ?? null, input.castingProcess ?? null, input.machiningRequired,
       input.heatTreatment, input.paintingRequired, input.assignedEngineerId ?? null,
@@ -355,16 +368,19 @@ export async function updateProject(id: number, input: ProjectInput) {
   await assertCustomerExists(input.customerId);
   await pool.query(
     `UPDATE projects SET customer_id=$2, customer_contact=$3, customer_part_number=$4,
-       internal_part_number=$5, project_name=$6, project_description=$7, annual_usage=$8,
-       material=$9, estimated_weight=$10, casting_process=$11, machining_required=$12,
-       heat_treatment=$13, painting_required=$14, assigned_engineer_id=$15, assigned_sales_id=$16,
-       priority=$17, target_quote_date=$18, notes=$19, current_stage=$20,
-       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $20 THEN NOW() ELSE stage_started_at END,
+       internal_part_number=$5, customer_machined_part_number=$6, customer_painted_part_number=$7,
+       customer_unpainted_part_number=$8, project_name=$9, project_description=$10, annual_usage=$11,
+       material=$12, estimated_weight=$13, casting_process=$14, machining_required=$15,
+       heat_treatment=$16, painting_required=$17, assigned_engineer_id=$18, assigned_sales_id=$19,
+       priority=$20, target_quote_date=$21, notes=$22, current_stage=$23,
+       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $23 THEN NOW() ELSE stage_started_at END,
        updated_at=NOW()
      WHERE id=$1`,
     [
       id, input.customerId, input.customerContact ?? null, input.customerPartNumber ?? null,
-      input.internalPartNumber ?? null, input.projectName, input.projectDescription ?? null,
+      input.internalPartNumber ?? null, input.customerMachinedPartNumber ?? null,
+      input.customerPaintedPartNumber ?? null, input.customerUnpaintedPartNumber ?? null,
+      input.projectName, input.projectDescription ?? null,
       input.annualUsage ?? null, input.material ?? null, input.estimatedWeight ?? null,
       input.castingProcess ?? null, input.machiningRequired, input.heatTreatment,
       input.paintingRequired, input.assignedEngineerId ?? null, input.assignedSalesId ?? null,
