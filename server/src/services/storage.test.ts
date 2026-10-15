@@ -182,12 +182,18 @@ describe('streamToResponse', () => {
     const res = new PassThrough() as PassThrough & {
       headersSent: boolean;
       statusCode: number;
+      removedHeaders: string[];
       status(code: number): PassThrough;
+      removeHeader(name: string): void;
     };
     res.headersSent = false;
+    res.removedHeaders = [];
     res.status = (code: number) => {
       res.statusCode = code;
       return res;
+    };
+    res.removeHeader = (name: string) => {
+      res.removedHeaders.push(name);
     };
     streamToResponse(source, asResponse(res));
 
@@ -196,6 +202,7 @@ describe('streamToResponse', () => {
 
     assert.equal(res.statusCode, 500);
     assert.equal(res.destroyed, false);
+    assert.deepEqual(res.removedHeaders, ['Content-Type', 'Content-Disposition']);
   });
 
   it('destroys the response when the source stream errors mid-flight', async () => {
