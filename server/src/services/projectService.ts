@@ -31,6 +31,7 @@ export interface ProjectRow {
   target_quote_date: string | null;
   notes: string | null;
   part_image_storage_key: string | null;
+  part_image_storage_driver: string;
   part_image_file_name: string | null;
   part_image_mime_type: string | null;
   part_image_size_bytes: string | null;
@@ -141,6 +142,7 @@ export function toProjectDto(row: ProjectRow) {
     targetQuoteDate: row.target_quote_date,
     notes: row.notes,
     partImageStorageKey: row.part_image_storage_key,
+    partImageStorageDriver: row.part_image_storage_driver ?? 'local',
     partImageFileName: row.part_image_file_name,
     partImageMimeType: row.part_image_mime_type,
     partImageSizeBytes: row.part_image_size_bytes === null ? null : Number(row.part_image_size_bytes),

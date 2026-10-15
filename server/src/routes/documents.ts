@@ -7,7 +7,7 @@ import { requireRole } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { logActivity } from '../services/activityService';
 import { getProject } from '../services/projectService';
-import { ALLOWED_EXTENSIONS, extensionOf, storage } from '../services/storage';
+import { ALLOWED_EXTENSIONS, extensionOf, storage, storageFor } from '../services/storage';
 
 interface DocumentRow {
   id: number;
@@ -89,7 +89,7 @@ router.post(
       throw new HttpError(400, `Unsupported file type: .${extension}`);
     }
 
-    const key = await storage.save(projectId, req.file.originalname, req.file.buffer);
+    const key = await storage.save(projectId, req.file.originalname, req.file.buffer, req.file.mimetype);
     const row = await queryOne<DocumentRow>(
       `INSERT INTO documents (project_id, file_name, storage_key, storage_driver, mime_type,
          extension, size_bytes, document_kind, uploaded_by)
@@ -119,12 +119,13 @@ router.get(
       [Number(req.params.documentId), projectId],
     );
     if (!row) throw new HttpError(404, 'Document not found');
-    if (!(await storage.exists(row.storage_key))) {
+    const docStorage = storageFor(row.storage_driver);
+    if (!(await docStorage.exists(row.storage_key))) {
       throw new HttpError(410, 'Stored file is no longer available');
     }
     res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(row.file_name)}"`);
-    storage.createReadStream(row.storage_key).pipe(res);
+    docStorage.createReadStream(row.storage_key).pipe(res);
   }),
 );
 
@@ -141,12 +142,13 @@ router.get(
       [Number(req.params.documentId), projectId],
     );
     if (!row) throw new HttpError(404, 'Document not found');
-    if (!(await storage.exists(row.storage_key))) {
+    const docStorage = storageFor(row.storage_driver);
+    if (!(await docStorage.exists(row.storage_key))) {
       throw new HttpError(410, 'Stored file is no longer available');
     }
     res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
     res.setHeader('Content-Disposition', 'inline');
-    storage.createReadStream(row.storage_key).pipe(res);
+    docStorage.createReadStream(row.storage_key).pipe(res);
   }),
 );
 
@@ -191,7 +193,7 @@ router.delete(
       [Number(req.params.documentId), projectId],
     );
     if (!row) throw new HttpError(404, 'Document not found');
-    await storage.remove(row.storage_key);
+    await storageFor(row.storage_driver).remove(row.storage_key);
     await logActivity({
       actor: req.user ?? null,
       action: 'Document Deleted',

@@ -20,7 +20,7 @@ import {
   updateProject,
 } from '../services/projectService';
 import { seedStageTasks } from '../services/workflowService';
-import { storage } from '../services/storage';
+import { storage, storageFor } from '../services/storage';
 import documentsRouter from './documents';
 import notesRouter from './notes';
 import supplierQuotesRouter from './supplierQuotes';
@@ -135,13 +135,14 @@ router.get(
       res.status(404).json({ error: 'No part image uploaded' });
       return;
     }
-    if (!(await storage.exists(project.partImageStorageKey))) {
+    const imageStorage = storageFor(project.partImageStorageDriver ?? 'local');
+    if (!(await imageStorage.exists(project.partImageStorageKey))) {
       res.status(410).json({ error: 'Stored part image is no longer available' });
       return;
     }
     res.setHeader('Content-Type', project.partImageMimeType);
     res.setHeader('Content-Disposition', 'inline');
-    storage.createReadStream(project.partImageStorageKey).pipe(res);
+    imageStorage.createReadStream(project.partImageStorageKey).pipe(res);
   }),
 );
 
@@ -156,15 +157,17 @@ router.post(
       res.status(400).json({ error: 'Upload a PNG or JPEG image file' });
       return;
     }
-    const key = await storage.save(projectId, req.file.originalname, req.file.buffer);
+    const key = await storage.save(projectId, req.file.originalname, req.file.buffer, req.file.mimetype);
     const previousKey = project.partImageStorageKey;
+    const previousDriver = project.partImageStorageDriver ?? 'local';
     const updated = await queryOne<{ id: number }>(
       `UPDATE projects
-       SET part_image_storage_key=$2, part_image_file_name=$3, part_image_mime_type=$4,
-           part_image_size_bytes=$5, updated_at=NOW()
+       SET part_image_storage_key=$2, part_image_storage_driver=$3,
+           part_image_file_name=$4, part_image_mime_type=$5,
+           part_image_size_bytes=$6, updated_at=NOW()
        WHERE id=$1
        RETURNING id`,
-      [projectId, key, req.file.originalname, req.file.mimetype, req.file.size],
+      [projectId, key, storage.driver, req.file.originalname, req.file.mimetype, req.file.size],
     );
     if (!updated) {
       await storage.remove(key).catch(() => undefined);
@@ -185,7 +188,7 @@ router.post(
       console.error('Unable to refresh estimate after part image upload', error);
     } finally {
       if (previousKey && previousKey !== key) {
-        await storage.remove(previousKey).catch(() => undefined);
+        await storageFor(previousDriver).remove(previousKey).catch(() => undefined);
       }
     }
     res.json(refreshedProject);
@@ -197,8 +200,8 @@ router.delete(
   canEditProjects,
   asyncHandler(async (req, res) => {
     const projectId = Number(req.params.id);
-    const existing = await queryOne<{ part_image_storage_key: string | null }>(
-      'SELECT part_image_storage_key FROM projects WHERE id = $1',
+    const existing = await queryOne<{ part_image_storage_key: string | null; part_image_storage_driver: string | null }>(
+      'SELECT part_image_storage_key, part_image_storage_driver FROM projects WHERE id = $1',
       [projectId],
     );
     if (!existing) {
@@ -206,11 +209,16 @@ router.delete(
       return;
     }
     await queryOne(
-      `UPDATE projects SET part_image_storage_key=NULL, part_image_file_name=NULL,
-       part_image_mime_type=NULL, part_image_size_bytes=NULL, updated_at=NOW() WHERE id=$1 RETURNING id`,
+      `UPDATE projects SET part_image_storage_key=NULL, part_image_storage_driver='local',
+       part_image_file_name=NULL, part_image_mime_type=NULL, part_image_size_bytes=NULL,
+       updated_at=NOW() WHERE id=$1 RETURNING id`,
       [projectId],
     );
-    if (existing.part_image_storage_key) await storage.remove(existing.part_image_storage_key).catch(() => undefined);
+    if (existing.part_image_storage_key) {
+      await storageFor(existing.part_image_storage_driver ?? 'local')
+        .remove(existing.part_image_storage_key)
+        .catch(() => undefined);
+    }
     await logActivity({
       actor: req.user ?? null,
       action: 'Part Image Deleted',

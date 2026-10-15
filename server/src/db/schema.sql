@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS projects (
   target_quote_date    DATE,
   notes                TEXT,
   part_image_storage_key TEXT,
+  part_image_storage_driver TEXT NOT NULL DEFAULT 'local',
   part_image_file_name TEXT,
   part_image_mime_type TEXT,
   part_image_size_bytes BIGINT,
@@ -228,6 +229,7 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS stage_started_at TIMESTAMPTZ;
 UPDATE projects SET stage_started_at = updated_at WHERE stage_started_at IS NULL;
 ALTER TABLE projects ALTER COLUMN stage_started_at SET DEFAULT NOW();
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_storage_key TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_storage_driver TEXT NOT NULL DEFAULT 'local';
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_file_name TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_mime_type TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS part_image_size_bytes BIGINT;
