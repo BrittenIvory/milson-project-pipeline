@@ -103,13 +103,12 @@ export default function ProjectsPage() {
     setLayout((current) => {
       const visible = current.visible.filter((id) => PROJECT_COLUMNS.some((column) => column.id === id));
       const missing = DEFAULT_VISIBLE_COLUMNS.filter((id) => !visible.includes(id));
-      const ordered = ['comments', ...visible.filter((id) => id !== 'comments'), ...missing.filter((id) => id !== 'comments')];
       const pinned = current.pinned.includes('comments')
         ? current.pinned
         : ['comments', ...current.pinned];
-      return missing.length === 0 && ordered.join('|') === current.visible.join('|') && pinned.join('|') === current.pinned.join('|')
+      return missing.length === 0 && pinned.join('|') === current.pinned.join('|')
         ? current
-        : { ...current, visible: ordered, pinned };
+        : { ...current, visible: [...visible, ...missing], pinned };
     });
   }, [setLayout]);
 
@@ -190,14 +189,19 @@ export default function ProjectsPage() {
   };
 
   const toggleColumn = (columnId: string) =>
-    setLayout((current) => ({
-      ...current,
-      visible: current.visible.includes(columnId)
-        ? current.visible.filter((id) => id !== columnId)
-        : DEFAULT_VISIBLE_COLUMNS.filter(
-            (id) => current.visible.includes(id) || id === columnId,
-          ),
-    }));
+    setLayout((current) => {
+      if (current.visible.includes(columnId)) {
+        return { ...current, visible: current.visible.filter((id) => id !== columnId) };
+      }
+      // Re-insert a shown column at its default-order slot, keeping custom order.
+      const visible = [...current.visible];
+      const defaultIndex = DEFAULT_VISIBLE_COLUMNS.indexOf(columnId);
+      const insertAt = visible.findIndex(
+        (id) => DEFAULT_VISIBLE_COLUMNS.indexOf(id) > defaultIndex,
+      );
+      visible.splice(insertAt < 0 ? visible.length : insertAt, 0, columnId);
+      return { ...current, visible };
+    });
 
   const togglePin = (columnId: string) =>
     setLayout((current) => ({
@@ -206,6 +210,21 @@ export default function ProjectsPage() {
         ? current.pinned.filter((id) => id !== columnId)
         : [...current.pinned, columnId],
     }));
+
+  /** Moves draggedId to targetId's slot in the rendered (pinned-first) order. */
+  const reorderColumn = (draggedId: string, targetId: string) =>
+    setLayout((current) => {
+      const rendered = current.visible
+        .filter((id) => PROJECT_COLUMNS.some((column) => column.id === id))
+        .sort(
+          (a, b) => Number(current.pinned.includes(b)) - Number(current.pinned.includes(a)),
+        );
+      const from = rendered.indexOf(draggedId);
+      const to = rendered.indexOf(targetId);
+      if (from < 0 || to < 0 || from === to) return current;
+      rendered.splice(to, 0, rendered.splice(from, 1)[0]);
+      return { ...current, visible: rendered };
+    });
 
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeFilterCount = Object.keys(compact(filters)).length;
@@ -325,6 +344,7 @@ export default function ProjectsPage() {
             setLayout((current) => ({ ...current, widths: { ...current.widths, [id]: width } }))
           }
           onTogglePin={togglePin}
+          onReorderColumn={reorderColumn}
         />
       ) : (
         <div className="space-y-5">
