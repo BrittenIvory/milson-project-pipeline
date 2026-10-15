@@ -2,6 +2,8 @@ import axios, { AxiosError } from 'axios';
 import type {
   ActivityRecord,
   AppNotification,
+  ManagedUser,
+  Role,
   Customer,
   DashboardSummary,
   Project,
@@ -17,22 +19,8 @@ import type {
   User,
 } from '../types';
 
-const TOKEN_KEY = 'milson.token';
-
-/** Shared axios instance; the bearer token is injected per request. */
+/** Shared axios instance; the httpOnly session cookie is sent automatically. */
 export const http = axios.create({ baseURL: '/api' });
-
-http.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
-};
 
 /** Extracts a human readable message from an API error. */
 export function apiErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
@@ -42,13 +30,28 @@ export function apiErrorMessage(error: unknown, fallback = 'Something went wrong
 
 export const authApi = {
   login: (email: string, password: string) =>
-    http.post<{ token: string; user: User }>('/auth/login', { email, password }).then((r) => r.data),
+    http.post<{ user: User }>('/auth/login', { email, password }).then((r) => r.data),
+  logout: () => http.post('/auth/logout'),
   me: () => http.get<{ user: User }>('/auth/me').then((r) => r.data.user),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    http.post('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
 };
 
 export const usersApi = {
   list: (role?: string) =>
     http.get<User[]>('/users', { params: { role } }).then((r) => r.data),
+  /** Administrator endpoints. */
+  manage: () => http.get<ManagedUser[]>('/users/manage').then((r) => r.data),
+  create: (payload: { email: string; fullName: string; role: Role; password?: string }) =>
+    http
+      .post<{ user: ManagedUser; temporaryPassword: string }>('/users/manage', payload)
+      .then((r) => r.data),
+  update: (id: number, payload: { isActive?: boolean; role?: Role; fullName?: string }) =>
+    http.patch<{ user: ManagedUser }>(`/users/manage/${id}`, payload).then((r) => r.data),
+  resetPassword: (id: number) =>
+    http
+      .post<{ user: ManagedUser; temporaryPassword: string }>(`/users/manage/${id}/reset-password`)
+      .then((r) => r.data),
 };
 
 export type SupplierPayload = Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>;
@@ -156,7 +159,7 @@ export const documentsApi = {
   },
   remove: (projectId: number, documentId: number) =>
     http.delete(`/projects/${projectId}/documents/${documentId}`),
-  /** Downloads through axios so the Authorization header is sent. */
+  /** Downloads through axios so the session cookie is sent. */
   download: async (projectId: number, doc: ProjectDocument) => {
     const response = await http.get(`/projects/${projectId}/documents/${doc.id}/download`, {
       responseType: 'blob',

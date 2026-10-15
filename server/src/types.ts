@@ -44,6 +44,8 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: Role;
+  /** True when the user must set a new password before using the app. */
+  mustChangePassword?: boolean;
 }
 
 export const TASK_STATUSES = [

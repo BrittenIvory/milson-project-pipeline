@@ -9,6 +9,8 @@ import PlaceholderPage from './pages/PlaceholderPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
 import SearchPage from './pages/SearchPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import SettingsPage from './pages/SettingsPage';
 import SuppliersPage from './pages/SuppliersPage';
 
 /** Route table. Everything except /login sits behind ProtectedRoute. */
@@ -38,15 +40,8 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="/settings"
-            element={
-              <PlaceholderPage
-                title="Settings"
-                description="User administration and workspace preferences arrive in a later phase."
-              />
-            }
-          />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

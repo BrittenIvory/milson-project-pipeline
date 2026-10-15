@@ -8,9 +8,16 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('administrator','engineering','sales','production','quality')),
   is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+  must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+  password_changed_at TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Upgrade path for databases created before these columns existed.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
+-- Tokens issued before this timestamp are rejected; set on every password change/reset.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS customers (
   id                SERIAL PRIMARY KEY,
