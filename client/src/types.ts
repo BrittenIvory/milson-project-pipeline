@@ -5,6 +5,15 @@ export interface User {
   email: string;
   fullName: string;
   role: Role;
+  /** True when a temporary password is set and the user must choose a new one. */
+  mustChangePassword?: boolean;
+}
+
+/** Administrator view of an account, including status fields. */
+export interface ManagedUser extends User {
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
 }
 
 export interface Customer {

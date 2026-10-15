@@ -15,6 +15,9 @@ interface TokenPayload {
   sub: number;
 }
 
+/** Name of the httpOnly session cookie that carries the JWT. */
+export const SESSION_COOKIE = 'milson_session';
+
 /** Signs a short-lived access token for a user id. */
 export function signToken(userId: number): string {
   return jwt.sign({ sub: userId } satisfies TokenPayload, config.jwtSecret, {
@@ -22,28 +25,64 @@ export function signToken(userId: number): string {
   } as jwt.SignOptions);
 }
 
+/** Parses `JWT_EXPIRES_IN` (e.g. '30m', '12h', '7d') into milliseconds. */
+export function sessionMaxAgeMs(): number {
+  const match = /^(\d+)\s*(s|m|h|d)$/.exec(config.jwtExpiresIn.trim());
+  if (!match) return 12 * 60 * 60 * 1000;
+  const unit = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[match[2] as 's' | 'm' | 'h' | 'd'];
+  return Number(match[1]) * unit;
+}
+
+/** Minimal cookie-parser replacement for reading the session cookie. */
+function cookieValue(header: string | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const pair of header.split(';')) {
+    const [key, ...rest] = pair.trim().split('=');
+    if (key === name) return decodeURIComponent(rest.join('='));
+  }
+  return null;
+}
+
+/** Reads the session token from the Authorization header or the session cookie. */
+function extractToken(req: Request): string | null {
+  const header = req.headers.authorization ?? '';
+  if (header.startsWith('Bearer ')) return header.slice(7);
+  return cookieValue(req.headers.cookie, SESSION_COOKIE);
+}
+
 /**
  * Verifies the bearer token, loads the (still active) user and attaches it to
  * the request. Rejects with 401 when the token is missing or invalid.
  */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const header = req.headers.authorization ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = extractToken(req);
   if (!token) {
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
   try {
     const payload = jwt.verify(token, config.jwtSecret) as unknown as TokenPayload;
-    const user = await queryOne<{ id: number; email: string; full_name: string; role: Role }>(
-      'SELECT id, email, full_name, role FROM users WHERE id = $1 AND is_active = TRUE',
+    const user = await queryOne<{
+      id: number;
+      email: string;
+      full_name: string;
+      role: Role;
+      must_change_password: boolean;
+    }>(
+      'SELECT id, email, full_name, role, must_change_password FROM users WHERE id = $1 AND is_active = TRUE',
       [payload.sub],
     );
     if (!user) {
       res.status(401).json({ error: 'Account is no longer active' });
       return;
     }
-    req.user = { id: user.id, email: user.email, fullName: user.full_name, role: user.role };
+    req.user = {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      role: user.role,
+      mustChangePassword: user.must_change_password,
+    };
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired session' });

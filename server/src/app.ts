@@ -4,6 +4,7 @@ import cors from 'cors';
 import fs from 'fs';
 import { config } from './config';
 import { errorHandler } from './middleware/errors';
+import { csrfOriginCheck } from './middleware/security';
 import activityRouter from './routes/activity';
 import authRouter from './routes/auth';
 import customersRouter from './routes/customers';
@@ -18,6 +19,7 @@ export function createApp(): Express {
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '2mb' }));
+  app.use('/api', csrfOriginCheck);
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
   app.use('/api/auth', authRouter);

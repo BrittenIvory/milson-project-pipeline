@@ -1,0 +1,306 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { KeyRound, Plus, ShieldAlert, UserCheck, UserX } from 'lucide-react';
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorBanner,
+  Field,
+  Modal,
+  PageHeader,
+  Select,
+  SkeletonRows,
+  TextInput,
+} from '../components/ui';
+import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage, usersApi } from '../lib/api';
+import { ROLE_LABELS } from '../lib/constants';
+import type { ManagedUser, Role } from '../types';
+
+const ROLE_OPTIONS: Role[] = ['administrator', 'engineering', 'sales', 'production', 'quality'];
+
+/** One-shot display of a generated temporary password. */
+function TempPasswordBanner({
+  email,
+  password,
+  onDone,
+}: {
+  email: string;
+  password: string;
+  onDone: () => void;
+}) {
+  return (
+    <Modal open title="Temporary password" onClose={onDone} width="max-w-md"
+      footer={<Button onClick={onDone}>Done</Button>}>
+      <p className="text-sm text-slate-600">
+        Share this temporary password with <span className="font-medium">{email}</span>. It is shown
+        only once; the user must set a new password at their next sign-in.
+      </p>
+      <p className="mt-3 select-all rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center font-mono text-sm">
+        {password}
+      </p>
+    </Modal>
+  );
+}
+
+/** Administrator user management: create, deactivate/reactivate, reset passwords. */
+export default function SettingsPage() {
+  const { isAdmin, user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    usersApi
+      .manage()
+      .then(setUsers)
+      .catch((err) => setError(apiErrorMessage(err, 'Unable to load users')))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) load();
+    else setLoading(false);
+  }, [isAdmin, load]);
+
+  const toggleActive = async (u: ManagedUser) => {
+    setBusyId(u.id);
+    setError(null);
+    try {
+      await usersApi.update(u.id, { isActive: !u.isActive });
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to update user'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resetPassword = async (u: ManagedUser) => {
+    setBusyId(u.id);
+    setError(null);
+    try {
+      const { temporaryPassword } = await usersApi.resetPassword(u.id);
+      setTempPassword({ email: u.email, password: temporaryPassword });
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to reset password'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title="Settings"
+        description="Manage your account and employee access"
+        actions={
+          <Button variant="secondary" onClick={() => navigate('/change-password')}>
+            Change my password
+          </Button>
+        }
+      />
+
+      {!isAdmin ? (
+        <Card className="p-6 text-sm text-slate-500">
+          User management is only available to administrators. Use the button above to change your
+          own password.
+        </Card>
+      ) : loading ? (
+        <Card>
+          <SkeletonRows rows={5} />
+        </Card>
+      ) : (
+        <Card>
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <h2 className="text-base font-semibold text-slate-900">User Management</h2>
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" /> New user
+            </Button>
+          </div>
+          <div className="px-5 py-4">
+            <ErrorBanner message={error} />
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="py-2 pr-4">Name</th>
+                  <th className="py-2 pr-4">Email</th>
+                  <th className="py-2 pr-4">Role</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2.5 pr-4 font-medium text-slate-800">
+                      {u.fullName}
+                      {u.id === currentUser?.id && (
+                        <span className="ml-2 text-xs text-slate-400">(you)</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-4 text-slate-600">{u.email}</td>
+                    <td className="py-2.5 pr-4">
+                      <Badge tone={u.role === 'administrator' ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-600'}>
+                        {ROLE_LABELS[u.role]}
+                      </Badge>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <Badge tone={u.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                        {u.isActive ? 'Active' : 'Deactivated'}
+                      </Badge>
+                      {u.mustChangePassword && (
+                        <span className="ml-2 text-xs text-amber-600">Password reset pending</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === u.id}
+                          onClick={() => resetPassword(u)}
+                          title="Reset password"
+                        >
+                          <KeyRound className="h-4 w-4" /> Reset
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === u.id || u.id === currentUser?.id}
+                          onClick={() => toggleActive(u)}
+                          title={u.isActive ? 'Deactivate account' : 'Reactivate account'}
+                        >
+                          {u.isActive ? (
+                            <>
+                              <UserX className="h-4 w-4" /> Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="h-4 w-4" /> Reactivate
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Deactivated users are signed out immediately and cannot log in. There is no public
+              sign-up; accounts are created here only.
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {showCreate && (
+        <CreateUserModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(email, password) => {
+            setShowCreate(false);
+            load();
+            setTempPassword({ email, password });
+          }}
+        />
+      )}
+      {tempPassword && (
+        <TempPasswordBanner
+          email={tempPassword.email}
+          password={tempPassword.password}
+          onDone={() => setTempPassword(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CreateUserModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (email: string, tempPassword: string) => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState<Role>('engineering');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const { temporaryPassword } = await usersApi.create({
+        email,
+        fullName,
+        role,
+        ...(password ? { password } : {}),
+      });
+      onCreated(email, temporaryPassword);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to create user'));
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      title="New employee account"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" form="create-user-form" loading={loading}>Create account</Button>
+        </>
+      }
+    >
+      <form id="create-user-form" onSubmit={submit} className="space-y-4">
+        <ErrorBanner message={error} />
+        <Field label="Full name">
+          <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+        </Field>
+        <Field label="Email">
+          <TextInput
+            type="email"
+            autoComplete="off"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Role">
+          <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field
+          label="Temporary password"
+          hint="Leave blank to generate one. The employee must change it at first sign-in."
+        >
+          <TextInput
+            type="text"
+            autoComplete="off"
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Auto-generate"
+          />
+        </Field>
+      </form>
+    </Modal>
+  );
+}
