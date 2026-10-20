@@ -28,7 +28,7 @@ export default function App() {
           Sandbox environment — not production data
         </div>
       )}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
