@@ -208,7 +208,7 @@ router.post(
     const hash = await bcrypt.hash(temporaryPassword, 12);
     const row = await queryOne<ManagedUserRow>(
       `UPDATE users SET password_hash = $1, must_change_password = TRUE,
-       password_changed_at = NOW(), updated_at = NOW()
+       password_changed_at = NOW(), session_version = session_version + 1, updated_at = NOW()
        WHERE id = $2 RETURNING *`,
       [hash, targetId],
     );

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   is_active     BOOLEAN NOT NULL DEFAULT TRUE,
   must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
   password_changed_at TIMESTAMPTZ,
+  session_version INTEGER NOT NULL DEFAULT 0,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -18,6 +19,9 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
 -- Tokens issued before this timestamp are rejected; set on every password change/reset.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+-- Bumped on every password change/reset; tokens carry the version they were
+-- issued under and are rejected once it no longer matches.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS customers (
   id                SERIAL PRIMARY KEY,
