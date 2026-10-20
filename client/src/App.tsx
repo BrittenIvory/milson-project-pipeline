@@ -22,13 +22,14 @@ export default function App() {
     configApi.get().then((c) => setSandbox(c.sandbox)).catch(() => undefined);
   }, []);
   return (
-    <>
+    <div className="flex h-full flex-col">
       {sandbox && (
-        <div className="bg-amber-500 px-4 py-1.5 text-center text-xs font-bold uppercase tracking-widest text-black">
+        <div className="shrink-0 bg-amber-500 px-4 py-1.5 text-center text-xs font-bold uppercase tracking-widest text-black">
           Sandbox environment — not production data
         </div>
       )}
-      <Routes>
+      <div className="min-h-0 flex-1">
+        <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -57,7 +58,8 @@ export default function App() {
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </>
+        </Routes>
+      </div>
+    </div>
   );
 }
