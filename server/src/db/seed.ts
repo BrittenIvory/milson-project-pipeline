@@ -11,18 +11,25 @@ interface SeedUser {
   password: string;
 }
 
-const seedUsers: SeedUser[] = [
-  {
-    email: config.seedAdminEmail,
-    fullName: 'Milson Administrator',
-    role: 'administrator',
-    password: config.seedAdminPassword,
-  },
+const adminUser: SeedUser = {
+  email: config.seedAdminEmail,
+  fullName: 'Milson Administrator',
+  role: 'administrator',
+  password: config.seedAdminPassword,
+};
+
+/** Demo accounts for local development only — never seeded in production. */
+const devUsers: SeedUser[] = [
   { email: 'engineer@milsonfoundry.com', fullName: 'Erin Engineer', role: 'engineering', password: 'Engineer123!' },
   { email: 'sales@milsonfoundry.com', fullName: 'Sam Sales', role: 'sales', password: 'Sales123!' },
   { email: 'production@milsonfoundry.com', fullName: 'Pat Production', role: 'production', password: 'Production123!' },
   { email: 'quality@milsonfoundry.com', fullName: 'Quinn Quality', role: 'quality', password: 'Quality123!' },
 ];
+
+const seedUsers: SeedUser[] =
+  config.nodeEnv === 'production' && process.env.SEED_DEMO_USERS !== 'true'
+    ? [adminUser]
+    : [adminUser, ...devUsers];
 
 /** Inserts the default user set. Existing users are left untouched. */
 export async function seed(): Promise<void> {
