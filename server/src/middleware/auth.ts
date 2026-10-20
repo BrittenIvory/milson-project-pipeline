@@ -15,18 +15,20 @@ interface TokenPayload {
   sub: number;
   /** Issued-at, seconds since epoch — set automatically by jwt.sign. */
   iat?: number;
+  /** users.session_version the token was issued under. */
+  sv?: number;
 }
 
 /** Name of the httpOnly session cookie that carries the JWT. */
 export const SESSION_COOKIE = 'milson_session';
 
-/** Signs a short-lived access token for a user id. */
-export function signToken(userId: number): string {
+/** Signs a short-lived access token for a user id under its session version. */
+export function signToken(userId: number, sessionVersion = 0): string {
   // jsonwebtoken reads a bare numeric string as milliseconds; pass it as a
   // number so it means seconds — the same unit sessionMaxAgeMs assigns it.
   const trimmed = config.jwtExpiresIn.trim();
   const expiresIn = /^\d+$/.test(trimmed) ? Number(trimmed) : trimmed;
-  return jwt.sign({ sub: userId } satisfies TokenPayload, config.jwtSecret, {
+  return jwt.sign({ sub: userId, sv: sessionVersion } satisfies TokenPayload, config.jwtSecret, {
     expiresIn,
   } as jwt.SignOptions);
 }
@@ -80,8 +82,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       role: Role;
       must_change_password: boolean;
       password_changed_at: Date | null;
+      session_version: number;
     }>(
-      'SELECT id, email, full_name, role, must_change_password, password_changed_at FROM users WHERE id = $1 AND is_active = TRUE',
+      'SELECT id, email, full_name, role, must_change_password, password_changed_at, session_version FROM users WHERE id = $1 AND is_active = TRUE',
       [payload.sub],
     );
     if (!user) {
@@ -90,8 +93,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     }
     // Tokens issued before a password change/reset no longer authenticate.
     if (
-      user.password_changed_at &&
-      (payload.iat ?? 0) * 1000 <= user.password_changed_at.getTime()
+      (payload.sv ?? 0) !== user.session_version ||
+      (user.password_changed_at &&
+        (payload.iat ?? 0) * 1000 <= user.password_changed_at.getTime())
     ) {
       res.status(401).json({ error: 'Session was invalidated. Please sign in again.' });
       return;

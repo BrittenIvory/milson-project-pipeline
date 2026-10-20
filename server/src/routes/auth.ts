@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import { z } from 'zod';
 import { config } from '../config';
-import { pool, queryOne } from '../db/pool';
+import { queryOne } from '../db/pool';
 import { requireAuth, SESSION_COOKIE, sessionMaxAgeMs, signToken } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { createRateLimiter } from '../middleware/security';
@@ -52,6 +52,7 @@ router.post(
       password_hash: string;
       is_active: boolean;
       must_change_password: boolean;
+      session_version: number;
     }>('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 
     if (!user || !user.is_active || !(await bcrypt.compare(password, user.password_hash))) {
@@ -65,7 +66,7 @@ router.post(
       role: user.role,
       mustChangePassword: user.must_change_password,
     };
-    res.cookie(SESSION_COOKIE, signToken(user.id), sessionCookieOptions());
+    res.cookie(SESSION_COOKIE, signToken(user.id, user.session_version), sessionCookieOptions());
     await logActivity({ actor: profile, action: 'User Logged In', entityType: 'user', entityId: user.id });
     res.json({ user: profile });
   }),
@@ -100,11 +101,12 @@ router.post(
     }
 
     const hash = await bcrypt.hash(newPassword, 12);
-    // Cutoff sits one second back so a session issued in the same second as the
-    // change (the fresh cookie below) still validates, while every prior one dies.
-    await pool.query(
+    // Bump the session version: every token issued before the change is revoked,
+    // with no timing window, and the fresh cookie below carries the new version.
+    const updated = await queryOne<{ session_version: number }>(
       `UPDATE users SET password_hash = $1, must_change_password = FALSE,
-       password_changed_at = NOW() - INTERVAL '1 second', updated_at = NOW() WHERE id = $2`,
+       password_changed_at = NOW(), session_version = session_version + 1,
+       updated_at = NOW() WHERE id = $2 RETURNING session_version`,
       [hash, req.user!.id],
     );
     await logActivity({
@@ -113,8 +115,9 @@ router.post(
       entityType: 'user',
       entityId: req.user!.id,
     });
-    // Every other session dies at the cutoff; this client gets a fresh cookie.
-    res.cookie(SESSION_COOKIE, signToken(req.user!.id), sessionCookieOptions());
+    // Every other session is revoked by the version bump; this client gets a
+    // fresh cookie signed under the new version.
+    res.cookie(SESSION_COOKIE, signToken(req.user!.id, updated?.session_version ?? 0), sessionCookieOptions());
     res.json({ ok: true });
   }),
 );

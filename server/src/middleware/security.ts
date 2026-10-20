@@ -71,7 +71,7 @@ export function csrfOriginCheck(req: Request, res: Response, next: NextFunction)
     // their first session. A mutation that would authenticate via the session
     // cookie without an Origin/Referer is rejected, since the browser cannot
     // prove which origin initiated it.
-    if ((req.headers.authorization ?? '').startsWith('Bearer ') || req.path === '/auth/login') {
+    if ((req.headers.authorization ?? '').startsWith('Bearer ') || /^\/auth\/login\/?$/i.test(req.path)) {
       next();
       return;
     }
