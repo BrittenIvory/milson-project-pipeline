@@ -92,14 +92,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return;
     }
     // Tokens issued before a password change/reset no longer authenticate.
-    // Versioned tokens are compared exactly; the timestamp cutoff only applies
-    // to legacy pre-version tokens (no sv), whose iat has second precision and
-    // so can spuriously fail a same-second password change.
+    // Every token must match the current session_version (legacy tokens without
+    // an sv claim count as version 0); the timestamp cutoff additionally applies
+    // to those legacy tokens, whose iat has second precision and so can
+    // spuriously fail a same-second password change.
     if (
-      payload.sv !== undefined
-        ? payload.sv !== user.session_version
-        : user.password_changed_at !== null &&
-          (payload.iat ?? 0) * 1000 <= user.password_changed_at.getTime()
+      (payload.sv ?? 0) !== user.session_version ||
+      (payload.sv === undefined &&
+        user.password_changed_at !== null &&
+        (payload.iat ?? 0) * 1000 <= user.password_changed_at.getTime())
     ) {
       res.status(401).json({ error: 'Session was invalidated. Please sign in again.' });
       return;
