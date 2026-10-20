@@ -22,6 +22,8 @@ export function createApp(): Express {
   app.use('/api', csrfOriginCheck);
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+  // Public deployment flags so the client can show an environment banner.
+  app.get('/api/config', (_req, res) => res.json({ sandbox: config.sandbox }));
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/customers', customersRouter);
