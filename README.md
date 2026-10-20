@@ -137,6 +137,15 @@ lost when the service restarts, and free PostgreSQL instances expire after 30 da
 production use, move the service to a paid plan and add a disk at `/var/data/uploads`
 (setting `STORAGE_DIR` to match), or implement a cloud `DocumentStorage` driver.
 
+## Sandbox and rebuild policy
+
+All rebuild work targets the **`Sandbox`** branch — never `main`. Nothing merges
+into `main` without the repository owner's written approval. The
+`pre-rebuild-baseline` tag and `backup/pre-rebuild` branch mark the pre-rebuild
+state of `main`; see `REVERT.md` for restore steps. The sandbox Render deployment
+(`render.sandbox.yaml`) uses its own database, its own generated JWT secret, and
+local storage — it shares nothing with production.
+
 ## Checks
 
 ```bash

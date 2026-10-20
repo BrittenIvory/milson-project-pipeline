@@ -31,4 +31,6 @@ export const config = {
   clientDist: process.env.CLIENT_DIST ?? path.resolve(process.cwd(), '../client/dist'),
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL ?? 'admin@milsonfoundry.com',
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'Admin123!',
+  /** Set on the sandbox deployment to render a visible SANDBOX banner. */
+  sandbox: process.env.SANDBOX === 'true',
 };

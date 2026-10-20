@@ -28,6 +28,11 @@ export function apiErrorMessage(error: unknown, fallback = 'Something went wrong
   return axiosError?.response?.data?.error ?? fallback;
 }
 
+/** Public deployment flags (sandbox banner etc.). */
+export const configApi = {
+  get: async (): Promise<{ sandbox: boolean }> => (await http.get('/config')).data,
+};
+
 export const authApi = {
   login: (email: string, password: string) =>
     http.post<{ user: User }>('/auth/login', { email, password }).then((r) => r.data),

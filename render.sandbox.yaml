@@ -1,0 +1,53 @@
+# Render blueprint for the Milson Project Pipeline SANDBOX.
+# Deploys from the `Sandbox` branch only, with its own PostgreSQL database,
+# its own generated JWT secret, and local-file storage — it shares NO database,
+# S3 bucket, secret, or credential with the production service.
+databases:
+  - name: milson-pipeline-sandbox-db
+    databaseName: milson_pipeline_sandbox
+    user: milson_sandbox
+    plan: free
+
+services:
+  - type: web
+    name: milson-project-pipeline-sandbox
+    runtime: node
+    plan: free
+    region: oregon
+    branch: Sandbox
+    # --include=dev is required: Render sets NODE_ENV=production, which would
+    # otherwise make npm skip the devDependencies that vite and tsc live in.
+    buildCommand: >-
+      cd client && npm ci --include=dev && npm run build &&
+      cd ../server && npm ci --include=dev && npm run build
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    # Sandbox files live on the instance filesystem (STORAGE_DRIVER=local) and
+    # are lost on restart — intentional: the sandbox must never reach the
+    # production S3 bucket. Do NOT set any AWS_* variables here.
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.1
+      - key: NODE_ENV
+        value: production
+      - key: SANDBOX
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: milson-pipeline-sandbox-db
+          property: connectionString
+      # generateValue creates a fresh secret unique to the sandbox — never copy
+      # the production JWT_SECRET here.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_DRIVER
+        value: local
+      - key: STORAGE_DIR
+        value: /opt/render/project/src/uploads
+      - key: CLIENT_DIST
+        value: /opt/render/project/src/client/dist
+      # Sandbox-only admin credentials — set different values from production.
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
