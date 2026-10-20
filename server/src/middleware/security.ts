@@ -67,10 +67,11 @@ export function csrfOriginCheck(req: Request, res: Response, next: NextFunction)
   const source = req.headers.origin ?? req.headers.referer;
   if (!source) {
     // Non-browser clients (curl, scripts) authenticate with a Bearer token and
-    // carry no Origin — let them through. A mutation that would authenticate
-    // via the session cookie without an Origin/Referer is rejected, since the
-    // browser cannot prove which origin initiated it.
-    if ((req.headers.authorization ?? '').startsWith('Bearer ')) {
+    // carry no Origin — let them through; login is exempt so they can obtain
+    // their first session. A mutation that would authenticate via the session
+    // cookie without an Origin/Referer is rejected, since the browser cannot
+    // prove which origin initiated it.
+    if ((req.headers.authorization ?? '').startsWith('Bearer ') || req.path === '/auth/login') {
       next();
       return;
     }

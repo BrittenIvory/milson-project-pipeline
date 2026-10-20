@@ -100,9 +100,11 @@ router.post(
     }
 
     const hash = await bcrypt.hash(newPassword, 12);
+    // Cutoff sits one second back so a session issued in the same second as the
+    // change (the fresh cookie below) still validates, while every prior one dies.
     await pool.query(
       `UPDATE users SET password_hash = $1, must_change_password = FALSE,
-       password_changed_at = NOW(), updated_at = NOW() WHERE id = $2`,
+       password_changed_at = NOW() - INTERVAL '1 second', updated_at = NOW() WHERE id = $2`,
       [hash, req.user!.id],
     );
     await logActivity({
@@ -111,6 +113,8 @@ router.post(
       entityType: 'user',
       entityId: req.user!.id,
     });
+    // Every other session dies at the cutoff; this client gets a fresh cookie.
+    res.cookie(SESSION_COOKIE, signToken(req.user!.id), sessionCookieOptions());
     res.json({ ok: true });
   }),
 );

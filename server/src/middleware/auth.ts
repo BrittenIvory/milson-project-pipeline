@@ -22,8 +22,12 @@ export const SESSION_COOKIE = 'milson_session';
 
 /** Signs a short-lived access token for a user id. */
 export function signToken(userId: number): string {
+  // jsonwebtoken reads a bare numeric string as milliseconds; pass it as a
+  // number so it means seconds — the same unit sessionMaxAgeMs assigns it.
+  const trimmed = config.jwtExpiresIn.trim();
+  const expiresIn = /^\d+$/.test(trimmed) ? Number(trimmed) : trimmed;
   return jwt.sign({ sub: userId } satisfies TokenPayload, config.jwtSecret, {
-    expiresIn: config.jwtExpiresIn,
+    expiresIn,
   } as jwt.SignOptions);
 }
 
@@ -93,7 +97,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return;
     }
     // Accounts flagged for a password change may only reach the auth endpoints.
-    if (user.must_change_password && !/^\/api\/auth\/(me|logout|change-password)$/.test(req.originalUrl)) {
+    // baseUrl+path excludes query strings; a trailing slash still matches.
+    if (
+      user.must_change_password &&
+      !(req.baseUrl === '/api/auth' && /^\/(me|logout|change-password)\/?$/.test(req.path))
+    ) {
       res.status(403).json({ error: 'Password change required', mustChangePassword: true });
       return;
     }
