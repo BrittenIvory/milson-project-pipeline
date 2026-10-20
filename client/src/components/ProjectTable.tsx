@@ -60,7 +60,7 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
       <ProjectComments
         projectId={p.id}
         projectNumber={p.projectNumber}
-        partNumber={p.internalPartNumber ?? p.customerPartNumber}
+        partNumber={p.internalPartNumber || p.customerPartNumber}
       />
     ),
   },
