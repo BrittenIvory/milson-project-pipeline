@@ -128,3 +128,17 @@ describe('isAllowedOrigin', () => {
     assert.equal(isAllowedOrigin('http://localhost:5174', allowed), false);
   });
 });
+
+describe('csrfOriginCheck with configured origins', () => {
+  it('passes mutations from an origin in the CORS allowlist', () => {
+    // Development config allowlists the Vite dev origin.
+    const { passed } = run(
+      csrfOriginCheck,
+      fakeReq({
+        method: 'POST',
+        headers: { host: 'api.example.com', origin: 'http://localhost:5174' },
+      } as Request),
+    );
+    assert.equal(passed, true);
+  });
+});

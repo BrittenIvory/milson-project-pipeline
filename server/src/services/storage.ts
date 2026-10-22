@@ -293,3 +293,25 @@ const PREVIEWABLE_EXTENSIONS = new Set(['pdf', 'png', 'jpg', 'jpeg']);
 export function isPreviewableExtension(extension: string): boolean {
   return PREVIEWABLE_EXTENSIONS.has(extension);
 }
+
+/**
+ * Magic-byte signatures for previewable types. Files served inline get their
+ * bytes verified at upload so an executable payload cannot masquerade as a
+ * benign PDF/image under its extension. Other types are download-only and get
+ * no signature requirement.
+ */
+const MAGIC_BY_EXTENSION: Record<string, (data: Buffer) => boolean> = {
+  pdf: (d) => d.length > 4 && d.subarray(0, 5).toString('latin1') === '%PDF-',
+  png: (d) =>
+    d.length > 7 &&
+    d[0] === 0x89 && d[1] === 0x50 && d[2] === 0x4e && d[3] === 0x47 &&
+    d[4] === 0x0d && d[5] === 0x0a && d[6] === 0x1a && d[7] === 0x0a,
+  jpg: (d) => d.length > 2 && d[0] === 0xff && d[1] === 0xd8 && d[2] === 0xff,
+  jpeg: (d) => d.length > 2 && d[0] === 0xff && d[1] === 0xd8 && d[2] === 0xff,
+};
+
+/** True when the upload's bytes match the signature required by its extension. */
+export function contentMatchesExtension(extension: string, data: Buffer): boolean {
+  const check = MAGIC_BY_EXTENSION[extension];
+  return check === undefined || check(data);
+}
