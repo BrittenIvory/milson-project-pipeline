@@ -4,7 +4,7 @@ import cors from 'cors';
 import fs from 'fs';
 import { config } from './config';
 import { errorHandler } from './middleware/errors';
-import { csrfOriginCheck } from './middleware/security';
+import { csrfOriginCheck, isAllowedOrigin } from './middleware/security';
 import activityRouter from './routes/activity';
 import authRouter from './routes/auth';
 import customersRouter from './routes/customers';
@@ -17,7 +17,16 @@ import usersRouter from './routes/users';
 /** Builds the Express application (kept separate from bootstrap for testing). */
 export function createApp(): Express {
   const app = express();
-  app.use(cors());
+  // Render terminates TLS at its proxy one hop out; trust it so req.ip (used by
+  // the login rate limiter) is the real visitor address, not the proxy's.
+  app.set('trust proxy', config.trustProxyHops);
+  app.use(
+    cors({
+      credentials: true,
+      origin: (origin, callback) =>
+        callback(null, isAllowedOrigin(origin, config.allowedOrigins)),
+    }),
+  );
   app.use(express.json({ limit: '2mb' }));
   app.use('/api', csrfOriginCheck);
 

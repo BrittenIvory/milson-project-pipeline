@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { NextFunction, Request, Response } from 'express';
-import { createRateLimiter, csrfOriginCheck } from './security';
+import { createRateLimiter, csrfOriginCheck, isAllowedOrigin } from './security';
 
 interface FakeResponse {
   statusCode: number;
@@ -113,5 +113,18 @@ describe('csrfOriginCheck', () => {
     const { passed, state } = run(csrfOriginCheck, mutation());
     assert.equal(passed, false);
     assert.equal(state.statusCode, 403);
+  });
+});
+
+describe('isAllowedOrigin', () => {
+  it('always allows requests with no Origin header', () => {
+    assert.equal(isAllowedOrigin(undefined, []), true);
+  });
+
+  it('allows only configured origins', () => {
+    const allowed = ['https://milson-pp.onrender.com'];
+    assert.equal(isAllowedOrigin('https://milson-pp.onrender.com', allowed), true);
+    assert.equal(isAllowedOrigin('https://evil.example.com', allowed), false);
+    assert.equal(isAllowedOrigin('http://localhost:5174', allowed), false);
   });
 });

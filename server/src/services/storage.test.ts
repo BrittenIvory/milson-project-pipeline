@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { PassThrough, Readable } from 'node:stream';
-import { S3DocumentStorage, storageFor, streamToResponse } from './storage';
+import { S3DocumentStorage, storageFor, streamToResponse, mimeTypeFor, isPreviewableExtension } from './storage';
 
 interface FakeCommand {
   input: Record<string, unknown>;
@@ -253,5 +253,32 @@ describe('storageFor', () => {
 
     await local.remove(key);
     assert.equal(await local.exists(key), false);
+  });
+});
+
+describe('mimeTypeFor', () => {
+  it('maps allowed extensions to the right MIME types', () => {
+    assert.equal(mimeTypeFor('pdf'), 'application/pdf');
+    assert.equal(mimeTypeFor('png'), 'image/png');
+    assert.equal(mimeTypeFor('jpeg'), 'image/jpeg');
+    assert.equal(mimeTypeFor('step'), 'application/step');
+    assert.equal(mimeTypeFor('zip'), 'application/zip');
+  });
+
+  it('falls back to octet-stream for unknown types instead of trusting the client', () => {
+    assert.equal(mimeTypeFor('sldprt'), 'application/octet-stream');
+    assert.equal(mimeTypeFor('dwg'), 'application/octet-stream');
+    assert.equal(mimeTypeFor('exe'), 'application/octet-stream');
+  });
+});
+
+describe('isPreviewableExtension', () => {
+  it('only previews PDFs and images', () => {
+    for (const ext of ['pdf', 'png', 'jpg', 'jpeg']) {
+      assert.equal(isPreviewableExtension(ext), true, ext);
+    }
+    for (const ext of ['step', 'zip', 'docx', 'xlsx', 'dwg', 'sldprt', '']) {
+      assert.equal(isPreviewableExtension(ext), false, ext);
+    }
   });
 });

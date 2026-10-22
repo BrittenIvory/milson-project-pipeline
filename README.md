@@ -48,17 +48,14 @@ cd server && cp .env.example .env && npm install && npm run dev
 cd client && npm install && npm run dev
 ```
 
-### Seeded users
+### Administrator account
 
-| Email | Password | Role |
-| ----- | -------- | ---- |
-| admin@milsonfoundry.com | `Admin123!` | Administrator |
-| engineer@milsonfoundry.com | `Engineer123!` | Engineering |
-| sales@milsonfoundry.com | `Sales123!` | Sales |
-| production@milsonfoundry.com | `Production123!` | Production |
-| quality@milsonfoundry.com | `Quality123!` | Quality |
-
-Change `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` before the first production deploy.
+The first user is seeded from the `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`
+environment variables. Both are required in production — the server refuses to
+start without them, along with a `JWT_SECRET` of at least 32 characters.
+Additional local-development accounts are seeded only when `NODE_ENV` is not
+`production` (see `server/src/db/seed.ts`); set `SEED_DEMO_USERS=true` to
+include them deliberately.
 
 ## Roles
 

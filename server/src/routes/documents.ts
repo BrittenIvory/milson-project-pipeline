@@ -10,6 +10,8 @@ import { getProject } from '../services/projectService';
 import {
   ALLOWED_EXTENSIONS,
   extensionOf,
+  isPreviewableExtension,
+  mimeTypeFor,
   storage,
   storageFor,
   streamToResponse,
@@ -95,13 +97,16 @@ router.post(
       throw new HttpError(400, `Unsupported file type: .${extension}`);
     }
 
-    const key = await storage.save(projectId, req.file.originalname, req.file.buffer, req.file.mimetype);
+    // The stored MIME type is derived from the file extension, never from the
+    // client-supplied upload header.
+    const mimeType = mimeTypeFor(extension);
+    const key = await storage.save(projectId, req.file.originalname, req.file.buffer, mimeType);
     const row = await queryOne<DocumentRow>(
       `INSERT INTO documents (project_id, file_name, storage_key, storage_driver, mime_type,
          extension, size_bytes, document_kind, uploaded_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,'uploaded',$8) RETURNING *`,
       [
-        projectId, req.file.originalname, key, storage.driver, req.file.mimetype,
+        projectId, req.file.originalname, key, storage.driver, mimeType,
         extension, req.file.size, req.user?.id ?? null,
       ],
     );
@@ -130,6 +135,7 @@ router.get(
       throw new HttpError(410, 'Stored file is no longer available');
     }
     res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(row.file_name)}"`);
     streamToResponse(docStorage.createReadStream(row.storage_key), res);
   }),
@@ -153,7 +159,13 @@ router.get(
       throw new HttpError(410, 'Stored file is no longer available');
     }
     res.setHeader('Content-Type', row.mime_type ?? 'application/octet-stream');
-    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Only PDFs and images render inline; everything else is forced to download
+    // so stored content can never execute as a browser document.
+    res.setHeader(
+      'Content-Disposition',
+      isPreviewableExtension(row.extension ?? '') ? 'inline' : 'attachment',
+    );
     streamToResponse(docStorage.createReadStream(row.storage_key), res);
   }),
 );
