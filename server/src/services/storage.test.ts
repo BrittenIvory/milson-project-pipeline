@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { PassThrough, Readable } from 'node:stream';
-import { S3DocumentStorage, storageFor, streamToResponse, mimeTypeFor, isPreviewableExtension } from './storage';
+import { S3DocumentStorage, storageFor, streamToResponse, mimeTypeFor, isPreviewableExtension, contentMatchesExtension } from './storage';
 
 interface FakeCommand {
   input: Record<string, unknown>;
@@ -280,5 +280,24 @@ describe('isPreviewableExtension', () => {
     for (const ext of ['step', 'zip', 'docx', 'xlsx', 'dwg', 'sldprt', '']) {
       assert.equal(isPreviewableExtension(ext), false, ext);
     }
+  });
+});
+
+describe('contentMatchesExtension', () => {
+  it('verifies magic bytes for previewable types', () => {
+    assert.equal(contentMatchesExtension('pdf', Buffer.from('%PDF-1.7 rest')), true);
+    assert.equal(contentMatchesExtension('pdf', Buffer.from('<html><script>1</script>')), false);
+    assert.equal(
+      contentMatchesExtension('png', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1])),
+      true,
+    );
+    assert.equal(contentMatchesExtension('png', Buffer.from('GIF89a...')), false);
+    assert.equal(contentMatchesExtension('jpg', Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0])), true);
+    assert.equal(contentMatchesExtension('jpg', Buffer.from('not an image')), false);
+  });
+
+  it('does not require signatures for download-only types', () => {
+    assert.equal(contentMatchesExtension('step', Buffer.from('ISO-10303-21;')), true);
+    assert.equal(contentMatchesExtension('zip', Buffer.from('anything')), true);
   });
 });

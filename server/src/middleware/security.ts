@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { config } from '../config';
 
 interface RateLimitOptions {
   /** Length of the fixed window in milliseconds. */
@@ -94,7 +95,12 @@ export function csrfOriginCheck(req: Request, res: Response, next: NextFunction)
     // with Origin :5174 and Host :3002, and a port mismatch would wrongly 403.
     const hostname = new URL(source).hostname.toLowerCase();
     const reqHostname = (req.headers.host ?? '').split(':')[0].toLowerCase();
-    if (hostname !== reqHostname) {
+    // Origins explicitly configured for CORS are trusted frontends — rejecting
+    // them here would break cross-host deployments admitted via ALLOWED_ORIGINS.
+    if (
+      hostname !== reqHostname &&
+      !config.allowedOrigins.includes(new URL(source).origin)
+    ) {
       res.status(403).json({ error: 'Blocked cross-site request' });
       return;
     }

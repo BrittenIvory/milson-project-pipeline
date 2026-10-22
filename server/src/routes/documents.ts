@@ -9,6 +9,7 @@ import { logActivity } from '../services/activityService';
 import { getProject } from '../services/projectService';
 import {
   ALLOWED_EXTENSIONS,
+  contentMatchesExtension,
   extensionOf,
   isPreviewableExtension,
   mimeTypeFor,
@@ -95,6 +96,9 @@ router.post(
     const extension = extensionOf(req.file.originalname);
     if (!ALLOWED_EXTENSIONS.includes(extension)) {
       throw new HttpError(400, `Unsupported file type: .${extension}`);
+    }
+    if (!contentMatchesExtension(extension, req.file.buffer)) {
+      throw new HttpError(400, `File content does not match the .${extension} type`);
     }
 
     // The stored MIME type is derived from the file extension, never from the
