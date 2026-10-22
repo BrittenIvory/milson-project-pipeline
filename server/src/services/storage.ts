@@ -263,3 +263,33 @@ export const ALLOWED_EXTENSIONS = [
 export function extensionOf(fileName: string): string {
   return path.extname(fileName).replace('.', '').toLowerCase();
 }
+
+/**
+ * Authoritative MIME type for an allowed upload extension. The browser-supplied
+ * `req.file.mimetype` is client-controlled and must not be trusted — the stored
+ * type always comes from the file extension instead.
+ */
+const MIME_BY_EXTENSION: Record<string, string> = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  zip: 'application/zip',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  step: 'application/step',
+  stp: 'application/step',
+  iges: 'model/iges',
+  igs: 'model/iges',
+};
+
+export function mimeTypeFor(extension: string): string {
+  return MIME_BY_EXTENSION[extension] ?? 'application/octet-stream';
+}
+
+/** Extensions that may be rendered inline for browser preview. */
+const PREVIEWABLE_EXTENSIONS = new Set(['pdf', 'png', 'jpg', 'jpeg']);
+
+export function isPreviewableExtension(extension: string): boolean {
+  return PREVIEWABLE_EXTENSIONS.has(extension);
+}

@@ -54,6 +54,17 @@ export function createRateLimiter({ windowMs, max, key }: RateLimitOptions) {
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /**
+ * Whether a browser Origin may read API responses cross-origin. Requests with
+ * no Origin (server-to-server, same-origin navigation) are always allowed.
+ * Anything else must appear in the configured allowlist — the API must never
+ * reflect an arbitrary origin.
+ */
+export function isAllowedOrigin(origin: string | undefined, allowed: string[]): boolean {
+  if (!origin) return true;
+  return allowed.includes(origin);
+}
+
+/**
  * CSRF protection for the cookie-authenticated session: any mutating request
  * that presents an Origin/Referer must originate from this same host. Mutating
  * requests with no Origin/Referer at all must authenticate with a Bearer token —
