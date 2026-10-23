@@ -30,6 +30,8 @@ export interface NotifyInput {
   entityId?: number;
   /** Suppresses self-notifications (e.g. assigning a task to yourself). */
   actorId?: number | null;
+  /** When true, the recipient may be the actor themselves (e.g. @mentioning yourself). */
+  allowSelf?: boolean;
 }
 
 /**
@@ -37,7 +39,7 @@ export interface NotifyInput {
  * a failure here must never fail the user's action.
  */
 export async function notify(input: NotifyInput): Promise<void> {
-  if (!input.userId || input.userId === input.actorId) return;
+  if (!input.userId || (!input.allowSelf && input.userId === input.actorId)) return;
   try {
     await pool.query(
       `INSERT INTO notifications (user_id, type, title, body, project_id, entity_type, entity_id, actor_id)
