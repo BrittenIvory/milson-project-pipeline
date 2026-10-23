@@ -164,6 +164,11 @@ export interface SupplierQuote {
   updatedAt: string;
 }
 
+export interface NoteReaction {
+  emoji: string;
+  userIds: number[];
+}
+
 export interface ProjectNote {
   id: number;
   projectId: number;
@@ -172,6 +177,7 @@ export interface ProjectNote {
   body: string;
   createdAt: string;
   updatedAt: string;
+  reactions: NoteReaction[];
 }
 
 export interface AppNotification {
@@ -184,6 +190,11 @@ export interface AppNotification {
   entityId: number | null;
   readAt: string | null;
   createdAt: string;
+  projectNumber: string | null;
+  projectName: string | null;
+  projectStage: string | null;
+  hasPartImage: boolean;
+  commentAuthorName: string | null;
 }
 
 /** Aggregated payload behind the dashboard. */

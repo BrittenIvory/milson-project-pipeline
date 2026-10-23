@@ -246,6 +246,10 @@ export const notesApi = {
     http.put<ProjectNote>(`/projects/${projectId}/notes/${noteId}`, { body }).then((r) => r.data),
   remove: (projectId: number, noteId: number) =>
     http.delete(`/projects/${projectId}/notes/${noteId}`),
+  react: (projectId: number, noteId: number, emoji: string) =>
+    http
+      .put<ProjectNote>(`/projects/${projectId}/notes/${noteId}/reactions`, { emoji })
+      .then((r) => r.data),
 };
 
 export const notificationsApi = {

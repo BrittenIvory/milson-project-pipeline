@@ -18,13 +18,13 @@ export type ProjectStage = (typeof PROJECT_STAGES)[number];
 
 export const STAGE_LABELS: Record<ProjectStage, string> = {
   pipeline: 'Pipeline',
-  intake: 'Intake',
+  intake: 'Project Intake',
   stage_1_engineering: 'Stage 1 Engineering',
   production_team_quoting: 'Production Team Quoting',
   sales: 'Sales',
   stage_2_production: 'Stage 2 Engineering',
-  production: 'Production',
-  qa: 'QA',
+  production: 'Tooling & Sampling',
+  qa: 'Shipping & QA',
   completed: 'Completed',
 };
 

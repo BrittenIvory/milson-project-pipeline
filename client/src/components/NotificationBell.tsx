@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { Bell } from 'lucide-react';
-import { notificationsApi } from '../lib/api';
+import { Bell, Reply } from 'lucide-react';
+import { apiErrorMessage, notesApi, notificationsApi, taskCommentsApi } from '../lib/api';
 import { formatDateTime } from '../lib/format';
+import { PROJECT_STAGES } from '../lib/constants';
 import type { AppNotification } from '../types';
 
 /** How often the unread badge refreshes. */
 const POLL_MS = 60_000;
+
+const STAGE_LABELS = new Map<string, string>(
+  PROJECT_STAGES.map((stage) => [stage.value, stage.label]),
+);
 
 /** Bell icon with an unread badge and a dropdown of in-app notifications. */
 export default function NotificationBell() {
@@ -16,6 +21,10 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replying, setReplying] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -50,10 +59,45 @@ export default function NotificationBell() {
     if (notification.projectId) navigate(`/projects/${notification.projectId}`);
   };
 
+  const startReply = (notification: AppNotification) => {
+    setReplyingTo(notification.id);
+    setReplyDraft(notification.commentAuthorName ? `@${notification.commentAuthorName} ` : '');
+    setReplyError(null);
+  };
+
+  const sendReply = async (notification: AppNotification) => {
+    if (!replyDraft.trim() || !notification.projectId) return;
+    setReplying(true);
+    setReplyError(null);
+    try {
+      if (notification.entityType === 'task' && notification.entityId) {
+        await taskCommentsApi.create(
+          notification.projectId,
+          notification.entityId,
+          replyDraft.trim(),
+        );
+      } else {
+        await notesApi.create(notification.projectId, replyDraft.trim());
+      }
+      if (!notification.readAt) await notificationsApi.markRead(notification.id);
+      setReplyingTo(null);
+      setReplyDraft('');
+      await load();
+    } catch (err) {
+      setReplyError(apiErrorMessage(err, 'Unable to post reply'));
+    } finally {
+      setReplying(false);
+    }
+  };
+
   const markAll = async () => {
     await notificationsApi.markAllRead();
     await load();
   };
+
+  const canReply = (notification: AppNotification) =>
+    notification.projectId !== null &&
+    (notification.entityType === 'note' || notification.entityType === 'task');
 
   return (
     <div ref={containerRef} className="relative">
@@ -71,7 +115,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div className="absolute right-0 z-40 mt-2 w-96 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
             <p className="text-sm font-semibold text-slate-800">Notifications</p>
             {unread > 0 && (
@@ -83,24 +127,85 @@ export default function NotificationBell() {
           {items.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">You are all caught up.</p>
           ) : (
-            <ul className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
+            <ul className="max-h-[28rem] divide-y divide-slate-100 overflow-y-auto">
               {items.map((notification) => (
-                <li key={notification.id}>
-                  <button
-                    onClick={() => openNotification(notification)}
-                    className={clsx(
-                      'block w-full px-4 py-3 text-left hover:bg-slate-50',
-                      !notification.readAt && 'bg-brand-50/40',
+                <li
+                  key={notification.id}
+                  className={clsx('px-4 py-3', !notification.readAt && 'bg-brand-50/40')}
+                >
+                  <div className="flex gap-3">
+                    {notification.hasPartImage && notification.projectId && (
+                      <img
+                        src={`/api/projects/${notification.projectId}/part-image`}
+                        alt="Part"
+                        className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
+                      />
                     )}
-                  >
-                    <p className="text-sm font-medium text-slate-800">{notification.title}</p>
-                    {notification.body && (
-                      <p className="truncate text-xs text-slate-500">{notification.body}</p>
-                    )}
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      {formatDateTime(notification.createdAt)}
-                    </p>
-                  </button>
+                    <div className="min-w-0 flex-1">
+                      <button
+                        onClick={() => openNotification(notification)}
+                        className="block w-full text-left hover:opacity-80"
+                      >
+                        <p className="text-sm font-medium text-slate-800">{notification.title}</p>
+                        {(notification.projectNumber || notification.projectName) && (
+                          <p className="truncate text-xs font-medium text-brand-700">
+                            {[notification.projectNumber, notification.projectName]
+                              .filter(Boolean)
+                              .join(' — ')}
+                            {notification.projectStage &&
+                              ` · ${STAGE_LABELS.get(notification.projectStage) ?? notification.projectStage}`}
+                          </p>
+                        )}
+                        {notification.body && (
+                          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                            {notification.body}
+                          </p>
+                        )}
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {formatDateTime(notification.createdAt)}
+                        </p>
+                      </button>
+                      {canReply(notification) && replyingTo !== notification.id && (
+                        <button
+                          onClick={() => startReply(notification)}
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800"
+                        >
+                          <Reply className="h-3 w-3" />
+                          Reply
+                        </button>
+                      )}
+                      {replyingTo === notification.id && (
+                        <div className="mt-2">
+                          <textarea
+                            autoFocus
+                            value={replyDraft}
+                            onChange={(e) => setReplyDraft(e.target.value)}
+                            placeholder="Reply to this comment…"
+                            rows={2}
+                            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-brand-400 focus:outline-none"
+                          />
+                          {replyError && (
+                            <p className="mt-1 text-xs text-rose-600">{replyError}</p>
+                          )}
+                          <div className="mt-1.5 flex justify-end gap-2">
+                            <button
+                              onClick={() => setReplyingTo(null)}
+                              className="text-xs text-slate-500 hover:text-slate-700"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => sendReply(notification)}
+                              disabled={replying || !replyDraft.trim()}
+                              className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                            >
+                              {replying ? 'Sending…' : 'Send reply'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>

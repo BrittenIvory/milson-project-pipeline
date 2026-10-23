@@ -3,13 +3,13 @@ import type { Role } from '../types';
 /** Ordered pipeline stages with display labels and badge colours. */
 export const PROJECT_STAGES = [
   { value: 'pipeline', label: 'Pipeline', tone: 'bg-zinc-100 text-zinc-700' },
-  { value: 'intake', label: 'Intake', tone: 'bg-slate-100 text-slate-700' },
+  { value: 'intake', label: 'Project Intake', tone: 'bg-slate-100 text-slate-700' },
   { value: 'stage_1_engineering', label: 'Stage 1 Engineering', tone: 'bg-indigo-100 text-indigo-700' },
   { value: 'production_team_quoting', label: 'Production Team Quoting', tone: 'bg-amber-100 text-amber-700' },
   { value: 'sales', label: 'Sales', tone: 'bg-sky-100 text-sky-700' },
   { value: 'stage_2_production', label: 'Stage 2 Engineering', tone: 'bg-violet-100 text-violet-700' },
-  { value: 'production', label: 'Production', tone: 'bg-orange-100 text-orange-700' },
-  { value: 'qa', label: 'QA', tone: 'bg-teal-100 text-teal-700' },
+  { value: 'production', label: 'Tooling & Sampling', tone: 'bg-orange-100 text-orange-700' },
+  { value: 'qa', label: 'Shipping & QA', tone: 'bg-teal-100 text-teal-700' },
   { value: 'completed', label: 'Completed', tone: 'bg-emerald-100 text-emerald-700' },
 ] as const;
 

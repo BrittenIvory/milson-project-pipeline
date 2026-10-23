@@ -22,7 +22,36 @@ const SELECT_NOTE = `
   SELECT n.*, u.full_name AS author_name
   FROM project_notes n LEFT JOIN users u ON u.id = n.author_id`;
 
-export function toNoteDto(row: NoteRow) {
+/** Emojis users may react with; anything else is rejected. */
+export const REACTION_EMOJIS = ['👍', '❤️', '🎉', '✅', '👀'] as const;
+
+export const reactionSchema = z.object({
+  emoji: z.enum(REACTION_EMOJIS),
+});
+
+export interface NoteReaction {
+  emoji: string;
+  userIds: number[];
+}
+
+async function reactionsFor(noteIds: number[]): Promise<Map<number, NoteReaction[]>> {
+  const map = new Map<number, NoteReaction[]>();
+  if (noteIds.length === 0) return map;
+  const rows = await query<{ note_id: number; emoji: string; user_ids: number[] }>(
+    `SELECT note_id, emoji, array_agg(user_id ORDER BY user_id) AS user_ids
+     FROM note_reactions WHERE note_id = ANY($1)
+     GROUP BY note_id, emoji ORDER BY MIN(created_at)`,
+    [noteIds],
+  );
+  for (const row of rows) {
+    const list = map.get(row.note_id) ?? [];
+    list.push({ emoji: row.emoji, userIds: row.user_ids });
+    map.set(row.note_id, list);
+  }
+  return map;
+}
+
+export function toNoteDto(row: NoteRow, reactions: NoteReaction[] = []) {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -31,6 +60,7 @@ export function toNoteDto(row: NoteRow) {
     body: row.body,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    reactions,
   };
 }
 
@@ -39,7 +69,8 @@ export async function listNotes(projectId: number) {
     `${SELECT_NOTE} WHERE n.project_id = $1 ORDER BY n.created_at DESC`,
     [projectId],
   );
-  return rows.map(toNoteDto);
+  const reactions = await reactionsFor(rows.map((row) => row.id));
+  return rows.map((row) => toNoteDto(row, reactions.get(row.id) ?? []));
 }
 
 export async function getNote(projectId: number, id: number) {
@@ -48,7 +79,29 @@ export async function getNote(projectId: number, id: number) {
     projectId,
   ]);
   if (!row) throw new HttpError(404, 'Note not found');
-  return toNoteDto(row);
+  const reactions = await reactionsFor([row.id]);
+  return toNoteDto(row, reactions.get(row.id) ?? []);
+}
+
+/** Adds the user's reaction, or removes it if they already reacted with it. */
+export async function toggleReaction(
+  projectId: number,
+  noteId: number,
+  emoji: string,
+  userId: number,
+) {
+  await getNote(projectId, noteId);
+  const removed = await queryOne<{ id: number }>(
+    'DELETE FROM note_reactions WHERE note_id = $1 AND user_id = $2 AND emoji = $3 RETURNING id',
+    [noteId, userId, emoji],
+  );
+  if (!removed) {
+    await pool.query(
+      'INSERT INTO note_reactions (note_id, user_id, emoji) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+      [noteId, userId, emoji],
+    );
+  }
+  return getNote(projectId, noteId);
 }
 
 export async function createNote(projectId: number, input: NoteInput, authorId: number) {
