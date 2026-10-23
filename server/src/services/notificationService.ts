@@ -11,6 +11,13 @@ export interface NotificationRow {
   entity_id: number | null;
   read_at: string | null;
   created_at: string;
+  actor_id?: number | null;
+  /** Context joined in for list responses (not stored on the row itself). */
+  project_number?: string | null;
+  project_name?: string | null;
+  project_stage?: string | null;
+  has_part_image?: boolean;
+  comment_author_name?: string | null;
 }
 
 export interface NotifyInput {
@@ -33,8 +40,8 @@ export async function notify(input: NotifyInput): Promise<void> {
   if (!input.userId || input.userId === input.actorId) return;
   try {
     await pool.query(
-      `INSERT INTO notifications (user_id, type, title, body, project_id, entity_type, entity_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      `INSERT INTO notifications (user_id, type, title, body, project_id, entity_type, entity_id, actor_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
         input.userId,
         input.type,
@@ -43,6 +50,7 @@ export async function notify(input: NotifyInput): Promise<void> {
         input.projectId ?? null,
         input.entityType ?? null,
         input.entityId ?? null,
+        input.actorId ?? null,
       ],
     );
   } catch (err) {
@@ -61,14 +69,27 @@ export function toNotificationDto(row: NotificationRow) {
     entityId: row.entity_id,
     readAt: row.read_at,
     createdAt: row.created_at,
+    projectNumber: row.project_number ?? null,
+    projectName: row.project_name ?? null,
+    projectStage: row.project_stage ?? null,
+    hasPartImage: row.has_part_image ?? false,
+    commentAuthorName: row.comment_author_name ?? null,
   };
 }
 
 export async function listNotifications(userId: number, unreadOnly = false) {
   const rows = await query<NotificationRow>(
-    `SELECT * FROM notifications
-     WHERE user_id = $1 ${unreadOnly ? 'AND read_at IS NULL' : ''}
-     ORDER BY created_at DESC LIMIT 50`,
+    `SELECT n.*,
+            p.project_number,
+            p.project_name,
+            p.current_stage AS project_stage,
+            (p.part_image_storage_key IS NOT NULL) AS has_part_image,
+            actor.full_name AS comment_author_name
+     FROM notifications n
+     LEFT JOIN projects p ON p.id = n.project_id
+     LEFT JOIN users actor ON actor.id = n.actor_id
+     WHERE n.user_id = $1 ${unreadOnly ? 'AND n.read_at IS NULL' : ''}
+     ORDER BY n.created_at DESC LIMIT 50`,
     [userId],
   );
   return rows.map(toNotificationDto);

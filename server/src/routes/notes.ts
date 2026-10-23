@@ -7,7 +7,9 @@ import {
   getNote,
   listNotes,
   noteSchema,
+  reactionSchema,
   resolveMentions,
+  toggleReaction,
   updateNote,
 } from '../services/noteService';
 import { notify } from '../services/notificationService';
@@ -73,6 +75,17 @@ router.put(
     const existing = await getNote(projectId, Number(req.params.noteId));
     assertCanModify(existing.authorId, req);
     res.json(await updateNote(projectId, existing.id, noteSchema.parse(req.body)));
+  }),
+);
+
+router.put(
+  '/:noteId/reactions',
+  asyncHandler(async (req, res) => {
+    const projectId = projectIdOf(req.params as Record<string, string>);
+    const noteId = Number(req.params.noteId);
+    if (!Number.isInteger(noteId) || noteId <= 0) throw new HttpError(400, 'Invalid comment id');
+    const { emoji } = reactionSchema.parse(req.body);
+    res.json(await toggleReaction(projectId, noteId, emoji, req.user!.id));
   }),
 );
 

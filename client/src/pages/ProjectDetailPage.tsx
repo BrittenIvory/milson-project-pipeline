@@ -61,10 +61,10 @@ const tabs: { id: Tab; label: string; placeholder?: string }[] = [
   },
   {
     id: 'production',
-    label: 'Production',
+    label: 'Tooling & Sampling',
     placeholder: 'Production planning arrives in a later phase.',
   },
-  { id: 'qa', label: 'QA', placeholder: 'Quality approval arrives in a later phase.' },
+  { id: 'qa', label: 'Shipping & QA', placeholder: 'Quality approval arrives in a later phase.' },
 ];
 
 /** Single row inside a summary card. */

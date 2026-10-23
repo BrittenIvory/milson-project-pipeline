@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
+import NoteReactions from './NoteReactions';
 import { apiErrorMessage, notesApi, usersApi } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import type { ProjectNote, User } from '../types';
@@ -219,6 +220,15 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
                         {formatDateTime(note.createdAt)}
                       </p>
                       <p className="mt-1 whitespace-pre-line text-xs text-slate-700">{note.body}</p>
+                      <NoteReactions
+                        projectId={projectId}
+                        note={note}
+                        onUpdated={(updated) =>
+                          setNotes((current) =>
+                            current.map((n) => (n.id === updated.id ? updated : n)),
+                          )
+                        }
+                      />
                     </div>
                   ))}
                 </div>

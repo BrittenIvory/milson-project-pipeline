@@ -210,11 +210,14 @@ CREATE TABLE IF NOT EXISTS notifications (
   project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
   entity_type TEXT,
   entity_id   INTEGER,
+  actor_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
   read_at     TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, created_at DESC);
+
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------------
 -- Phase 3: workflow stages and task comments.
@@ -265,6 +268,18 @@ CREATE TABLE IF NOT EXISTS task_comments (
 );
 
 CREATE INDEX IF NOT EXISTS task_comments_task_idx ON task_comments (task_id, created_at);
+
+-- Emoji reactions on project comments.
+CREATE TABLE IF NOT EXISTS note_reactions (
+  id         SERIAL PRIMARY KEY,
+  note_id    INTEGER NOT NULL REFERENCES project_notes(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji      TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (note_id, user_id, emoji)
+);
+
+CREATE INDEX IF NOT EXISTS note_reactions_note_idx ON note_reactions (note_id);
 
 CREATE TABLE IF NOT EXISTS project_stage_seeds (
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

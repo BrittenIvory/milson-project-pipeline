@@ -9,6 +9,7 @@ import {
   TextArea,
 } from './ui';
 import { useAuth } from '../context/AuthContext';
+import NoteReactions from './NoteReactions';
 import { apiErrorMessage, notesApi, usersApi } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import type { ProjectNote, User } from '../types';
@@ -221,6 +222,15 @@ export default function NotesPanel({
               ) : (
                 <NoteBody body={note.body} />
               )}
+              <NoteReactions
+                projectId={projectId}
+                note={note}
+                onUpdated={(updated) =>
+                  setNotes((current) =>
+                    current.map((n) => (n.id === updated.id ? updated : n)),
+                  )
+                }
+              />
             </li>
           ))}
         </ul>
