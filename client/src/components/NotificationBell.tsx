@@ -59,9 +59,15 @@ export default function NotificationBell() {
     if (notification.projectId) navigate(`/projects/${notification.projectId}`);
   };
 
+  const [replyMention, setReplyMention] = useState('');
+
   const startReply = (notification: AppNotification) => {
     setReplyingTo(notification.id);
-    setReplyDraft(notification.commentAuthorName ? `@${notification.commentAuthorName} ` : '');
+    const mention = notification.commentAuthorName
+      ? `@${notification.commentAuthorName} `
+      : '';
+    setReplyMention(mention);
+    setReplyDraft(mention);
     setReplyError(null);
   };
 
@@ -79,9 +85,13 @@ export default function NotificationBell() {
       } else {
         await notesApi.create(notification.projectId, replyDraft.trim());
       }
-      if (!notification.readAt) await notificationsApi.markRead(notification.id);
+      // The comment is persisted — close the composer before any secondary
+      // work so a failed mark-read can't be mistaken for a failed post.
       setReplyingTo(null);
       setReplyDraft('');
+      if (!notification.readAt) {
+        await notificationsApi.markRead(notification.id).catch(() => undefined);
+      }
       await load();
     } catch (err) {
       setReplyError(apiErrorMessage(err, 'Unable to post reply'));
@@ -95,9 +105,13 @@ export default function NotificationBell() {
     await load();
   };
 
+  /** Only comment mentions get a Reply — task alerts have no comment to reply to. */
   const canReply = (notification: AppNotification) =>
     notification.projectId !== null &&
-    (notification.entityType === 'note' || notification.entityType === 'task');
+    (notification.type === 'note_mention' || notification.type === 'comment_mention');
+
+  /** Send requires text beyond the prefilled @mention. */
+  const replyHasText = replyDraft.replace(replyMention, '').trim().length > 0;
 
   return (
     <div ref={containerRef} className="relative">
@@ -196,7 +210,7 @@ export default function NotificationBell() {
                             </button>
                             <button
                               onClick={() => sendReply(notification)}
-                              disabled={replying || !replyDraft.trim()}
+                              disabled={replying || !replyHasText}
                               className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
                             >
                               {replying ? 'Sending…' : 'Send reply'}
