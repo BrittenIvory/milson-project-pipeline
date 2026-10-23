@@ -61,6 +61,9 @@ export default function NotificationBell() {
 
   const [replyMention, setReplyMention] = useState('');
 
+  const escapeRegExp = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   const startReply = (notification: AppNotification) => {
     setReplyingTo(notification.id);
     const mention = notification.commentAuthorName
@@ -110,8 +113,17 @@ export default function NotificationBell() {
     notification.projectId !== null &&
     (notification.type === 'note_mention' || notification.type === 'comment_mention');
 
-  /** Send requires text beyond the prefilled @mention. */
-  const replyHasText = replyDraft.replace(replyMention, '').trim().length > 0;
+  /** Send requires text beyond the prefilled @mention, however its trailing
+      whitespace is edited. */
+  const replyMentionPattern = replyMention.trimEnd()
+    ? new RegExp(`^${escapeRegExp(replyMention.trimEnd())}\\s*`)
+    : null;
+  const replyHasText = (
+    replyMentionPattern
+      ? replyDraft.replace(replyMentionPattern, '')
+      : replyDraft
+  )
+    .trim().length > 0;
 
   return (
     <div ref={containerRef} className="relative">
