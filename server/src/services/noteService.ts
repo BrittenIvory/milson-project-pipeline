@@ -144,23 +144,17 @@ export interface MentionUser {
  * is dropped before matching).
  */
 export function matchMentions(body: string, users: MentionUser[]): { id: number; fullName: string }[] {
-  // The capture can swallow a second word of trailing prose
-  // (`@Britten please` → "britten please"), so also try the first token alone.
-  const handles = [
-    ...new Set(
-      [...body.matchAll(/@([\w.@-]+(?: [A-Za-z-]+)?)/g)]
-        .flatMap((m) => {
-          let h = m[1].toLowerCase();
-          if (h.includes('@')) h = h.split('@')[0];
-          const normalized = h.replace(/[.\s_-]+/g, ' ').trim();
-          return normalized ? [normalized, normalized.split(' ')[0]] : [];
-        })
-        .filter(Boolean),
-    ),
-  ];
-  if (handles.length === 0) return [];
-  return users
-    .filter((u) => {
+  const captures = [...body.matchAll(/@([\w.@-]+(?: [A-Za-z-]+)?)/g)]
+    .map((m) => {
+      let h = m[1].toLowerCase();
+      if (h.includes('@')) h = h.split('@')[0];
+      return h.replace(/[.\s_-]+/g, ' ').trim();
+    })
+    .filter(Boolean);
+  if (captures.length === 0) return [];
+
+  const matches = (handles: string[]) =>
+    users.filter((u) => {
       const name = u.fullName.toLowerCase().replace(/[._-]+/g, ' ').trim();
       const local = u.email.split('@')[0].toLowerCase().replace(/[._-]+/g, ' ').trim();
       const firstName = name.split(' ')[0];
@@ -173,8 +167,20 @@ export function matchMentions(body: string, users: MentionUser[]): { id: number;
           h === firstLocal ||
           name.startsWith(h),
       );
-    })
-    .map((u) => ({ id: u.id, fullName: u.fullName }));
+    });
+
+  // Full captures first; the first-token fallback only applies to a capture
+  // that matched nobody — otherwise `@Devin Verify` would also notify every
+  // other Devin via the `devin` fallback.
+  const matched = new Map<number, string>();
+  const misses: string[] = [];
+  for (const h of new Set(captures)) {
+    const hits = matches([h]);
+    if (hits.length > 0) hits.forEach((u) => matched.set(u.id, u.fullName));
+    else misses.push(h.split(' ')[0]);
+  }
+  for (const u of matches(misses)) matched.set(u.id, u.fullName);
+  return [...matched.entries()].map(([id, fullName]) => ({ id, fullName }));
 }
 
 /** Resolves `@mentions` in a note body to active user ids via matchMentions. */
