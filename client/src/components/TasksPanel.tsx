@@ -642,6 +642,12 @@ export default function TasksPanel({
                                 ref={(element) => { commentRefs.current[task.id] = element; }}
                                 value={commentDrafts[task.id] ?? ''}
                                 onChange={(e) => handleCommentDraft(task.id, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    addComment(task.id);
+                                  }
+                                }}
                                 placeholder="Add a comment… use @ to mention someone"
                               />
                               {suggestions.length > 0 && (

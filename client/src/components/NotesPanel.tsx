@@ -144,6 +144,12 @@ export default function NotesPanel({
           ref={textareaRef}
           value={draft}
           onChange={(e) => handleDraftChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              addNote();
+            }
+          }}
           placeholder="Add a comment… use @ to mention someone"
         />
         {suggestions.length > 0 && (

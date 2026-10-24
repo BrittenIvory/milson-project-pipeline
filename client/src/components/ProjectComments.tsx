@@ -238,6 +238,12 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
                   ref={textareaRef}
                   value={draft}
                   onChange={(event) => handleDraftChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      addComment();
+                    }
+                  }}
                   placeholder="Add a comment… use @ to mention"
                   className="min-h-[72px] text-xs"
                 />

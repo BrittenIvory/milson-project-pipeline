@@ -206,6 +206,12 @@ export default function NotificationBell() {
                             autoFocus
                             value={replyDraft}
                             onChange={(e) => setReplyDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey && replyHasText) {
+                                e.preventDefault();
+                                sendReply(notification);
+                              }
+                            }}
                             placeholder="Reply to this comment…"
                             rows={2}
                             className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-brand-400 focus:outline-none"
