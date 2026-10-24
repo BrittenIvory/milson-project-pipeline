@@ -24,6 +24,7 @@ export default function NotificationBell() {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyDraft, setReplyDraft] = useState('');
   const [replying, setReplying] = useState(false);
+  const replyingRef = useRef(false);
   const [replyError, setReplyError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -75,7 +76,8 @@ export default function NotificationBell() {
   };
 
   const sendReply = async (notification: AppNotification) => {
-    if (!replyDraft.trim() || !notification.projectId) return;
+    if (!replyDraft.trim() || !notification.projectId || replyingRef.current) return;
+    replyingRef.current = true;
     setReplying(true);
     setReplyError(null);
     try {
@@ -99,6 +101,7 @@ export default function NotificationBell() {
     } catch (err) {
       setReplyError(apiErrorMessage(err, 'Unable to post reply'));
     } finally {
+      replyingRef.current = false;
       setReplying(false);
     }
   };
@@ -207,7 +210,13 @@ export default function NotificationBell() {
                             value={replyDraft}
                             onChange={(e) => setReplyDraft(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey && replyHasText) {
+                              if (
+                                e.key === 'Enter' &&
+                                !e.shiftKey &&
+                                !e.repeat &&
+                                !e.nativeEvent.isComposing &&
+                                replyHasText
+                              ) {
                                 e.preventDefault();
                                 sendReply(notification);
                               }

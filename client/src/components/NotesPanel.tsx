@@ -82,8 +82,11 @@ export default function NotesPanel({
     textareaRef.current?.focus();
   };
 
+  const savingRef = useRef(false);
+
   const addNote = async () => {
-    if (!draft.trim()) return;
+    if (!draft.trim() || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       await notesApi.create(projectId, draft.trim());
@@ -93,6 +96,7 @@ export default function NotesPanel({
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add comment'));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -145,7 +149,7 @@ export default function NotesPanel({
           value={draft}
           onChange={(e) => handleDraftChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey && !e.repeat && !e.nativeEvent.isComposing) {
               e.preventDefault();
               addNote();
             }
