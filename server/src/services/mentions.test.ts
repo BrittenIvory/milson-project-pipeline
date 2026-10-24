@@ -6,6 +6,8 @@ const users = [
   { id: 1, fullName: 'Milson Administrator', email: 'Britten.Ivory@milsonfoundry.com' },
   { id: 2, fullName: 'Test User', email: 'test.user@milsonfoundry.com' },
   { id: 3, fullName: 'Devin Verify', email: 'devin.verify@milsonfoundry.com' },
+  { id: 4, fullName: 'Anne-Marie Doe', email: 'amdoe@example.com' },
+  { id: 5, fullName: 'Kelly Sales', email: 'brittensales@example.com' },
 ];
 
 describe('matchMentions', () => {
@@ -29,6 +31,22 @@ describe('matchMentions', () => {
     assert.deepEqual(matchMentions('ping @Britten', users).map((h) => h.id), [1]);
     assert.deepEqual(matchMentions('ping @Britten Ivory', users).map((h) => h.id), [1]);
     assert.deepEqual(matchMentions('ping @britten.ivory', users).map((h) => h.id), [1]);
+  });
+
+  it('resolves a first-name mention followed by prose', () => {
+    assert.deepEqual(matchMentions('@Britten please review', users).map((h) => h.id), [1]);
+    assert.deepEqual(matchMentions('@Devin can you check?', users).map((h) => h.id), [3]);
+  });
+
+  it('resolves hyphenated display names', () => {
+    assert.deepEqual(matchMentions('hey @Anne-Marie Doe', users).map((h) => h.id), [4]);
+    assert.deepEqual(matchMentions('hey @anne.marie.doe', users).map((h) => h.id), [4]);
+  });
+
+  it('does not match users whose email only shares a prefix', () => {
+    // brittensales@ must not be notified by @Britten or @britten.ivory.
+    assert.deepEqual(matchMentions('@Britten', users).map((h) => h.id), [1]);
+    assert.deepEqual(matchMentions('@brittensales', users).map((h) => h.id), [5]);
   });
 
   it('resolves a full email mention by dropping the domain', () => {

@@ -144,17 +144,24 @@ export interface MentionUser {
  * is dropped before matching).
  */
 export function matchMentions(body: string, users: MentionUser[]): { id: number; fullName: string }[] {
-  const handles = [...body.matchAll(/@([\w.@-]+(?: [A-Za-z-]+)?)/g)]
-    .map((m) => {
-      let h = m[1].toLowerCase();
-      if (h.includes('@')) h = h.split('@')[0];
-      return h.replace(/[.\s_-]+/g, ' ').trim();
-    })
-    .filter(Boolean);
+  // The capture can swallow a second word of trailing prose
+  // (`@Britten please` → "britten please"), so also try the first token alone.
+  const handles = [
+    ...new Set(
+      [...body.matchAll(/@([\w.@-]+(?: [A-Za-z-]+)?)/g)]
+        .flatMap((m) => {
+          let h = m[1].toLowerCase();
+          if (h.includes('@')) h = h.split('@')[0];
+          const normalized = h.replace(/[.\s_-]+/g, ' ').trim();
+          return normalized ? [normalized, normalized.split(' ')[0]] : [];
+        })
+        .filter(Boolean),
+    ),
+  ];
   if (handles.length === 0) return [];
   return users
     .filter((u) => {
-      const name = u.fullName.toLowerCase().trim();
+      const name = u.fullName.toLowerCase().replace(/[._-]+/g, ' ').trim();
       const local = u.email.split('@')[0].toLowerCase().replace(/[._-]+/g, ' ').trim();
       const firstName = name.split(' ')[0];
       const firstLocal = local.split(' ')[0];
@@ -164,8 +171,7 @@ export function matchMentions(body: string, users: MentionUser[]): { id: number;
           h === local ||
           h === firstName ||
           h === firstLocal ||
-          name.startsWith(h) ||
-          local.startsWith(h),
+          name.startsWith(h),
       );
     })
     .map((u) => ({ id: u.id, fullName: u.fullName }));
