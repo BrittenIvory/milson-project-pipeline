@@ -8,6 +8,7 @@ const users = [
   { id: 3, fullName: 'Devin Verify', email: 'devin.verify@milsonfoundry.com' },
   { id: 4, fullName: 'Anne-Marie Doe', email: 'amdoe@example.com' },
   { id: 5, fullName: 'Kelly Sales', email: 'brittensales@example.com' },
+  { id: 6, fullName: 'Devin Other', email: 'devin.other@milsonfoundry.com' },
 ];
 
 describe('matchMentions', () => {
@@ -35,7 +36,14 @@ describe('matchMentions', () => {
 
   it('resolves a first-name mention followed by prose', () => {
     assert.deepEqual(matchMentions('@Britten please review', users).map((h) => h.id), [1]);
-    assert.deepEqual(matchMentions('@Devin can you check?', users).map((h) => h.id), [3]);
+    assert.deepEqual(matchMentions('@Devin can you check?', users).map((h) => h.id), [3, 6]);
+  });
+
+  it('does not notify namesakes when the full name matches', () => {
+    // "@Devin Verify" must only hit Devin Verify, not every Devin.
+    assert.deepEqual(matchMentions('cc @Devin Verify', users).map((h) => h.id), [3]);
+    // But a bare first name still fans out to all Devins.
+    assert.deepEqual(matchMentions('cc @Devin', users).map((h) => h.id).sort(), [3, 6]);
   });
 
   it('resolves hyphenated display names', () => {
@@ -59,6 +67,11 @@ describe('matchMentions', () => {
   it('resolves multiple mentions and ignores non-users', () => {
     const hits = matchMentions('@Devin Verify and @Test User, not @ghost', users);
     assert.deepEqual(hits.map((h) => h.id).sort(), [2, 3]);
+    // '@Devin Other' likewise resolves only to its full-name match.
+    assert.deepEqual(
+      matchMentions('cc @Devin Other too', users).map((h) => h.id),
+      [6],
+    );
   });
 
   it('returns no matches when there are no mentions or no users match', () => {
