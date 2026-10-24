@@ -56,6 +56,7 @@ router.post(
       await notify({
         userId: mention.id,
         actorId: req.user?.id,
+        allowSelf: true,
         type: 'note_mention',
         title: `${req.user?.fullName} mentioned you`,
         body: `${project.projectNumber} — ${note.body.slice(0, 120)}`,

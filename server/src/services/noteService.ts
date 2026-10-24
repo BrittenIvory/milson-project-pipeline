@@ -130,23 +130,54 @@ export async function deleteNote(projectId: number, id: number) {
   return toNoteDto(row);
 }
 
+export interface MentionUser {
+  id: number;
+  fullName: string;
+  email: string;
+}
+
 /**
- * Resolves `@mentions` in a note body to user ids. Names are matched against
- * the mention-friendly form of each user's full name (`@Ada Lovelace` and
- * `@ada.lovelace` both resolve), and email local parts are matched too.
+ * Pure mention matcher. `@mentions` resolve against each user's full name and
+ * email local part. Accepts full names (`@Ada Lovelace`), dotted/hyphenated
+ * forms (`@ada.lovelace`, `@ada-lovelace`), first names (`@ada`), first token
+ * of the email local part, and full emails (`@ada@example.com` — the domain
+ * is dropped before matching).
  */
-export async function resolveMentions(body: string): Promise<{ id: number; fullName: string }[]> {
-  const handles = [...body.matchAll(/@([\w.@-]+(?: [A-Za-z-]+)?)/g)].map((m) =>
-    m[1].toLowerCase().replace(/[.\s]+/g, ' ').trim(),
-  );
+export function matchMentions(body: string, users: MentionUser[]): { id: number; fullName: string }[] {
+  const handles = [...body.matchAll(/@([\w.@-]+(?: [A-Za-z-]+)?)/g)]
+    .map((m) => {
+      let h = m[1].toLowerCase();
+      if (h.includes('@')) h = h.split('@')[0];
+      return h.replace(/[.\s_-]+/g, ' ').trim();
+    })
+    .filter(Boolean);
   if (handles.length === 0) return [];
+  return users
+    .filter((u) => {
+      const name = u.fullName.toLowerCase().trim();
+      const local = u.email.split('@')[0].toLowerCase().replace(/[._-]+/g, ' ').trim();
+      const firstName = name.split(' ')[0];
+      const firstLocal = local.split(' ')[0];
+      return handles.some(
+        (h) =>
+          h === name ||
+          h === local ||
+          h === firstName ||
+          h === firstLocal ||
+          name.startsWith(h) ||
+          local.startsWith(h),
+      );
+    })
+    .map((u) => ({ id: u.id, fullName: u.fullName }));
+}
+
+/** Resolves `@mentions` in a note body to active user ids via matchMentions. */
+export async function resolveMentions(body: string): Promise<{ id: number; fullName: string }[]> {
   const rows = await query<{ id: number; full_name: string; email: string }>(
     'SELECT id, full_name, email FROM users WHERE is_active = TRUE',
   );
-  const matched = rows.filter((row) => {
-    const name = row.full_name.toLowerCase();
-    const local = row.email.split('@')[0].toLowerCase().replace(/[._-]+/g, ' ');
-    return handles.some((handle) => handle === name || handle === local || name.startsWith(handle));
-  });
-  return matched.map((row) => ({ id: row.id, fullName: row.full_name }));
+  return matchMentions(
+    body,
+    rows.map((row) => ({ id: row.id, fullName: row.full_name, email: row.email })),
+  );
 }
