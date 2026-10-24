@@ -112,6 +112,7 @@ export default function TasksPanel({
   const [pendingCommentDelete, setPendingCommentDelete] = useState<ProjectTaskComment | null>(null);
   const [collapsedOverride, setCollapsedOverride] = useState<Record<string, boolean>>({});
   const commentRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
+  const commentSendRef = useRef(false);
   const quoteLoadId = useRef(0);
 
   const load = useCallback(async () => {
@@ -289,7 +290,8 @@ export default function TasksPanel({
 
   const addComment = async (taskId: number) => {
     const body = commentDrafts[taskId]?.trim();
-    if (!body) return;
+    if (!body || commentSendRef.current) return;
+    commentSendRef.current = true;
     try {
       const comment = await taskCommentsApi.create(projectId, taskId, body);
       setComments((current) => ({ ...current, [taskId]: [...(current[taskId] ?? []), comment] }));
@@ -297,6 +299,8 @@ export default function TasksPanel({
       setMentionQueries((current) => ({ ...current, [taskId]: null }));
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add comment'));
+    } finally {
+      commentSendRef.current = false;
     }
   };
 
@@ -642,6 +646,17 @@ export default function TasksPanel({
                                 ref={(element) => { commentRefs.current[task.id] = element; }}
                                 value={commentDrafts[task.id] ?? ''}
                                 onChange={(e) => handleCommentDraft(task.id, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === 'Enter' &&
+                                    !e.shiftKey &&
+                                    !e.repeat &&
+                                    !e.nativeEvent.isComposing
+                                  ) {
+                                    e.preventDefault();
+                                    addComment(task.id);
+                                  }
+                                }}
                                 placeholder="Add a comment… use @ to mention someone"
                               />
                               {suggestions.length > 0 && (

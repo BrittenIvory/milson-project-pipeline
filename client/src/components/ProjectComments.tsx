@@ -135,8 +135,11 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
     textareaRef.current?.focus();
   };
 
+  const savingRef = useRef(false);
+
   const addComment = async () => {
-    if (!draft.trim()) return;
+    if (!draft.trim() || savingRef.current) return;
+    savingRef.current = true;
     notesLoadVersion.current += 1;
     setSaving(true);
     try {
@@ -148,6 +151,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add comment'));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -238,6 +242,17 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
                   ref={textareaRef}
                   value={draft}
                   onChange={(event) => handleDraftChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === 'Enter' &&
+                      !event.shiftKey &&
+                      !event.repeat &&
+                      !event.nativeEvent.isComposing
+                    ) {
+                      event.preventDefault();
+                      addComment();
+                    }
+                  }}
                   placeholder="Add a comment… use @ to mention"
                   className="min-h-[72px] text-xs"
                 />
