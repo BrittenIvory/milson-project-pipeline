@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { Bell, Reply } from 'lucide-react';
-import { apiErrorMessage, notesApi, notificationsApi, taskCommentsApi } from '../lib/api';
+import {
+  apiErrorMessage,
+  NOTIFICATIONS_CHANGED_EVENT,
+  notesApi,
+  notificationsApi,
+  taskCommentsApi,
+} from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import { PROJECT_STAGES } from '../lib/constants';
 import type { AppNotification } from '../types';
@@ -40,7 +46,12 @@ export default function NotificationBell() {
   useEffect(() => {
     load();
     const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    // Other surfaces (the inbox page) signal mutations via this event.
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -147,11 +158,22 @@ export default function NotificationBell() {
         <div className="absolute right-0 z-40 mt-2 w-96 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
             <p className="text-sm font-semibold text-slate-800">Notifications</p>
-            {unread > 0 && (
-              <button onClick={markAll} className="text-xs text-brand-600 hover:underline">
-                Mark all read
+            <div className="flex items-center gap-3">
+              {unread > 0 && (
+                <button onClick={markAll} className="text-xs text-brand-600 hover:underline">
+                  Mark all read
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/notifications');
+                }}
+                className="text-xs text-brand-600 hover:underline"
+              >
+                View all
               </button>
-            )}
+            </div>
           </div>
           {items.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">You are all caught up.</p>
