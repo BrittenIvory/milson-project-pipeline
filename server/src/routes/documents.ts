@@ -3,7 +3,7 @@ import multer from 'multer';
 import { z } from 'zod';
 import { config } from '../config';
 import { query, queryOne } from '../db/pool';
-import { requireRole } from '../middleware/auth';
+import { requirePermission } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { logActivity } from '../services/activityService';
 import { getProject } from '../services/projectService';
@@ -41,7 +41,7 @@ const upload = multer({
 // Mounted under /api/projects/:projectId/documents.
 const router = Router({ mergeParams: true });
 
-const canManageDocuments = requireRole('engineering', 'sales', 'production', 'quality');
+const canManageDocuments = requirePermission('documents.manage');
 
 const renameSchema = z.object({
   fileName: z.string().trim().min(1, 'File name is required').max(255),

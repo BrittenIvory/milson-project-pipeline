@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { config } from '../config';
 import { queryOne } from '../db/pool';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth, requirePermission } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { listActivity, logActivity, toActivityDto } from '../services/activityService';
 import { notify } from '../services/notificationService';
@@ -28,13 +28,17 @@ import tasksRouter from './tasks';
 
 const router = Router();
 router.use(requireAuth);
+// Everything under /api/projects is project data, so the whole router
+// requires projects.view (documents, notes, tasks and quotes nested below
+// carry their own extra permissions for mutations).
+router.use(requirePermission('projects.view'));
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: Math.min(config.maxUploadBytes, 10 * 1024 * 1024) },
 });
 
 /** Roles allowed to create or edit projects (administrators always allowed). */
-const canEditProjects = requireRole('engineering', 'sales', 'production');
+const canEditProjects = requirePermission('projects.edit');
 
 router.get(
   '/stats',

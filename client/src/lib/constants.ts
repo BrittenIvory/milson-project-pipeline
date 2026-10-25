@@ -54,3 +54,59 @@ export const TASK_STATUSES = [
 
 /** Statuses that take a task out of the active pipeline. */
 export const CLOSED_TASK_STATUSES = ['completed', 'not_applicable'];
+
+/**
+ * Per-user permission keys, mirroring server/src/permissions.ts. The server
+ * enforces these; the client uses them only to hide UI the user can't use.
+ */
+export const PERMISSIONS = [
+  { key: 'projects.view', label: 'View projects' },
+  { key: 'projects.edit', label: 'Create & edit projects' },
+  { key: 'customers.view', label: 'View customers' },
+  { key: 'customers.edit', label: 'Create & edit customers' },
+  { key: 'suppliers.view', label: 'View suppliers & quotes' },
+  { key: 'suppliers.edit', label: 'Edit suppliers & quotes' },
+  { key: 'documents.manage', label: 'Upload & delete documents' },
+  { key: 'tasks.manage', label: 'Manage tasks' },
+] as const;
+
+export type Permission = (typeof PERMISSIONS)[number]['key'];
+
+/**
+ * Mirror of server `rolePermissionDefaults` — the access each role has before
+ * an admin adds per-user overrides. Keep in sync with server/src/permissions.ts.
+ */
+export const ROLE_PERMISSION_DEFAULTS: Record<Role, Record<Permission, boolean>> = {
+  administrator: Object.fromEntries(PERMISSIONS.map((p) => [p.key, true])) as Record<
+    Permission,
+    boolean
+  >,
+  engineering: Object.fromEntries(PERMISSIONS.map((p) => [p.key, true])) as Record<
+    Permission,
+    boolean
+  >,
+  sales: Object.fromEntries(PERMISSIONS.map((p) => [p.key, true])) as Record<
+    Permission,
+    boolean
+  >,
+  production: {
+    ...Object.fromEntries(PERMISSIONS.map((p) => [p.key, true])),
+    'customers.edit': false,
+  } as Record<Permission, boolean>,
+  quality: {
+    ...Object.fromEntries(PERMISSIONS.map((p) => [p.key, true])),
+    'projects.edit': false,
+    'customers.edit': false,
+    'suppliers.edit': false,
+  } as Record<Permission, boolean>,
+};
+
+/** Effective permission for a managed user: role default overridden per key. */
+export function effectivePermission(
+  role: Role,
+  overrides: Record<string, boolean> | undefined,
+  key: Permission,
+): boolean {
+  const override = overrides?.[key];
+  return typeof override === 'boolean' ? override : ROLE_PERMISSION_DEFAULTS[role][key];
+}

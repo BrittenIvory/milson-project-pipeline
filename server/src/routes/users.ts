@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { pool, query, queryOne } from '../db/pool';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
+import { PERMISSION_KEYS } from '../permissions';
 import { logActivity } from '../services/activityService';
 import { ROLES, type Role } from '../types';
 
@@ -39,6 +40,7 @@ interface ManagedUserRow {
   role: Role;
   is_active: boolean;
   must_change_password: boolean;
+  permissions: Record<string, boolean>;
   created_at: Date;
 }
 
@@ -50,6 +52,7 @@ function toManagedUser(r: ManagedUserRow) {
     role: r.role,
     isActive: r.is_active,
     mustChangePassword: r.must_change_password,
+    permissions: r.permissions ?? {},
     createdAt: r.created_at,
   };
 }
@@ -60,7 +63,7 @@ router.get(
   adminOnly,
   asyncHandler(async (_req, res) => {
     const rows = await query<ManagedUserRow>(
-      `SELECT id, email, full_name, role, is_active, must_change_password, created_at
+      `SELECT id, email, full_name, role, is_active, must_change_password, permissions, created_at
        FROM users ORDER BY full_name`,
     );
     res.json(rows.map(toManagedUser));
@@ -110,6 +113,8 @@ const updateUserSchema = z
     isActive: z.boolean().optional(),
     role: z.enum(ROLES as [Role, ...Role[]]).optional(),
     fullName: z.string().trim().min(1).optional(),
+    /** Full replacement of the user's permission overrides; unknown keys are dropped. */
+    permissions: z.record(z.boolean()).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
 
@@ -168,6 +173,18 @@ router.patch(
       if (changes.fullName) {
         sets.push(`full_name = $${values.length + 1}`);
         values.push(changes.fullName);
+      }
+      if (changes.permissions) {
+        sets.push(`permissions = $${values.length + 1}::jsonb`);
+        values.push(
+          JSON.stringify(
+            Object.fromEntries(
+              Object.entries(changes.permissions).filter(([key]) =>
+                (PERMISSION_KEYS as readonly string[]).includes(key),
+              ),
+            ),
+          ),
+        );
       }
       row =
         (

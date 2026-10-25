@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { queryOne } from '../db/pool';
+import { effectivePermissions, hasPermission, type Permission } from '../permissions';
 import type { AuthUser, Role } from '../types';
 
 declare module 'express-serve-static-core' {
@@ -83,8 +84,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       must_change_password: boolean;
       password_changed_at: Date | null;
       session_version: number;
+      permissions: Record<string, boolean>;
     }>(
-      'SELECT id, email, full_name, role, must_change_password, password_changed_at, session_version FROM users WHERE id = $1 AND is_active = TRUE',
+      'SELECT id, email, full_name, role, must_change_password, password_changed_at, session_version, permissions FROM users WHERE id = $1 AND is_active = TRUE',
       [payload.sub],
     );
     if (!user) {
@@ -120,11 +122,31 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       fullName: user.full_name,
       role: user.role,
       mustChangePassword: user.must_change_password,
+      permissions: effectivePermissions(user.role, user.permissions),
     };
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired session' });
   }
+}
+
+/**
+ * Restricts a route to users holding the given permission (role defaults plus
+ * per-user overrides; administrators always pass). Prefer this over
+ * requireRole so admins can tune access per user.
+ */
+export function requirePermission(permission: Permission) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    if (!hasPermission(req.user, permission)) {
+      res.status(403).json({ error: 'You do not have permission to perform this action' });
+      return;
+    }
+    next();
+  };
 }
 
 /** Restricts a route to the given roles. Administrators always pass. */

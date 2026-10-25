@@ -46,6 +46,8 @@ export interface AuthUser {
   role: Role;
   /** True when the user must set a new password before using the app. */
   mustChangePassword?: boolean;
+  /** Resolved permission map (role defaults + per-user overrides). */
+  permissions?: Record<string, boolean>;
 }
 
 export const TASK_STATUSES = [

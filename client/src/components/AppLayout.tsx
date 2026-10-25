@@ -20,17 +20,17 @@ import { ROLE_LABELS } from '../lib/constants';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/projects', label: 'Projects', icon: FolderKanban },
-  { to: '/parts', label: 'Parts', icon: Package },
-  { to: '/customers', label: 'Customers', icon: Building2 },
-  { to: '/suppliers', label: 'Suppliers', icon: Truck },
-  { to: '/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/projects', label: 'Projects', icon: FolderKanban, permission: 'projects.view' as const },
+  { to: '/parts', label: 'Parts', icon: Package, permission: 'projects.view' as const },
+  { to: '/customers', label: 'Customers', icon: Building2, permission: 'customers.view' as const },
+  { to: '/suppliers', label: 'Suppliers', icon: Truck, permission: 'suppliers.view' as const },
+  { to: '/reports', label: 'Reports', icon: BarChart3, permission: 'projects.view' as const },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 /** Application shell: left navigation, top bar with global search, content area. */
 export default function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const initials = (user?.fullName ?? '')
@@ -76,7 +76,9 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems
+            .filter(({ permission }) => !permission || can(permission))
+            .map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
