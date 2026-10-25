@@ -33,7 +33,7 @@ export const emptyProject: ProjectPayload = {
   priority: 'medium',
   targetQuoteDate: null,
   notes: '',
-  currentStage: 'pipeline',
+  currentStage: 'intake',
 };
 
 /** Converts an existing project into editable form state. */

@@ -80,8 +80,8 @@ CREATE TABLE IF NOT EXISTS projects (
   part_image_file_name TEXT,
   part_image_mime_type TEXT,
   part_image_size_bytes BIGINT,
-  current_stage        TEXT NOT NULL DEFAULT 'pipeline' CHECK (current_stage IN (
-                         'pipeline','intake','stage_1_engineering','production_team_quoting','sales',
+  current_stage        TEXT NOT NULL DEFAULT 'intake' CHECK (current_stage IN (
+                         'intake','stage_1_engineering','production_team_quoting','sales',
                          'stage_2_production','production','qa','completed')),
   stage_started_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   is_archived          BOOLEAN NOT NULL DEFAULT FALSE,
@@ -232,7 +232,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS stage TEXT;
 
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
-  'pipeline','intake','stage_1_engineering','production_team_quoting','sales',
+  'intake','stage_1_engineering','production_team_quoting','sales',
   'stage_2_production','production','qa','completed'
 ));
 
@@ -243,7 +243,7 @@ ALTER TABLE tasks ADD CONSTRAINT tasks_status_check CHECK (status IN (
   'not_started','in_progress','on_hold','completed','not_applicable'
 ));
 
-ALTER TABLE projects ALTER COLUMN current_stage SET DEFAULT 'pipeline';
+ALTER TABLE projects ALTER COLUMN current_stage SET DEFAULT 'intake';
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS stage_started_at TIMESTAMPTZ;
 UPDATE projects SET stage_started_at = updated_at WHERE stage_started_at IS NULL;
 ALTER TABLE projects ALTER COLUMN stage_started_at SET DEFAULT NOW();
@@ -306,3 +306,14 @@ WHERE s.stage = 'production'
       AND t.stage = 'production'
       AND t.task_name = 'Sample Production Completed'
   );
+
+-- Remove the legacy 'pipeline' stage: rehome any projects still in it, then
+-- tighten the CHECK constraint and default to Project Intake.
+UPDATE projects SET current_stage = 'intake', updated_at = NOW() WHERE current_stage = 'pipeline';
+UPDATE tasks SET stage = 'intake' WHERE stage = 'pipeline';
+ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
+ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
+  'intake','stage_1_engineering','production_team_quoting','sales',
+  'stage_2_production','production','qa','completed'
+));
+ALTER TABLE projects ALTER COLUMN current_stage SET DEFAULT 'intake';

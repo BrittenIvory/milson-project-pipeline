@@ -2,7 +2,6 @@ import type { Role } from '../types';
 
 /** Ordered pipeline stages with display labels and badge colours. */
 export const PROJECT_STAGES = [
-  { value: 'pipeline', label: 'Pipeline', tone: 'bg-zinc-100 text-zinc-700' },
   { value: 'intake', label: 'Project Intake', tone: 'bg-slate-100 text-slate-700' },
   { value: 'stage_1_engineering', label: 'Stage 1 Engineering', tone: 'bg-indigo-100 text-indigo-700' },
   { value: 'production_team_quoting', label: 'Production Team Quoting', tone: 'bg-amber-100 text-amber-700' },
