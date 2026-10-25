@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth, requirePermission } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { createSupplier, listSuppliers, supplierSchema, updateSupplier } from '../services/supplierService';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requirePermission('suppliers.view'));
 
-const canManageSuppliers = requireRole('engineering', 'sales', 'production');
+const canManageSuppliers = requirePermission('suppliers.edit');
 
 router.get(
   '/',

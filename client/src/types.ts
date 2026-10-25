@@ -7,12 +7,16 @@ export interface User {
   role: Role;
   /** True when a temporary password is set and the user must choose a new one. */
   mustChangePassword?: boolean;
+  /** Resolved permission map (role defaults + admin overrides). */
+  permissions?: Record<string, boolean>;
 }
 
 /** Administrator view of an account, including status fields. */
 export interface ManagedUser extends User {
   isActive: boolean;
   mustChangePassword: boolean;
+  /** Explicit permission overrides; absent keys fall back to the role default. */
+  permissions: Record<string, boolean>;
   createdAt: string;
 }
 

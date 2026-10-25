@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireRole } from '../middleware/auth';
+import { requirePermission } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import {
   listSupplierQuotes,
@@ -9,7 +9,7 @@ import {
 } from '../services/supplierQuoteService';
 
 const router = Router({ mergeParams: true });
-const canManageQuotes = requireRole('engineering', 'sales', 'production');
+const canManageQuotes = requirePermission('suppliers.edit');
 
 function projectIdOf(value: string) {
   const id = Number(value);

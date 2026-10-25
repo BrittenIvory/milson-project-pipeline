@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth, requirePermission } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { logActivity } from '../services/activityService';
 import {
@@ -14,9 +14,10 @@ import {
 
 const router = Router();
 router.use(requireAuth);
+router.use(requirePermission('customers.view'));
 
-/** Roles allowed to mutate customer records (administrators always allowed). */
-const canEditCustomers = requireRole('sales', 'engineering');
+/** Permission required to mutate customer records. */
+const canEditCustomers = requirePermission('customers.edit');
 
 router.get(
   '/',

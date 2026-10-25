@@ -11,7 +11,7 @@
     "seed": "tsx src/db/seed.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts",
-    "test": "node --import tsx --test src/services/storage.test.ts src/services/storage.integration.test.ts src/middleware/security.test.ts src/config.test.ts src/services/mentions.test.ts"
+    "test": "node --import tsx --test src/services/storage.test.ts src/services/storage.integration.test.ts src/middleware/security.test.ts src/config.test.ts src/services/mentions.test.ts src/permissions.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1142.0",

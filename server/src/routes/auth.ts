@@ -6,6 +6,7 @@ import { queryOne } from '../db/pool';
 import { requireAuth, SESSION_COOKIE, sessionMaxAgeMs, signToken } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { createRateLimiter } from '../middleware/security';
+import { effectivePermissions } from '../permissions';
 import { logActivity } from '../services/activityService';
 import type { Role } from '../types';
 
@@ -53,6 +54,7 @@ router.post(
       is_active: boolean;
       must_change_password: boolean;
       session_version: number;
+      permissions: Record<string, boolean>;
     }>('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 
     if (!user || !user.is_active || !(await bcrypt.compare(password, user.password_hash))) {
@@ -65,6 +67,7 @@ router.post(
       fullName: user.full_name,
       role: user.role,
       mustChangePassword: user.must_change_password,
+      permissions: effectivePermissions(user.role, user.permissions),
     };
     res.cookie(SESSION_COOKIE, signToken(user.id, user.session_version), sessionCookieOptions());
     await logActivity({ actor: profile, action: 'User Logged In', entityType: 'user', entityId: user.id });

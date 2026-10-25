@@ -1,14 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../lib/api';
-import { EDITOR_ROLES } from '../lib/constants';
+import type { Permission } from '../lib/constants';
 import type { User } from '../types';
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  /** True when the signed-in user may create or edit records. */
+  /** True when the signed-in user may create or edit projects. */
   canEdit: boolean;
+  /** Checks a resolved permission key (admins always true). */
+  can: (permission: Permission) => boolean;
   /** True when the signed-in user is an administrator. */
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<User>;
@@ -71,7 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
-      canEdit: !!user && EDITOR_ROLES.includes(user.role),
+      canEdit: !!user && (user.role === 'administrator' || user.permissions?.['projects.edit'] === true),
+      can: (permission) =>
+        !!user && (user.role === 'administrator' || user.permissions?.[permission] === true),
       isAdmin: user?.role === 'administrator',
       login,
       logout,

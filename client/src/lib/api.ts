@@ -53,7 +53,15 @@ export const usersApi = {
     http
       .post<{ user: ManagedUser; temporaryPassword: string }>('/users/manage', payload)
       .then((r) => r.data),
-  update: (id: number, payload: { isActive?: boolean; role?: Role; fullName?: string }) =>
+  update: (
+    id: number,
+    payload: {
+      isActive?: boolean;
+      role?: Role;
+      fullName?: string;
+      permissions?: Record<string, boolean>;
+    },
+  ) =>
     http.patch<{ user: ManagedUser }>(`/users/manage/${id}`, payload).then((r) => r.data),
   resetPassword: (id: number) =>
     http

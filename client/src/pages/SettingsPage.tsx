@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { KeyRound, Plus, ShieldAlert, UserCheck, UserX } from 'lucide-react';
+import { KeyRound, Plus, ShieldAlert, SlidersHorizontal, UserCheck, UserX } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -15,7 +15,12 @@ import {
 } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage, usersApi } from '../lib/api';
-import { ROLE_LABELS } from '../lib/constants';
+import {
+  effectivePermission,
+  PERMISSIONS,
+  ROLE_LABELS,
+  type Permission,
+} from '../lib/constants';
 import type { ManagedUser, Role } from '../types';
 
 const ROLE_OPTIONS: Role[] = ['administrator', 'engineering', 'sales', 'production', 'quality'];
@@ -54,6 +59,7 @@ export default function SettingsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
+  const [permissionsUser, setPermissionsUser] = useState<ManagedUser | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -165,6 +171,14 @@ export default function SettingsPage() {
                         <Button
                           variant="ghost"
                           disabled={busyId === u.id}
+                          onClick={() => setPermissionsUser(u)}
+                          title="Edit permissions"
+                        >
+                          <SlidersHorizontal className="h-4 w-4" /> Permissions
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === u.id}
                           onClick={() => resetPassword(u)}
                           title="Reset password"
                         >
@@ -209,6 +223,17 @@ export default function SettingsPage() {
             load();
             setTempPassword({ email, password });
           }}
+        />
+      )}
+      {permissionsUser && (
+        <PermissionsModal
+          managedUser={permissionsUser}
+          onClose={() => setPermissionsUser(null)}
+          onSaved={() => {
+            setPermissionsUser(null);
+            load();
+          }}
+          onError={(message) => setError(message)}
         />
       )}
       {tempPassword && (
@@ -301,6 +326,91 @@ function CreateUserModal({
           />
         </Field>
       </form>
+    </Modal>
+  );
+}
+
+/** Per-user permission editor: checkboxes for each capability the server enforces. */
+function PermissionsModal({
+  managedUser,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  managedUser: ManagedUser;
+  onClose: () => void;
+  onSaved: () => void;
+  onError: (message: string | null) => void;
+}) {
+  const isAdminRole = managedUser.role === 'administrator';
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({
+    ...(managedUser.permissions ?? {}),
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const effective = (key: Permission) =>
+    isAdminRole ? true : effectivePermission(managedUser.role, overrides, key);
+
+  const toggle = (key: Permission) => {
+    setOverrides((current) => ({ ...current, [key]: !effectivePermission(managedUser.role, current, key) }));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await usersApi.update(managedUser.id, { permissions: overrides });
+      onSaved();
+    } catch (err) {
+      const message = apiErrorMessage(err, 'Unable to update permissions');
+      setError(message);
+      onError(message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      title={`Permissions — ${managedUser.fullName}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} loading={saving} disabled={isAdminRole}>Save</Button>
+        </>
+      }
+    >
+      <ErrorBanner message={error} />
+      {isAdminRole ? (
+        <p className="text-sm text-slate-600">
+          Administrators always have full access and cannot be restricted.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-slate-600">
+            {ROLE_LABELS[managedUser.role]} defaults are shown; your changes override them for this
+            user only. An edit permission also grants the matching view permission.
+          </p>
+          <ul className="mt-4 space-y-2.5">
+            {PERMISSIONS.map(({ key, label }) => (
+              <li key={key} className="flex items-center gap-3">
+                <input
+                  id={`perm-${key}`}
+                  type="checkbox"
+                  checked={effective(key)}
+                  onChange={() => toggle(key)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                <label htmlFor={`perm-${key}`} className="text-sm text-slate-700">
+                  {label}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </Modal>
   );
 }

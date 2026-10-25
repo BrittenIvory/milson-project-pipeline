@@ -23,6 +23,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
 -- issued under and are rejected once it no longer matches.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;
 
+-- Per-user permission overrides ({key: boolean}); missing keys fall back to
+-- the role's default matrix in server/src/permissions.ts.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{}'::jsonb;
+
 CREATE TABLE IF NOT EXISTS customers (
   id                SERIAL PRIMARY KEY,
   company_name      TEXT NOT NULL,

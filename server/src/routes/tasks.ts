@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireRole } from '../middleware/auth';
+import { requirePermission } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { logActivity } from '../services/activityService';
 import { notify } from '../services/notificationService';
@@ -20,7 +20,7 @@ import {
 // Mounted under /api/projects/:projectId/tasks.
 const router = Router({ mergeParams: true });
 
-const canManageTasks = requireRole('engineering', 'sales', 'production', 'quality');
+const canManageTasks = requirePermission('tasks.manage');
 
 async function notifyStageAdvance(
   project: Awaited<ReturnType<typeof getProject>>,
