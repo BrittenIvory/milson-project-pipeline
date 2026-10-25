@@ -133,7 +133,8 @@ export default function SettingsPage() {
           </div>
           <div className="px-5 py-4">
             <ErrorBanner message={error} />
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[36rem] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="py-2 pr-4">Name</th>
@@ -205,7 +206,8 @@ export default function SettingsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
             <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
               <ShieldAlert className="h-3.5 w-3.5" />
               Deactivated users are signed out immediately and cannot log in. There is no public
