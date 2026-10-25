@@ -316,9 +316,9 @@ UPDATE projects SET current_stage = 'intake', stage_started_at = NOW(), updated_
 WHERE current_stage = 'pipeline';
 -- The old 'pipeline' stage tasks (Uploaded Drawing, CAD file, Material
 -- Specifications, EAU, part details) are removed rather than rehomed.
--- Delete only the five seeded checklist items; user-created tasks are
--- reassigned to intake rather than destroyed (comments cascade).
-DELETE FROM tasks WHERE stage = 'pipeline' AND task_name IN (
+-- Delete only the seeded checklist items (seeded rows have no creator);
+-- anything a user added themselves is reassigned to intake instead.
+DELETE FROM tasks WHERE stage = 'pipeline' AND created_by IS NULL AND task_name IN (
   'Uploaded Drawing', 'Uploaded CAD file', 'Updated Material Specifications',
   'Added EAU', 'Updated all part details'
 );
