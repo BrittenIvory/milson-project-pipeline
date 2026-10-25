@@ -3,6 +3,8 @@ import type {
   ActivityRecord,
   AppNotification,
   ManagedUser,
+  PartDetail,
+  PartSummary,
   Role,
   Customer,
   DashboardSummary,
@@ -271,6 +273,15 @@ export const notificationsApi = {
   archive: (id: number) => http.post(`/notifications/${id}/archive`),
   unarchive: (id: number) => http.post(`/notifications/${id}/unarchive`),
   archiveAll: () => http.post('/notifications/archive-all'),
+};
+
+export const partsApi = {
+  list: () =>
+    http.get<{ items: PartSummary[] }>('/parts').then((r) => r.data.items),
+  detail: (partNumber: string) =>
+    http
+      .get<PartDetail>('/parts/detail', { params: { partNumber } })
+      .then((r) => r.data),
 };
 
 export const searchApi = {
