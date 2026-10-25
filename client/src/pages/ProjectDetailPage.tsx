@@ -331,7 +331,7 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200">
+      <div className="sticky top-0 z-10 -mx-4 -mt-6 mb-5 flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 pt-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -352,7 +352,8 @@ export default function ProjectDetailPage() {
 
       {tab === 'summary' && (
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
+          <div className="space-y-4 lg:col-span-2">
+          <Card>
             <h2 className="mb-4 text-sm font-semibold text-slate-900">General information</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <DetailItem label="Project Number" value={project.projectNumber} />
@@ -410,7 +411,7 @@ export default function ProjectDetailPage() {
             </div>
           </Card>
 
-          <Card className="lg:col-span-2">
+          <Card>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-slate-900">Part image</h2>
@@ -451,6 +452,7 @@ export default function ProjectDetailPage() {
               </div>
             )}
           </Card>
+          </div>
 
           <div className="space-y-4">
             <Card>

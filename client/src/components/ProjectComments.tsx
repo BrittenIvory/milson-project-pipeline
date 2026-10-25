@@ -73,7 +73,10 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
           Math.max(sidebarInset, rect.left - popupWidth - 8),
           window.innerWidth - popupWidth - 8,
         ),
-        top: Math.max(8, Math.min(rect.top, window.innerHeight - 360)),
+        top: Math.max(
+          8,
+          Math.min(rect.top, window.innerHeight - (popoverRef.current?.offsetHeight ?? 360) - 8),
+        ),
       });
     };
     updatePosition();
@@ -186,7 +189,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
         createPortal(
         <div
           ref={popoverRef}
-          className="fixed z-50 max-w-[calc(100vw-1rem)] rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+          className="fixed z-50 max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
           style={{ left: popoverPosition.left, top: popoverPosition.top, width: popoverWidth }}
         >
           <div className="mb-2 flex items-start justify-between gap-2">
