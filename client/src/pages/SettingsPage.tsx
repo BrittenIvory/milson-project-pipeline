@@ -349,8 +349,16 @@ function PermissionsModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const effective = (key: Permission) =>
-    isAdminRole ? true : effectivePermission(managedUser.role, overrides, key);
+  const effective = (key: Permission) => {
+    if (isAdminRole) return true;
+    if (effectivePermission(managedUser.role, overrides, key)) return true;
+    // An edit grant implies the matching view, mirroring the server.
+    if (key.endsWith('.view')) {
+      const editKey = `${key.slice(0, -'.view'.length)}.edit` as Permission;
+      return effectivePermission(managedUser.role, overrides, editKey);
+    }
+    return false;
+  };
 
   const toggle = (key: Permission) => {
     setOverrides((current) => ({ ...current, [key]: !effectivePermission(managedUser.role, current, key) }));
@@ -394,20 +402,34 @@ function PermissionsModal({
             user only. An edit permission also grants the matching view permission.
           </p>
           <ul className="mt-4 space-y-2.5">
-            {PERMISSIONS.map(({ key, label }) => (
-              <li key={key} className="flex items-center gap-3">
-                <input
-                  id={`perm-${key}`}
-                  type="checkbox"
-                  checked={effective(key)}
-                  onChange={() => toggle(key)}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                />
-                <label htmlFor={`perm-${key}`} className="text-sm text-slate-700">
-                  {label}
-                </label>
-              </li>
-            ))}
+            {PERMISSIONS.map(({ key, label }) => {
+              // View can't be revoked while its edit grant is on.
+              const impliedByEdit =
+                key.endsWith('.view') &&
+                effectivePermission(
+                  managedUser.role,
+                  overrides,
+                  `${key.slice(0, -'.view'.length)}.edit` as Permission,
+                );
+              return (
+                <li key={key} className="flex items-center gap-3">
+                  <input
+                    id={`perm-${key}`}
+                    type="checkbox"
+                    checked={effective(key)}
+                    disabled={impliedByEdit}
+                    onChange={() => toggle(key)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  <label htmlFor={`perm-${key}`} className="text-sm text-slate-700">
+                    {label}
+                    {impliedByEdit && (
+                      <span className="ml-1 text-xs text-slate-400">(granted by edit)</span>
+                    )}
+                  </label>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

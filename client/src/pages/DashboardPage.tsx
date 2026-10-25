@@ -14,18 +14,24 @@ import type { DashboardSummary } from '../types';
 
 /** Home page: stage counters, month-to-date metrics and project spotlights. */
 export default function DashboardPage() {
-  const { canEdit } = useAuth();
+  const { canEdit, can } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const canViewProjects = can('projects.view');
+
   useEffect(() => {
+    if (!canViewProjects) {
+      setLoading(false);
+      return;
+    }
     projectsApi
       .dashboard()
       .then(setSummary)
       .catch((err) => setError(apiErrorMessage(err, 'Unable to load the dashboard')))
       .finally(() => setLoading(false));
-  }, []);
+  }, [canViewProjects]);
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -44,6 +50,11 @@ export default function DashboardPage() {
       />
 
       <ErrorBanner message={error} />
+      {!canViewProjects && (
+        <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+          Your account does not have access to projects. Ask an administrator if you need access.
+        </p>
+      )}
 
       {loading || !summary ? (
         <div className="space-y-4">

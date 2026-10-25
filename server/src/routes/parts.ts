@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { requirePermission } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { getPart, listParts } from '../services/partService';
 
 const router = Router();
-router.use(requireAuth);
+router.use(requirePermission('projects.view'));
 
 /** All distinct parts across projects. */
 router.get(

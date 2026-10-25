@@ -30,8 +30,9 @@ export default function DocumentsPanel({
   projectId: number;
   onChanged?: () => void;
 }) {
-  const { user } = useAuth();
+  const { can } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
+  const canManage = can('documents.manage');
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounced(search);
@@ -118,7 +119,7 @@ export default function DocumentsPanel({
             Drawings, models and quotes. Accepted: {ACCEPTED_FILE_EXTENSIONS.join(', ')}
           </p>
         </div>
-        {user && (
+        {canManage && (
           <>
             <input
               ref={inputRef}
@@ -147,7 +148,7 @@ export default function DocumentsPanel({
 
       <ErrorBanner message={error} />
 
-      {user && (
+      {canManage && (
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -221,25 +222,29 @@ export default function DocumentsPanel({
                       >
                         <Download className="h-4 w-4" />
                       </button>
-                      <button
-                        title="Rename"
-                        aria-label={`Rename ${doc.fileName}`}
-                        className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        onClick={() => {
-                          setRenaming(doc);
-                          setRenameValue(doc.fileName);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        title="Delete"
-                        aria-label={`Delete ${doc.fileName}`}
-                        className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                        onClick={() => setPendingDelete(doc)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {canManage && (
+                        <>
+                          <button
+                            title="Rename"
+                            aria-label={`Rename ${doc.fileName}`}
+                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            onClick={() => {
+                              setRenaming(doc);
+                              setRenameValue(doc.fileName);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            title="Delete"
+                            aria-label={`Delete ${doc.fileName}`}
+                            className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            onClick={() => setPendingDelete(doc)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
