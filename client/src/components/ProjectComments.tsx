@@ -19,6 +19,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const notesListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [popoverPosition, setPopoverPosition] = useState({ left: 8, top: 8 });
@@ -101,6 +102,10 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
       .then((noteData) => {
         if (notesVersion !== notesLoadVersion.current) return;
         setNotes(noteData);
+        requestAnimationFrame(() => {
+          const el = notesListRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
       })
       .catch((err) => {
         if (notesVersion === notesLoadVersion.current) {
@@ -222,7 +227,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
               {notes.length === 0 ? (
                 <EmptyState title="No comments yet" description="Add the first project comment." />
               ) : (
-                <div className="mb-3 max-h-48 space-y-2 overflow-y-auto">
+                <div ref={notesListRef} className="mb-3 max-h-48 space-y-2 overflow-y-auto">
                   {notes.map((note) => (
                     <div key={note.id} className="rounded-lg bg-slate-50 p-2">
                       <p className="text-[11px] text-slate-500">

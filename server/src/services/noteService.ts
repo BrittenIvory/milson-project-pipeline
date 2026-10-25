@@ -66,7 +66,7 @@ export function toNoteDto(row: NoteRow, reactions: NoteReaction[] = []) {
 
 export async function listNotes(projectId: number) {
   const rows = await query<NoteRow>(
-    `${SELECT_NOTE} WHERE n.project_id = $1 ORDER BY n.created_at DESC`,
+    `${SELECT_NOTE} WHERE n.project_id = $1 ORDER BY n.created_at ASC`,
     [projectId],
   );
   const reactions = await reactionsFor(rows.map((row) => row.id));
