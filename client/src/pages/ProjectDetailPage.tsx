@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { ArrowLeft, Download, Pencil, Trash2, Upload } from 'lucide-react';
+import PartLink from '../components/PartLink';
 import ProjectForm, { projectToPayload } from '../components/ProjectForm';
 import {
   Badge,
@@ -68,7 +69,7 @@ const tabs: { id: Tab; label: string; placeholder?: string }[] = [
 ];
 
 /** Single row inside a summary card. */
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <p className="label">{label}</p>
@@ -356,8 +357,24 @@ export default function ProjectDetailPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <DetailItem label="Project Number" value={project.projectNumber} />
               <DetailItem label="Project Name" value={project.projectName} />
-              <DetailItem label="Internal Part Number" value={orDash(project.internalPartNumber)} />
-              <DetailItem label="Customer Part Number" value={orDash(project.customerPartNumber)} />
+              <DetailItem
+                label="Internal Part Number"
+                value={<PartLink partNumber={project.internalPartNumber} />}
+              />
+              <DetailItem
+                label="Customer Part Number"
+                value={
+                  <PartLink
+                    partNumber={
+                      project.customerPartNumber
+                        ? (project.internalPartNumber ?? project.customerPartNumber)
+                        : null
+                    }
+                  >
+                    {project.customerPartNumber ?? '—'}
+                  </PartLink>
+                }
+              />
               <DetailItem label="Customer Machined Part Number" value={orDash(project.customerMachinedPartNumber)} />
               <DetailItem label="Customer Painted Part Number" value={orDash(project.customerPaintedPartNumber)} />
               <DetailItem label="Customer Unpainted Part Number" value={orDash(project.customerUnpaintedPartNumber)} />

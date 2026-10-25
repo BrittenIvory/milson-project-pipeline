@@ -7,6 +7,7 @@ import { projectsApi } from '../lib/api';
 import { PROJECT_STAGES } from '../lib/constants';
 import { formatDate, formatDateTime, orDash, priorityMeta, stageMeta } from '../lib/format';
 import type { Project } from '../types';
+import PartLink from './PartLink';
 import ProjectComments from './ProjectComments';
 
 function PartImageCell({ project }: { project: Project }) {
@@ -85,13 +86,19 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
     id: 'customerPartNumber',
     label: 'Customer Part Number',
     width: 190,
-    render: (p) => orDash(p.customerPartNumber),
+    render: (p) => (
+      <PartLink
+        partNumber={p.customerPartNumber ? (p.internalPartNumber ?? p.customerPartNumber) : null}
+      >
+        {p.customerPartNumber ?? '—'}
+      </PartLink>
+    ),
   },
   {
     id: 'internalPartNumber',
     label: 'Internal Part Number',
     width: 190,
-    render: (p) => orDash(p.internalPartNumber),
+    render: (p) => <PartLink partNumber={p.internalPartNumber} />,
   },
   {
     id: 'projectName',
