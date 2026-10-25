@@ -32,7 +32,7 @@ function NoteBody({ body }: { body: string }) {
   );
 }
 
-/** Threaded project comments with @mention autocomplete, newest first. */
+/** Threaded project comments with @mention autocomplete, oldest first, composer at bottom. */
 export default function NotesPanel({
   projectId,
   onChanged,
@@ -42,6 +42,7 @@ export default function NotesPanel({
 }) {
   const { user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const listEndRef = useRef<HTMLDivElement>(null);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -68,6 +69,10 @@ export default function NotesPanel({
     load();
     usersApi.list().then(setUsers).catch(() => undefined);
   }, [load]);
+
+  useEffect(() => {
+    if (!loading) listEndRef.current?.scrollIntoView({ block: 'end' });
+  }, [loading, notes.length]);
 
   /** Tracks the partial `@name` immediately before the caret. */
   const handleDraftChange = (value: string) => {
@@ -143,42 +148,6 @@ export default function NotesPanel({
 
       <ErrorBanner message={error} />
 
-      <div className="relative">
-        <TextArea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => handleDraftChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-              // Repeat keydowns keep Enter a send-only key: swallow the newline
-              // instead of inserting blank lines after the first send.
-              e.preventDefault();
-              if (!e.repeat) addNote();
-            }
-          }}
-          placeholder="Add a comment… use @ to mention someone"
-        />
-        {suggestions.length > 0 && (
-          <div className="absolute z-20 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
-            {suggestions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => applyMention(option.fullName)}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-              >
-                {option.fullName}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="mt-2 flex justify-end">
-          <Button loading={saving} disabled={!draft.trim()} onClick={addNote}>
-            Add comment
-          </Button>
-        </div>
-      </div>
-
       {loading ? (
         <SkeletonRows rows={3} />
       ) : notes.length === 0 ? (
@@ -247,6 +216,43 @@ export default function NotesPanel({
           ))}
         </ul>
       )}
+      <div ref={listEndRef} />
+
+      <div className="relative">
+        <TextArea
+          ref={textareaRef}
+          value={draft}
+          onChange={(e) => handleDraftChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              // Repeat keydowns keep Enter a send-only key: swallow the newline
+              // instead of inserting blank lines after the first send.
+              e.preventDefault();
+              if (!e.repeat) addNote();
+            }
+          }}
+          placeholder="Add a comment… use @ to mention someone"
+        />
+        {suggestions.length > 0 && (
+          <div className="absolute bottom-full z-20 mb-1 w-64 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+            {suggestions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => applyMention(option.fullName)}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {option.fullName}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="mt-2 flex justify-end">
+          <Button loading={saving} disabled={!draft.trim()} onClick={addNote}>
+            Add comment
+          </Button>
+        </div>
+      </div>
 
       <ConfirmDialog
         open={pendingDelete !== null}
