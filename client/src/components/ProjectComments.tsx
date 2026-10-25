@@ -156,8 +156,12 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
     setSaving(true);
     try {
       const note = await notesApi.create(projectId, draft.trim());
-      setNotes((current) => [note, ...current]);
+      setNotes((current) => [...current, note]);
       setDraft('');
+      requestAnimationFrame(() => {
+        const el = notesListRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
       setMentionQuery(null);
       setError(null);
     } catch (err) {
