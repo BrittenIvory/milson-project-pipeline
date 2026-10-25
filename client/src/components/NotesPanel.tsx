@@ -43,6 +43,9 @@ export default function NotesPanel({
   const { user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const listEndRef = useRef<HTMLDivElement>(null);
+  // Scroll to the latest comment only on first load and right after posting —
+  // not on every list change, or edits/deletes would yank the reader to the bottom.
+  const scrollToEndRef = useRef(true);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -71,7 +74,9 @@ export default function NotesPanel({
   }, [load]);
 
   useEffect(() => {
-    if (!loading) listEndRef.current?.scrollIntoView({ block: 'end' });
+    if (loading || !scrollToEndRef.current) return;
+    scrollToEndRef.current = false;
+    listEndRef.current?.scrollIntoView({ block: 'end' });
   }, [loading, notes.length]);
 
   /** Tracks the partial `@name` immediately before the caret. */
@@ -96,6 +101,7 @@ export default function NotesPanel({
     try {
       await notesApi.create(projectId, draft.trim());
       setDraft('');
+      scrollToEndRef.current = true;
       await load();
       onChanged?.();
     } catch (err) {
