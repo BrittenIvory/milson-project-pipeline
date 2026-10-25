@@ -97,7 +97,7 @@ export default function PartDetailPage() {
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-slate-500">
         Projects for this part
       </h2>
-      <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-100 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
