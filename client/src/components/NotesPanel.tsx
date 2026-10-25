@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Reply, Trash2, X } from 'lucide-react';
 import {
   Button,
   ConfirmDialog,
@@ -53,6 +53,7 @@ export default function NotesPanel({
   const [editingBody, setEditingBody] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ProjectNote | null>(null);
+  const [replyTo, setReplyTo] = useState<ProjectNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -100,8 +101,9 @@ export default function NotesPanel({
     savingRef.current = true;
     setSaving(true);
     try {
-      await notesApi.create(projectId, draft.trim());
+      await notesApi.create(projectId, draft.trim(), replyTo?.id);
       setDraft('');
+      setReplyTo(null);
       scrollToEndRef.current = true;
       await load();
       onChanged?.();
@@ -191,8 +193,20 @@ export default function NotesPanel({
                   <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>{' '}
                   · {formatDateTime(note.createdAt)}
                 </p>
+                <div className="flex gap-1">
+                  <button
+                    title="Reply — notifies the commenter without @tagging them"
+                    aria-label="Reply to comment"
+                    onClick={() => {
+                      setReplyTo(note);
+                      textareaRef.current?.focus();
+                    }}
+                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <Reply className="h-3.5 w-3.5" />
+                  </button>
                 {(user?.id === note.authorId || user?.role === 'administrator') && (
-                  <div className="flex gap-1">
+                  <>
                     <button
                       title="Edit comment"
                       aria-label="Edit comment"
@@ -212,9 +226,18 @@ export default function NotesPanel({
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                  </div>
+                  </>
                 )}
+                </div>
               </div>
+              {note.replyToId && (
+                <p className="mb-2 border-l-2 border-slate-200 pl-2 text-xs text-slate-500">
+                  <span className="font-medium text-slate-600">
+                    {note.replyToAuthorName ?? 'Deleted comment'}
+                  </span>
+                  {note.replyToPreview ? `: ${note.replyToPreview}` : ''}
+                </p>
+              )}
               {editingId === note.id ? (
                 <div className="space-y-2">
                   <TextArea
@@ -249,6 +272,21 @@ export default function NotesPanel({
       )}
 
       <div className="relative">
+        {replyTo && (
+          <div className="mb-2 flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs text-brand-800">
+            <span>
+              Replying to {replyTo.authorName ?? 'Unknown'} — they'll be notified
+            </span>
+            <button
+              type="button"
+              aria-label="Cancel reply"
+              onClick={() => setReplyTo(null)}
+              className="rounded p-0.5 text-brand-600 hover:bg-brand-100"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         <TextArea
           ref={textareaRef}
           value={draft}

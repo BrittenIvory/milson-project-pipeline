@@ -250,8 +250,10 @@ export const supplierQuotesApi = {
 export const notesApi = {
   list: (projectId: number) =>
     http.get<ProjectNote[]>(`/projects/${projectId}/notes`).then((r) => r.data),
-  create: (projectId: number, body: string) =>
-    http.post<ProjectNote>(`/projects/${projectId}/notes`, { body }).then((r) => r.data),
+  create: (projectId: number, body: string, replyToNoteId?: number) =>
+    http
+      .post<ProjectNote>(`/projects/${projectId}/notes`, { body, replyToNoteId })
+      .then((r) => r.data),
   update: (projectId: number, noteId: number, body: string) =>
     http.put<ProjectNote>(`/projects/${projectId}/notes/${noteId}`, { body }).then((r) => r.data),
   remove: (projectId: number, noteId: number) =>

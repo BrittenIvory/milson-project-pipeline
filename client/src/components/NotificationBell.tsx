@@ -125,7 +125,9 @@ export default function NotificationBell() {
   /** Only comment mentions get a Reply — task alerts have no comment to reply to. */
   const canReply = (notification: AppNotification) =>
     notification.projectId !== null &&
-    (notification.type === 'note_mention' || notification.type === 'comment_mention');
+    (notification.type === 'note_mention' ||
+      notification.type === 'comment_mention' ||
+      notification.type === 'note_reply');
 
   /** Send requires text beyond the prefilled @mention, however its trailing
       whitespace is edited. */

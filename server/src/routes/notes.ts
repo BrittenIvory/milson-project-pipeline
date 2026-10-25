@@ -44,7 +44,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const projectId = projectIdOf(req.params as Record<string, string>);
     const project = await getProject(projectId);
-    const note = await createNote(projectId, noteSchema.parse(req.body), req.user!.id);
+    const input = noteSchema.parse(req.body);
+    const note = await createNote(projectId, input, req.user!.id);
     await logActivity({
       actor: req.user ?? null,
       action: 'Note Added',
@@ -64,6 +65,21 @@ router.post(
         entityType: 'note',
         entityId: note.id,
       });
+    }
+    if (input.replyToNoteId) {
+      const parent = await getNote(projectId, input.replyToNoteId);
+      if (parent.authorId !== null) {
+        await notify({
+          userId: parent.authorId,
+          actorId: req.user?.id,
+          type: 'note_reply',
+          title: `${req.user?.fullName} replied to your comment`,
+          body: `${project.projectNumber} — ${note.body.slice(0, 120)}`,
+          projectId,
+          entityType: 'note',
+          entityId: note.id,
+        });
+      }
     }
     res.status(201).json(note);
   }),
