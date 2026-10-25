@@ -179,6 +179,8 @@ export default function NotificationsPage() {
                         {[notification.projectNumber, notification.projectName]
                           .filter(Boolean)
                           .join(' — ')}
+                        {notification.internalPartNumber &&
+                          ` · ${notification.internalPartNumber}`}
                         {notification.projectStage &&
                           ` · ${STAGE_LABELS.get(notification.projectStage) ?? notification.projectStage}`}
                       </p>
