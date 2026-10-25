@@ -252,11 +252,18 @@ export const notesApi = {
       .then((r) => r.data),
 };
 
+/** Dispatched on window after notification mutations so other listeners reload. */
+export const NOTIFICATIONS_CHANGED_EVENT = 'milson:notifications-changed';
+
 export const notificationsApi = {
-  list: (archived = false) =>
+  list: (archived = false, offset?: number, limit?: number) =>
     http
       .get<{ items: AppNotification[]; unread: number }>('/notifications', {
-        params: archived ? { archived: 'true' } : undefined,
+        params: {
+          ...(archived ? { archived: 'true' } : {}),
+          ...(offset ? { offset } : {}),
+          ...(limit ? { limit } : {}),
+        },
       })
       .then((r) => r.data),
   markRead: (id: number) => http.post(`/notifications/${id}/read`),

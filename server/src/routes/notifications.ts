@@ -18,11 +18,15 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
     const [items, unread] = await Promise.all([
       listNotifications(
         userId,
         req.query.unread === 'true',
         req.query.archived === 'true',
+        limit,
+        offset,
       ),
       unreadCount(userId),
     ]);

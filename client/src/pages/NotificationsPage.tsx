@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { Archive, ArchiveRestore, Inbox, MailOpen } from 'lucide-react';
-import { apiErrorMessage, notificationsApi } from '../lib/api';
+import {
+  apiErrorMessage,
+  NOTIFICATIONS_CHANGED_EVENT,
+  notificationsApi,
+} from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import { PROJECT_STAGES } from '../lib/constants';
 import type { AppNotification } from '../types';
@@ -11,18 +15,24 @@ const STAGE_LABELS = new Map<string, string>(
   PROJECT_STAGES.map((stage) => [stage.value, stage.label]),
 );
 
+const PAGE_SIZE = 50;
+
+const signalChanged = () => window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+
 /** Full inbox of notifications with Activity and Archive tabs. */
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<'activity' | 'archive'>('activity');
   const [items, setItems] = useState<AppNotification[]>([]);
+  const [hasMore, setHasMore] = useState(false);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const data = await notificationsApi.list(tab === 'archive');
+      const data = await notificationsApi.list(tab === 'archive', 0, PAGE_SIZE);
       setItems(data.items);
+      setHasMore(data.items.length === PAGE_SIZE);
       setUnread(data.unread);
       setError(null);
     } catch (err) {
@@ -34,9 +44,20 @@ export default function NotificationsPage() {
     load();
   }, [load]);
 
+  const loadMore = async () => {
+    try {
+      const data = await notificationsApi.list(tab === 'archive', items.length, PAGE_SIZE);
+      setItems((current) => [...current, ...data.items]);
+      setHasMore(data.items.length === PAGE_SIZE);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to load more notifications'));
+    }
+  };
+
   const openNotification = async (notification: AppNotification) => {
     if (!notification.readAt) {
       await notificationsApi.markRead(notification.id).catch(() => undefined);
+      signalChanged();
     }
     if (notification.projectId) navigate(`/projects/${notification.projectId}`);
     else await load();
@@ -52,6 +73,7 @@ export default function NotificationsPage() {
         }
         await notificationsApi.archive(notification.id);
       }
+      signalChanged();
       await load();
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to update notification'));
@@ -61,6 +83,7 @@ export default function NotificationsPage() {
   const archiveAll = async () => {
     try {
       await notificationsApi.archiveAll();
+      signalChanged();
       await load();
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to clear inbox'));
@@ -69,6 +92,7 @@ export default function NotificationsPage() {
 
   const markAll = async () => {
     await notificationsApi.markAllRead().catch(() => undefined);
+    signalChanged();
     await load();
   };
 
@@ -130,63 +154,75 @@ export default function NotificationsPage() {
           {tab === 'archive' ? 'Nothing archived.' : 'You are all caught up.'}
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100">
-          {items.map((notification) => (
-            <li
-              key={notification.id}
-              className={clsx('flex gap-3 py-3', !notification.readAt && 'bg-brand-50/40')}
-            >
-              {notification.hasPartImage && notification.projectId && (
-                <img
-                  src={`/api/projects/${notification.projectId}/part-image`}
-                  alt="Part"
-                  className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
-                />
-              )}
-              <div className="min-w-0 flex-1">
-                <button
-                  onClick={() => openNotification(notification)}
-                  className="block w-full text-left hover:opacity-80"
-                >
-                  <p className="text-sm font-medium text-slate-800">{notification.title}</p>
-                  {(notification.projectNumber || notification.projectName) && (
-                    <p className="truncate text-xs font-medium text-brand-700">
-                      {[notification.projectNumber, notification.projectName]
-                        .filter(Boolean)
-                        .join(' — ')}
-                      {notification.projectStage &&
-                        ` · ${STAGE_LABELS.get(notification.projectStage) ?? notification.projectStage}`}
-                    </p>
-                  )}
-                  {notification.body && (
-                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
-                      {notification.body}
-                    </p>
-                  )}
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    {formatDateTime(notification.createdAt)}
-                  </p>
-                </button>
-              </div>
-              <div className="flex shrink-0 items-start gap-2">
-                {!notification.readAt && (
-                  <span className="mt-1.5 h-2 w-2 rounded-full bg-brand-600" aria-label="Unread" />
+        <>
+          <ul className="divide-y divide-slate-100">
+            {items.map((notification) => (
+              <li
+                key={notification.id}
+                className={clsx('flex gap-3 py-3', !notification.readAt && 'bg-brand-50/40')}
+              >
+                {notification.hasPartImage && notification.projectId && (
+                  <img
+                    src={`/api/projects/${notification.projectId}/part-image`}
+                    alt="Part"
+                    className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
+                  />
                 )}
-                <button
-                  onClick={() => toggleArchive(notification)}
-                  title={tab === 'archive' ? 'Restore to inbox' : 'Archive'}
-                  className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                >
-                  {tab === 'archive' ? (
-                    <ArchiveRestore className="h-4 w-4" />
-                  ) : (
-                    <Archive className="h-4 w-4" />
+                <div className="min-w-0 flex-1">
+                  <button
+                    onClick={() => openNotification(notification)}
+                    className="block w-full text-left hover:opacity-80"
+                  >
+                    <p className="text-sm font-medium text-slate-800">{notification.title}</p>
+                    {(notification.projectNumber || notification.projectName) && (
+                      <p className="truncate text-xs font-medium text-brand-700">
+                        {[notification.projectNumber, notification.projectName]
+                          .filter(Boolean)
+                          .join(' — ')}
+                        {notification.projectStage &&
+                          ` · ${STAGE_LABELS.get(notification.projectStage) ?? notification.projectStage}`}
+                      </p>
+                    )}
+                    {notification.body && (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                        {notification.body}
+                      </p>
+                    )}
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {formatDateTime(notification.createdAt)}
+                    </p>
+                  </button>
+                </div>
+                <div className="flex shrink-0 items-start gap-2">
+                  {!notification.readAt && (
+                    <span className="mt-1.5 h-2 w-2 rounded-full bg-brand-600" aria-label="Unread" />
                   )}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  <button
+                    onClick={() => toggleArchive(notification)}
+                    title={tab === 'archive' ? 'Restore to inbox' : 'Archive'}
+                    className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    {tab === 'archive' ? (
+                      <ArchiveRestore className="h-4 w-4" />
+                    ) : (
+                      <Archive className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {hasMore && (
+            <div className="py-4 text-center">
+              <button
+                onClick={loadMore}
+                className="rounded-md border border-slate-300 px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

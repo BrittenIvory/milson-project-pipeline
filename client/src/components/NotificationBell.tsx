@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { Bell, Reply } from 'lucide-react';
-import { apiErrorMessage, notesApi, notificationsApi, taskCommentsApi } from '../lib/api';
+import {
+  apiErrorMessage,
+  NOTIFICATIONS_CHANGED_EVENT,
+  notesApi,
+  notificationsApi,
+  taskCommentsApi,
+} from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import { PROJECT_STAGES } from '../lib/constants';
 import type { AppNotification } from '../types';
@@ -40,7 +46,12 @@ export default function NotificationBell() {
   useEffect(() => {
     load();
     const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    // Other surfaces (the inbox page) signal mutations via this event.
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, load);
+    };
   }, [load]);
 
   useEffect(() => {

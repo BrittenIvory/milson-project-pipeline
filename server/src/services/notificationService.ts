@@ -85,6 +85,8 @@ export async function listNotifications(
   userId: number,
   unreadOnly = false,
   archived = false,
+  limit = 50,
+  offset = 0,
 ) {
   const rows = await query<NotificationRow>(
     `SELECT n.*,
@@ -99,8 +101,8 @@ export async function listNotifications(
      WHERE n.user_id = $1
        AND n.archived_at IS ${archived ? 'NOT ' : ''}NULL
        ${unreadOnly ? 'AND n.read_at IS NULL' : ''}
-     ORDER BY n.created_at DESC LIMIT 200`,
-    [userId],
+     ORDER BY n.created_at DESC LIMIT $2 OFFSET $3`,
+    [userId, limit, offset],
   );
   return rows.map(toNotificationDto);
 }
@@ -136,7 +138,7 @@ export async function setArchived(userId: number, id: number, archived: boolean)
 
 export async function archiveAll(userId: number): Promise<void> {
   await pool.query(
-    'UPDATE notifications SET archived_at = NOW() WHERE user_id = $1 AND archived_at IS NULL',
+    'UPDATE notifications SET archived_at = NOW(), read_at = COALESCE(read_at, NOW()) WHERE user_id = $1 AND archived_at IS NULL',
     [userId],
   );
 }
