@@ -230,6 +230,12 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS stage TEXT;
 
+-- Rehome any rows still on the removed 'pipeline' stage BEFORE the stage
+-- constraints below are re-created without it (they would fail otherwise).
+UPDATE projects SET current_stage = 'intake', stage_started_at = NOW(), updated_at = NOW()
+WHERE current_stage = 'pipeline';
+UPDATE tasks SET stage = 'intake' WHERE stage = 'pipeline';
+
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
   'intake','stage_1_engineering','production_team_quoting','sales',
@@ -307,10 +313,8 @@ WHERE s.stage = 'production'
       AND t.task_name = 'Sample Production Completed'
   );
 
--- Remove the legacy 'pipeline' stage: rehome any projects still in it, then
--- tighten the CHECK constraint and default to Project Intake.
-UPDATE projects SET current_stage = 'intake', updated_at = NOW() WHERE current_stage = 'pipeline';
-UPDATE tasks SET stage = 'intake' WHERE stage = 'pipeline';
+-- Remove the legacy 'pipeline' stage (rows were rehomed above, before the
+-- constraint re-creation); ensure the CHECK and default reflect Intake.
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
   'intake','stage_1_engineering','production_team_quoting','sales',
