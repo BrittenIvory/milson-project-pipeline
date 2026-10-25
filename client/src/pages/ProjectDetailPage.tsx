@@ -387,6 +387,12 @@ export default function ProjectDetailPage() {
                 value={formatCurrency(project.projectValue, project.projectValueCurrency ?? 'USD')}
               />
               <DetailItem label="Material" value={orDash(project.material)} />
+              <DetailItem label="Client Part Description" value={orDash(project.clientPartDescription)} />
+              <DetailItem label="Material Grade" value={orDash(project.materialGrade)} />
+              <DetailItem
+                label="Alternate Material Acceptable"
+                value={project.alternateMaterialAcceptable ? 'Yes' : 'No'}
+              />
               <DetailItem label="Estimated Weight" value={orDash(project.estimatedWeight)} />
               <DetailItem label="Casting Process" value={orDash(project.castingProcess)} />
               <DetailItem

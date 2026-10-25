@@ -20,6 +20,9 @@ export const emptyProject: ProjectPayload = {
   projectDescription: '',
   annualUsage: null,
   material: '',
+  clientPartDescription: '',
+  materialGrade: '',
+  alternateMaterialAcceptable: false,
   estimatedWeight: null,
   castingProcess: '',
   machiningRequired: false,
@@ -47,6 +50,9 @@ export function projectToPayload(project: Project): ProjectPayload {
     projectDescription: project.projectDescription ?? '',
     annualUsage: project.annualUsage,
     material: project.material ?? '',
+    clientPartDescription: project.clientPartDescription ?? '',
+    materialGrade: project.materialGrade ?? '',
+    alternateMaterialAcceptable: project.alternateMaterialAcceptable,
     estimatedWeight: project.estimatedWeight,
     castingProcess: project.castingProcess ?? '',
     machiningRequired: project.machiningRequired,
@@ -214,6 +220,9 @@ export default function ProjectForm({
           <Field label="Material">
             <TextInput value={value.material ?? ''} onChange={(e) => set('material', e.target.value)} />
           </Field>
+          <Field label="Material Grade">
+            <TextInput value={value.materialGrade ?? ''} onChange={(e) => set('materialGrade', e.target.value)} />
+          </Field>
           <Field label="Estimated Weight (lb)">
             <TextInput
               type="number"
@@ -223,6 +232,12 @@ export default function ProjectForm({
               onChange={(e) =>
                 set('estimatedWeight', e.target.value === '' ? null : Number(e.target.value))
               }
+            />
+          </Field>
+          <Field label="Client Part Description">
+            <TextInput
+              value={value.clientPartDescription ?? ''}
+              onChange={(e) => set('clientPartDescription', e.target.value)}
             />
           </Field>
           <Field label="Casting Process">
@@ -248,6 +263,11 @@ export default function ProjectForm({
             label="Painting Required"
             checked={value.paintingRequired}
             onChange={(checked) => set('paintingRequired', checked)}
+          />
+          <Checkbox
+            label="Alternate Material Acceptable"
+            checked={value.alternateMaterialAcceptable}
+            onChange={(checked) => set('alternateMaterialAcceptable', checked)}
           />
         </div>
       </Card>
