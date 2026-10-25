@@ -205,6 +205,9 @@ CREATE TABLE IF NOT EXISTS project_notes (
 
 CREATE INDEX IF NOT EXISTS project_notes_project_idx ON project_notes (project_id, created_at DESC);
 
+ALTER TABLE project_notes
+  ADD COLUMN IF NOT EXISTS reply_to_note_id INTEGER REFERENCES project_notes(id) ON DELETE SET NULL;
+
 CREATE TABLE IF NOT EXISTS notifications (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

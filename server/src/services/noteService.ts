@@ -6,21 +6,29 @@ export interface NoteRow {
   id: number;
   project_id: number;
   author_id: number | null;
+  reply_to_note_id: number | null;
   body: string;
   created_at: string;
   updated_at: string;
   author_name?: string | null;
+  reply_to_author_name?: string | null;
+  reply_to_body?: string | null;
 }
 
 export const noteSchema = z.object({
   body: z.string().trim().min(1, 'Note cannot be empty').max(5000),
+  replyToNoteId: z.number().int().positive().optional(),
 });
 
 export type NoteInput = z.infer<typeof noteSchema>;
 
 const SELECT_NOTE = `
-  SELECT n.*, u.full_name AS author_name
-  FROM project_notes n LEFT JOIN users u ON u.id = n.author_id`;
+  SELECT n.*, u.full_name AS author_name,
+         pn.body AS reply_to_body, pu.full_name AS reply_to_author_name
+  FROM project_notes n
+  LEFT JOIN users u ON u.id = n.author_id
+  LEFT JOIN project_notes pn ON pn.id = n.reply_to_note_id
+  LEFT JOIN users pu ON pu.id = pn.author_id`;
 
 /** Emojis users may react with; anything else is rejected. */
 export const REACTION_EMOJIS = ['👍', '❤️', '🎉', '✅', '👀'] as const;
@@ -60,6 +68,9 @@ export function toNoteDto(row: NoteRow, reactions: NoteReaction[] = []) {
     body: row.body,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    replyToId: row.reply_to_note_id ?? null,
+    replyToAuthorName: row.reply_to_author_name ?? null,
+    replyToPreview: row.reply_to_body ? row.reply_to_body.slice(0, 120) : null,
     reactions,
   };
 }
@@ -105,9 +116,16 @@ export async function toggleReaction(
 }
 
 export async function createNote(projectId: number, input: NoteInput, authorId: number) {
+  if (input.replyToNoteId) {
+    const parent = await queryOne<{ id: number }>(
+      'SELECT id FROM project_notes WHERE id = $1 AND project_id = $2',
+      [input.replyToNoteId, projectId],
+    );
+    if (!parent) throw new HttpError(400, 'Reply target comment not found');
+  }
   const inserted = await queryOne<{ id: number }>(
-    'INSERT INTO project_notes (project_id, author_id, body) VALUES ($1,$2,$3) RETURNING id',
-    [projectId, authorId, input.body],
+    'INSERT INTO project_notes (project_id, author_id, body, reply_to_note_id) VALUES ($1,$2,$3,$4) RETURNING id',
+    [projectId, authorId, input.body, input.replyToNoteId ?? null],
   );
   return getNote(projectId, (inserted as { id: number }).id);
 }

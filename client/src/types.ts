@@ -184,6 +184,9 @@ export interface ProjectNote {
   body: string;
   createdAt: string;
   updatedAt: string;
+  replyToId: number | null;
+  replyToAuthorName: string | null;
+  replyToPreview: string | null;
   reactions: NoteReaction[];
 }
 
