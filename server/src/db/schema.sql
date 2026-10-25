@@ -322,7 +322,7 @@ WHERE current_stage = 'pipeline';
 DELETE FROM tasks WHERE created_by IS NULL AND task_name IN (
   'Uploaded Drawing', 'Uploaded CAD file', 'Updated Material Specifications',
   'Added EAU', 'Updated all part details'
-) AND stage IN ('pipeline', 'intake');
+) AND (stage IN ('pipeline', 'intake') OR stage IS NULL);
 UPDATE tasks SET stage = 'intake' WHERE stage = 'pipeline';
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
