@@ -367,7 +367,7 @@ export default function ProjectDetailPage() {
                   <PartLink
                     partNumber={
                       project.customerPartNumber
-                        ? (project.internalPartNumber ?? project.customerPartNumber)
+                        ? (project.internalPartNumber || project.customerPartNumber)
                         : null
                     }
                   >

@@ -88,7 +88,7 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
     width: 190,
     render: (p) => (
       <PartLink
-        partNumber={p.customerPartNumber ? (p.internalPartNumber ?? p.customerPartNumber) : null}
+        partNumber={p.customerPartNumber ? (p.internalPartNumber || p.customerPartNumber) : null}
       >
         {p.customerPartNumber ?? '—'}
       </PartLink>
