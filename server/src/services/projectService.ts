@@ -79,7 +79,7 @@ export const projectSchema = z.object({
   priority: z.enum(PRIORITIES).default('medium'),
   targetQuoteDate: emptyToNull(z.string()).optional(),
   notes: z.string().trim().max(5000).optional().nullable(),
-  currentStage: z.enum(PROJECT_STAGES).default('pipeline'),
+  currentStage: z.enum(PROJECT_STAGES).default('intake'),
 });
 
 export type ProjectInput = z.infer<typeof projectSchema>;

@@ -2,7 +2,6 @@ import { query, queryOne, pool } from '../db/pool';
 import { PROJECT_STAGES, ProjectStage } from '../types';
 
 export const STAGE_TASK_TEMPLATES: Record<string, string[]> = {
-  pipeline: ['Uploaded Drawing', 'Uploaded CAD file', 'Updated Material Specifications', 'Added EAU', 'Updated all part details'],
   intake: ['Information reviewed', 'Create Engineering number', 'Setup SharePoint folder', 'Setup PDM folder'],
   stage_1_engineering: ['Define scope and product requirements', 'Creating MFL quotation drawing'],
   production_team_quoting: ['Supplier(s) selected', 'Sent out for quote', 'Quotes received and stored in Project folder', 'Quote reviewed and accepted'],

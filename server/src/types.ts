@@ -3,7 +3,6 @@ export type Role = 'administrator' | 'engineering' | 'sales' | 'production' | 'q
 export const ROLES: Role[] = ['administrator', 'engineering', 'sales', 'production', 'quality'];
 
 export const PROJECT_STAGES = [
-  'pipeline',
   'intake',
   'stage_1_engineering',
   'production_team_quoting',
@@ -17,7 +16,6 @@ export const PROJECT_STAGES = [
 export type ProjectStage = (typeof PROJECT_STAGES)[number];
 
 export const STAGE_LABELS: Record<ProjectStage, string> = {
-  pipeline: 'Pipeline',
   intake: 'Project Intake',
   stage_1_engineering: 'Stage 1 Engineering',
   production_team_quoting: 'Production Team Quoting',
