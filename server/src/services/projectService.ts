@@ -250,7 +250,9 @@ function buildProjectWhere(options: ProjectFilters) {
         OR LOWER(c.company_name) LIKE $${params.length}
         OR LOWER(COALESCE(p.customer_part_number,'')) LIKE $${params.length}
         OR LOWER(COALESCE(p.internal_part_number,'')) LIKE $${params.length}
-        OR LOWER(COALESCE(p.project_description,'')) LIKE $${params.length})`,
+        OR LOWER(COALESCE(p.project_description,'')) LIKE $${params.length}
+        OR LOWER(COALESCE(p.client_part_description,'')) LIKE $${params.length}
+        OR LOWER(COALESCE(p.material_grade,'')) LIKE $${params.length})`,
     );
   }
   eq(options.stage, (i) => `p.current_stage = $${i}`);
