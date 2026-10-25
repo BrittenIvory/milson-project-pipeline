@@ -36,6 +36,9 @@ export interface QuoteProject {
   customerName: string | null;
   customerContact?: string | null;
   customerPartNumber: string | null;
+  clientPartDescription?: string | null;
+  materialGrade?: string | null;
+  alternateMaterialAcceptable?: boolean;
   annualUsage: number | null;
   material: string | null;
   estimatedWeight: number | null;
@@ -290,6 +293,12 @@ function imagePdfObject(data: Buffer, mimeType: string): { object: string; comma
   return null;
 }
 
+const clipText = (value: string | null | undefined, max = 34) => {
+  if (!value || !value.trim()) return 'Not provided';
+  const trimmed = value.trim();
+  return trimmed.length > max ? `${trimmed.slice(0, max - 3)}...` : trimmed;
+};
+
 export async function createQuotePdf(project: QuoteProject, quote: QuickQuote): Promise<Buffer> {
   const title = `${project.projectNumber} - Estimate Quote`;
   const lines = [
@@ -322,6 +331,15 @@ export async function createQuotePdf(project: QuoteProject, quote: QuickQuote): 
     text('Machining Level', 50, 225, 8),
     text(quote.hasMachining ? 'Simple' : 'None specified', 155, 225, 8),
     rule(217, 50, 300),
+    text('Client Part', 50, 200, 8),
+    text(clipText(project.clientPartDescription), 155, 200, 8),
+    rule(192, 50, 300),
+    text('Material Grade', 50, 175, 8),
+    text(clipText(project.materialGrade), 155, 175, 8),
+    rule(167, 50, 300),
+    text('Alt. Material OK', 50, 150, 8),
+    text(project.alternateMaterialAcceptable ? 'Yes' : 'No', 155, 150, 8),
+    rule(142, 50, 300),
   ];
 
   let pricingY = 540;
