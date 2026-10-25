@@ -17,6 +17,7 @@ export interface NotificationRow {
   project_number?: string | null;
   project_name?: string | null;
   project_stage?: string | null;
+  internal_part_number?: string | null;
   has_part_image?: boolean;
   comment_author_name?: string | null;
 }
@@ -76,6 +77,7 @@ export function toNotificationDto(row: NotificationRow) {
     projectNumber: row.project_number ?? null,
     projectName: row.project_name ?? null,
     projectStage: row.project_stage ?? null,
+    internalPartNumber: row.internal_part_number ?? null,
     hasPartImage: row.has_part_image ?? false,
     commentAuthorName: row.comment_author_name ?? null,
   };
@@ -93,6 +95,7 @@ export async function listNotifications(
             p.project_number,
             p.project_name,
             p.current_stage AS project_stage,
+            p.internal_part_number,
             (p.part_image_storage_key IS NOT NULL) AS has_part_image,
             actor.full_name AS comment_author_name
      FROM notifications n

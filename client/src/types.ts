@@ -194,6 +194,7 @@ export interface AppNotification {
   projectNumber: string | null;
   projectName: string | null;
   projectStage: string | null;
+  internalPartNumber: string | null;
   hasPartImage: boolean;
   commentAuthorName: string | null;
 }
