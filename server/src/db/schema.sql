@@ -316,12 +316,13 @@ UPDATE projects SET current_stage = 'intake', stage_started_at = NOW(), updated_
 WHERE current_stage = 'pipeline';
 -- The old 'pipeline' stage tasks (Uploaded Drawing, CAD file, Material
 -- Specifications, EAU, part details) are removed rather than rehomed.
--- Delete only the seeded checklist items (seeded rows have no creator);
--- anything a user added themselves is reassigned to intake instead.
-DELETE FROM tasks WHERE stage = 'pipeline' AND created_by IS NULL AND task_name IN (
+-- Delete only the seeded checklist items (seeded rows have no creator).
+-- Earlier migrations may already have re-tagged them to 'intake', so match by
+-- name rather than stage; anything user-created is left untouched.
+DELETE FROM tasks WHERE created_by IS NULL AND task_name IN (
   'Uploaded Drawing', 'Uploaded CAD file', 'Updated Material Specifications',
   'Added EAU', 'Updated all part details'
-);
+) AND stage IN ('pipeline', 'intake');
 UPDATE tasks SET stage = 'intake' WHERE stage = 'pipeline';
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
