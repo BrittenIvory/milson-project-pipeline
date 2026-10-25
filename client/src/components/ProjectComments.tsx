@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
@@ -59,9 +59,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
     };
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const updatePosition = () => {
+  const updatePosition = useCallback(() => {
       const button = buttonRef.current;
       if (!button) return;
       const rect = button.getBoundingClientRect();
@@ -78,7 +76,10 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
           Math.min(rect.top, window.innerHeight - (popoverRef.current?.offsetHeight ?? 360) - 8),
         ),
       });
-    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
@@ -86,7 +87,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [open]);
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open) return;
@@ -107,7 +108,10 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
         }
       })
       .finally(() => {
-        if (notesVersion === notesLoadVersion.current) setLoading(false);
+        if (notesVersion === notesLoadVersion.current) {
+          setLoading(false);
+          requestAnimationFrame(updatePosition);
+        }
       });
     usersApi
       .list()
