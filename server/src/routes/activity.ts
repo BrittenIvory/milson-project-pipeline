@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { requirePermission } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { listActivity, toActivityDto } from '../services/activityService';
 
 const router = Router();
-router.use(requireAuth);
+router.use(requirePermission('projects.view'));
 
 /** Organisation-wide activity feed. */
 router.get(

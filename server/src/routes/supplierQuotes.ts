@@ -9,6 +9,7 @@ import {
 } from '../services/supplierQuoteService';
 
 const router = Router({ mergeParams: true });
+const canViewQuotes = requirePermission('suppliers.view');
 const canManageQuotes = requirePermission('suppliers.edit');
 
 function projectIdOf(value: string) {
@@ -19,6 +20,7 @@ function projectIdOf(value: string) {
 
 router.get(
   '/',
+  canViewQuotes,
   asyncHandler(async (req, res) => {
     res.json(await listSupplierQuotes(projectIdOf(req.params.projectId)));
   }),

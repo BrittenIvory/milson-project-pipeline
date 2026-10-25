@@ -10,13 +10,14 @@ import type { Customer } from '../types';
 
 /** Customer directory with search, status filter and create/edit/archive actions. */
 export default function CustomersPage() {
-  const { canEdit } = useAuth();
+  const { can } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const canEdit = can('customers.edit');
   const [editing, setEditing] = useState<Customer | null>(null);
 
   const load = useCallback(async () => {

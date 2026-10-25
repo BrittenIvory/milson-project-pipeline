@@ -206,7 +206,7 @@ router.patch(
       entityType: 'user',
       entityId: targetId,
       detail: Object.entries(changes)
-        .map(([k, v]) => `${k}=${v}`)
+        .map(([k, v]) => `${k}=${typeof v === 'object' && v !== null ? JSON.stringify(v) : v}`)
         .join(', '),
     });
     res.json({ user: toManagedUser(row!) });

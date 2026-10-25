@@ -87,7 +87,7 @@ export default function TasksPanel({
   currentStage?: string;
   onChanged?: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -204,10 +204,8 @@ export default function TasksPanel({
   const updateStatus = async (task: ProjectTask, status: ProjectTask['status']) =>
     updateTaskFields(task, { status });
 
-  const canManageQuotes = user?.role === 'administrator'
-    || user?.role === 'engineering'
-    || user?.role === 'sales'
-    || user?.role === 'production';
+  const canManageQuotes = can('suppliers.edit');
+  const canManageTasks = can('tasks.manage');
 
   const saveSupplierQuote = async (
     supplierId: number,
@@ -353,7 +351,7 @@ export default function TasksPanel({
           <h2 className="text-sm font-semibold text-slate-900">Tasks</h2>
           <p className="text-xs text-slate-500">Work items tracked against this project.</p>
         </div>
-        {user && (
+        {canManageTasks && (
           <Button onClick={() => { setEditing(null); setForm(emptyTask); }}>
             <Plus className="h-4 w-4" /> New task
           </Button>
@@ -424,6 +422,7 @@ export default function TasksPanel({
                               <Select
                                 aria-label={`Status for ${task.taskName}`}
                                 value={task.status}
+                                disabled={!canManageTasks}
                                 onChange={(e) => updateStatus(task, e.target.value as ProjectTask['status'])}
                                 className="h-8 w-32 py-1 text-xs"
                               >
@@ -594,18 +593,22 @@ export default function TasksPanel({
                               </div>
                             )}
                           </div>
-                          <button
-                            title="Edit task"
-                            aria-label={`Edit ${task.taskName}`}
-                            onClick={() => { setEditing(task); setForm(taskToPayload(task)); }}
-                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                          ><Pencil className="h-4 w-4" /></button>
-                          <button
-                            title="Delete task"
-                            aria-label={`Delete ${task.taskName}`}
-                            onClick={() => setPendingDelete(task)}
-                            className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                          ><Trash2 className="h-4 w-4" /></button>
+                          {canManageTasks && (
+                            <button
+                              title="Edit task"
+                              aria-label={`Edit ${task.taskName}`}
+                              onClick={() => { setEditing(task); setForm(taskToPayload(task)); }}
+                              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            ><Pencil className="h-4 w-4" /></button>
+                          )}
+                          {canManageTasks && (
+                            <button
+                              title="Delete task"
+                              aria-label={`Delete ${task.taskName}`}
+                              onClick={() => setPendingDelete(task)}
+                              className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            ><Trash2 className="h-4 w-4" /></button>
+                          )}
                         </div>
                         <button
                           type="button"
