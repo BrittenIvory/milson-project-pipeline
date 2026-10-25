@@ -5,6 +5,7 @@ import {
   createNote,
   deleteNote,
   getNote,
+  getNoteAuthorId,
   listNotes,
   noteSchema,
   reactionSchema,
@@ -53,7 +54,13 @@ router.post(
       entityId: projectId,
       detail: note.body.slice(0, 120),
     });
+    // The reply notification already reaches the parent author — don't also
+    // send them a mention alert if the reply body @tags them.
+    const replyRecipient = input.replyToNoteId
+      ? await getNoteAuthorId(projectId, input.replyToNoteId)
+      : null;
     for (const mention of await resolveMentions(note.body)) {
+      if (replyRecipient !== null && mention.id === replyRecipient) continue;
       await notify({
         userId: mention.id,
         actorId: req.user?.id,
@@ -66,20 +73,17 @@ router.post(
         entityId: note.id,
       });
     }
-    if (input.replyToNoteId) {
-      const parent = await getNote(projectId, input.replyToNoteId);
-      if (parent.authorId !== null) {
-        await notify({
-          userId: parent.authorId,
-          actorId: req.user?.id,
-          type: 'note_reply',
-          title: `${req.user?.fullName} replied to your comment`,
-          body: `${project.projectNumber} — ${note.body.slice(0, 120)}`,
-          projectId,
-          entityType: 'note',
-          entityId: note.id,
-        });
-      }
+    if (replyRecipient !== null) {
+      await notify({
+        userId: replyRecipient,
+        actorId: req.user?.id,
+        type: 'note_reply',
+        title: `${req.user?.fullName} replied to your comment`,
+        body: `${project.projectNumber} — ${note.body.slice(0, 120)}`,
+        projectId,
+        entityType: 'note',
+        entityId: note.id,
+      });
     }
     res.status(201).json(note);
   }),
