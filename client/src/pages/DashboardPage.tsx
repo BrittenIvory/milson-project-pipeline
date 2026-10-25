@@ -56,7 +56,7 @@ export default function DashboardPage() {
         </p>
       )}
 
-      {loading || !summary ? (
+      {!canViewProjects ? null : loading || !summary ? (
         <div className="space-y-4">
           <SkeletonRows rows={6} />
         </div>
