@@ -149,9 +149,11 @@ export default function NotesPanel({
           value={draft}
           onChange={(e) => handleDraftChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.repeat && !e.nativeEvent.isComposing) {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              // Repeat keydowns keep Enter a send-only key: swallow the newline
+              // instead of inserting blank lines after the first send.
               e.preventDefault();
-              addNote();
+              if (!e.repeat) addNote();
             }
           }}
           placeholder="Add a comment… use @ to mention someone"

@@ -246,11 +246,10 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
                     if (
                       event.key === 'Enter' &&
                       !event.shiftKey &&
-                      !event.repeat &&
                       !event.nativeEvent.isComposing
                     ) {
                       event.preventDefault();
-                      addComment();
+                      if (!event.repeat) addComment();
                     }
                   }}
                   placeholder="Add a comment… use @ to mention"

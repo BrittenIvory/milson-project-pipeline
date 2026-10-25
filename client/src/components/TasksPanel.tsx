@@ -112,7 +112,7 @@ export default function TasksPanel({
   const [pendingCommentDelete, setPendingCommentDelete] = useState<ProjectTaskComment | null>(null);
   const [collapsedOverride, setCollapsedOverride] = useState<Record<string, boolean>>({});
   const commentRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
-  const commentSendRef = useRef(false);
+  const commentSendRef = useRef(new Set<number>());
   const quoteLoadId = useRef(0);
 
   const load = useCallback(async () => {
@@ -290,8 +290,8 @@ export default function TasksPanel({
 
   const addComment = async (taskId: number) => {
     const body = commentDrafts[taskId]?.trim();
-    if (!body || commentSendRef.current) return;
-    commentSendRef.current = true;
+    if (!body || commentSendRef.current.has(taskId)) return;
+    commentSendRef.current.add(taskId);
     try {
       const comment = await taskCommentsApi.create(projectId, taskId, body);
       setComments((current) => ({ ...current, [taskId]: [...(current[taskId] ?? []), comment] }));
@@ -300,7 +300,7 @@ export default function TasksPanel({
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add comment'));
     } finally {
-      commentSendRef.current = false;
+      commentSendRef.current.delete(taskId);
     }
   };
 
@@ -650,11 +650,10 @@ export default function TasksPanel({
                                   if (
                                     e.key === 'Enter' &&
                                     !e.shiftKey &&
-                                    !e.repeat &&
                                     !e.nativeEvent.isComposing
                                   ) {
                                     e.preventDefault();
-                                    addComment(task.id);
+                                    if (!e.repeat) addComment(task.id);
                                   }
                                 }}
                                 placeholder="Add a comment… use @ to mention someone"
