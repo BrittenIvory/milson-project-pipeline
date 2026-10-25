@@ -99,7 +99,11 @@ export default function NotificationBell() {
           replyDraft.trim(),
         );
       } else {
-        await notesApi.create(notification.projectId, replyDraft.trim());
+        await notesApi.create(
+          notification.projectId,
+          replyDraft.trim(),
+          notification.entityType === 'note' ? (notification.entityId ?? undefined) : undefined,
+        );
       }
       // The comment is persisted — close the composer before any secondary
       // work so a failed mark-read can't be mistaken for a failed post.

@@ -115,6 +115,18 @@ export async function toggleReaction(
   return getNote(projectId, noteId);
 }
 
+/** Returns the note's author id, or null when the note is gone or anonymous — never throws. */
+export async function getNoteAuthorId(
+  projectId: number,
+  noteId: number,
+): Promise<number | null> {
+  const row = await queryOne<{ author_id: number | null }>(
+    'SELECT author_id FROM project_notes WHERE id = $1 AND project_id = $2',
+    [noteId, projectId],
+  );
+  return row ? row.author_id : null;
+}
+
 export async function createNote(projectId: number, input: NoteInput, authorId: number) {
   if (input.replyToNoteId) {
     const parent = await queryOne<{ id: number }>(
