@@ -56,11 +56,14 @@ router.post(
     });
     // The reply notification already reaches the parent author — don't also
     // send them a mention alert if the reply body @tags them.
-    const replyRecipient = input.replyToNoteId
-      ? await getNoteAuthorId(projectId, input.replyToNoteId)
+    const replyRecipient = note.replyToId
+      ? await getNoteAuthorId(projectId, note.replyToId)
       : null;
     for (const mention of await resolveMentions(note.body)) {
-      if (replyRecipient !== null && mention.id === replyRecipient) continue;
+      // Self-replies never send a note_reply alert (self-notify is off), so a
+      // self-mention must still go through or nothing notifies at all.
+      if (replyRecipient !== null && mention.id === replyRecipient && mention.id !== req.user?.id)
+        continue;
       await notify({
         userId: mention.id,
         actorId: req.user?.id,

@@ -128,16 +128,19 @@ export async function getNoteAuthorId(
 }
 
 export async function createNote(projectId: number, input: NoteInput, authorId: number) {
-  if (input.replyToNoteId) {
-    const parent = await queryOne<{ id: number }>(
-      'SELECT id FROM project_notes WHERE id = $1 AND project_id = $2',
-      [input.replyToNoteId, projectId],
-    );
-    if (!parent) throw new HttpError(400, 'Reply target comment not found');
-  }
+  // A stale reply target (parent deleted after the composer opened) degrades
+  // to a standalone comment rather than rejecting the post.
+  const replyToNoteId = input.replyToNoteId
+    ? (
+        await queryOne<{ id: number }>(
+          'SELECT id FROM project_notes WHERE id = $1 AND project_id = $2',
+          [input.replyToNoteId, projectId],
+        )
+      )?.id ?? null
+    : null;
   const inserted = await queryOne<{ id: number }>(
     'INSERT INTO project_notes (project_id, author_id, body, reply_to_note_id) VALUES ($1,$2,$3,$4) RETURNING id',
-    [projectId, authorId, input.body, input.replyToNoteId ?? null],
+    [projectId, authorId, input.body, replyToNoteId],
   );
   return getNote(projectId, (inserted as { id: number }).id);
 }
