@@ -222,7 +222,6 @@ export default function NotesPanel({
           ))}
         </ul>
       )}
-      <div ref={listEndRef} />
 
       <div className="relative">
         <TextArea
@@ -259,6 +258,7 @@ export default function NotesPanel({
           </Button>
         </div>
       </div>
+      <div ref={listEndRef} />
 
       <ConfirmDialog
         open={pendingDelete !== null}
