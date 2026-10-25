@@ -135,8 +135,10 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto">
+          <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

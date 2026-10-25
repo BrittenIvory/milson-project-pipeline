@@ -314,7 +314,9 @@ WHERE s.stage = 'production'
 -- constraint and default to Project Intake.
 UPDATE projects SET current_stage = 'intake', stage_started_at = NOW(), updated_at = NOW()
 WHERE current_stage = 'pipeline';
-UPDATE tasks SET stage = 'intake' WHERE stage = 'pipeline';
+-- The old 'pipeline' stage tasks (Uploaded Drawing, CAD file, Material
+-- Specifications, EAU, part details) are removed rather than rehomed.
+DELETE FROM tasks WHERE stage = 'pipeline';  -- task_comments cascade
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
   'intake','stage_1_engineering','production_team_quoting','sales',
