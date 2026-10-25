@@ -9,6 +9,7 @@ import activityRouter from './routes/activity';
 import authRouter from './routes/auth';
 import customersRouter from './routes/customers';
 import notificationsRouter from './routes/notifications';
+import partsRouter from './routes/parts';
 import projectsRouter from './routes/projects';
 import searchRouter from './routes/search';
 import suppliersRouter from './routes/suppliers';
@@ -39,6 +40,7 @@ export function createApp(): Express {
   app.use('/api/projects', projectsRouter);
   app.use('/api/activity', activityRouter);
   app.use('/api/notifications', notificationsRouter);
+  app.use('/api/parts', partsRouter);
   app.use('/api/search', searchRouter);
   app.use('/api/suppliers', suppliersRouter);
 

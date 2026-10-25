@@ -8,6 +8,8 @@ import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import NewProjectPage from './pages/NewProjectPage';
 import NotificationsPage from './pages/NotificationsPage';
+import PartDetailPage from './pages/PartDetailPage';
+import PartsPage from './pages/PartsPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
@@ -41,6 +43,8 @@ export default function App() {
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/parts" element={<PartsPage />} />
+          <Route path="/parts/:partNumber" element={<PartDetailPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route
             path="/suppliers"

@@ -155,6 +155,9 @@ export function toProjectDto(row: ProjectRow) {
   };
 }
 
+/** A project's part identity: internal part number, else the customer one. */
+export const PART_NUMBER_KEY = `COALESCE(NULLIF(p.internal_part_number, ''), NULLIF(p.customer_part_number, ''))`;
+
 const SELECT_PROJECT = `
   SELECT p.*, c.company_name AS customer_name, c.customer_number,
          e.full_name AS engineer_name, s.full_name AS sales_name,
@@ -196,6 +199,8 @@ export interface ProjectFilters {
   targetFrom?: string;
   targetTo?: string;
   includeArchived?: boolean;
+  /** Exact match on internal part number, falling back to customer part number. */
+  partNumber?: string;
 }
 
 /** Columns the project list can be sorted by, mapped to their SQL expression. */
@@ -252,6 +257,7 @@ function buildProjectWhere(options: ProjectFilters) {
   eq(options.updatedTo, (i) => `p.updated_at < $${i}::date + 1`);
   eq(options.targetFrom, (i) => `p.target_quote_date >= $${i}::date`);
   eq(options.targetTo, (i) => `p.target_quote_date <= $${i}::date`);
+  eq(options.partNumber, (i) => `${PART_NUMBER_KEY} = $${i}`);
 
   return { params, clause: where.length ? `WHERE ${where.join(' AND ')}` : '' };
 }

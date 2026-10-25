@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Package,
   Settings,
   Truck,
   X,
@@ -20,6 +21,7 @@ import { ROLE_LABELS } from '../lib/constants';
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/parts', label: 'Parts', icon: Package },
   { to: '/customers', label: 'Customers', icon: Building2 },
   { to: '/suppliers', label: 'Suppliers', icon: Truck },
   { to: '/reports', label: 'Reports', icon: BarChart3 },

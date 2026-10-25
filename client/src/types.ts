@@ -198,6 +198,19 @@ export interface AppNotification {
   commentAuthorName: string | null;
 }
 
+export interface PartSummary {
+  partNumber: string;
+  internalPartNumber: string | null;
+  customerPartNumbers: string[];
+  customers: string[];
+  projectCount: number;
+  imageProjectId: number | null;
+}
+
+export interface PartDetail extends PartSummary {
+  projects: Project[];
+}
+
 /** Aggregated payload behind the dashboard. */
 export interface DashboardSummary extends ProjectStats {
   createdThisMonth: number;
