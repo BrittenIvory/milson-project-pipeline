@@ -253,12 +253,17 @@ export const notesApi = {
 };
 
 export const notificationsApi = {
-  list: () =>
+  list: (archived = false) =>
     http
-      .get<{ items: AppNotification[]; unread: number }>('/notifications')
+      .get<{ items: AppNotification[]; unread: number }>('/notifications', {
+        params: archived ? { archived: 'true' } : undefined,
+      })
       .then((r) => r.data),
   markRead: (id: number) => http.post(`/notifications/${id}/read`),
   markAllRead: () => http.post('/notifications/read-all'),
+  archive: (id: number) => http.post(`/notifications/${id}/archive`),
+  unarchive: (id: number) => http.post(`/notifications/${id}/unarchive`),
+  archiveAll: () => http.post('/notifications/archive-all'),
 };
 
 export const searchApi = {

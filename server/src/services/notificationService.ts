@@ -10,6 +10,7 @@ export interface NotificationRow {
   entity_type: string | null;
   entity_id: number | null;
   read_at: string | null;
+  archived_at: string | null;
   created_at: string;
   actor_id?: number | null;
   /** Context joined in for list responses (not stored on the row itself). */
@@ -70,6 +71,7 @@ export function toNotificationDto(row: NotificationRow) {
     entityType: row.entity_type,
     entityId: row.entity_id,
     readAt: row.read_at,
+    archivedAt: row.archived_at ?? null,
     createdAt: row.created_at,
     projectNumber: row.project_number ?? null,
     projectName: row.project_name ?? null,
@@ -79,7 +81,11 @@ export function toNotificationDto(row: NotificationRow) {
   };
 }
 
-export async function listNotifications(userId: number, unreadOnly = false) {
+export async function listNotifications(
+  userId: number,
+  unreadOnly = false,
+  archived = false,
+) {
   const rows = await query<NotificationRow>(
     `SELECT n.*,
             p.project_number,
@@ -90,8 +96,10 @@ export async function listNotifications(userId: number, unreadOnly = false) {
      FROM notifications n
      LEFT JOIN projects p ON p.id = n.project_id
      LEFT JOIN users actor ON actor.id = n.actor_id
-     WHERE n.user_id = $1 ${unreadOnly ? 'AND n.read_at IS NULL' : ''}
-     ORDER BY n.created_at DESC LIMIT 50`,
+     WHERE n.user_id = $1
+       AND n.archived_at IS ${archived ? 'NOT ' : ''}NULL
+       ${unreadOnly ? 'AND n.read_at IS NULL' : ''}
+     ORDER BY n.created_at DESC LIMIT 200`,
     [userId],
   );
   return rows.map(toNotificationDto);
@@ -99,7 +107,7 @@ export async function listNotifications(userId: number, unreadOnly = false) {
 
 export async function unreadCount(userId: number): Promise<number> {
   const rows = await query<{ count: string }>(
-    'SELECT COUNT(*)::text AS count FROM notifications WHERE user_id = $1 AND read_at IS NULL',
+    'SELECT COUNT(*)::text AS count FROM notifications WHERE user_id = $1 AND read_at IS NULL AND archived_at IS NULL',
     [userId],
   );
   return Number(rows[0]?.count ?? 0);
@@ -116,6 +124,21 @@ export async function markAllRead(userId: number): Promise<void> {
   await pool.query('UPDATE notifications SET read_at = NOW() WHERE user_id = $1 AND read_at IS NULL', [
     userId,
   ]);
+}
+
+export async function setArchived(userId: number, id: number, archived: boolean): Promise<void> {
+  await pool.query(
+    `UPDATE notifications SET archived_at = ${archived ? 'NOW()' : 'NULL'}
+     WHERE id = $1 AND user_id = $2`,
+    [id, userId],
+  );
+}
+
+export async function archiveAll(userId: number): Promise<void> {
+  await pool.query(
+    'UPDATE notifications SET archived_at = NOW() WHERE user_id = $1 AND archived_at IS NULL',
+    [userId],
+  );
 }
 
 /**

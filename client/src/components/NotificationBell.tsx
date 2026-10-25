@@ -147,11 +147,22 @@ export default function NotificationBell() {
         <div className="absolute right-0 z-40 mt-2 w-96 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
             <p className="text-sm font-semibold text-slate-800">Notifications</p>
-            {unread > 0 && (
-              <button onClick={markAll} className="text-xs text-brand-600 hover:underline">
-                Mark all read
+            <div className="flex items-center gap-3">
+              {unread > 0 && (
+                <button onClick={markAll} className="text-xs text-brand-600 hover:underline">
+                  Mark all read
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/notifications');
+                }}
+                className="text-xs text-brand-600 hover:underline"
+              >
+                View all
               </button>
-            )}
+            </div>
           </div>
           {items.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">You are all caught up.</p>

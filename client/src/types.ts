@@ -189,6 +189,7 @@ export interface AppNotification {
   entityType: string | null;
   entityId: number | null;
   readAt: string | null;
+  archivedAt: string | null;
   createdAt: string;
   projectNumber: string | null;
   projectName: string | null;
