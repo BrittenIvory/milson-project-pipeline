@@ -20,6 +20,9 @@ export interface ProjectRow {
   annual_usage: number | null;
   customer_quote_price: string | null;
   material: string | null;
+  client_part_description: string | null;
+  material_grade: string | null;
+  alternate_material_acceptable: boolean;
   estimated_weight: string | null;
   casting_process: string | null;
   machining_required: boolean;
@@ -63,6 +66,9 @@ export const projectSchema = z.object({
   projectDescription: z.string().trim().max(5000).optional().nullable(),
   annualUsage: emptyToNull(z.coerce.number().int().min(0)).optional(),
   material: optionalText,
+  clientPartDescription: optionalText,
+  materialGrade: optionalText,
+  alternateMaterialAcceptable: z.coerce.boolean().default(false),
   estimatedWeight: emptyToNull(z.coerce.number().min(0)).optional(),
   castingProcess: optionalText,
   machiningRequired: z.coerce.boolean().default(false),
@@ -121,6 +127,9 @@ export function toProjectDto(row: ProjectRow) {
     annualUsage: row.annual_usage,
     customerQuotePrice,
     material: row.material,
+    clientPartDescription: row.client_part_description,
+    materialGrade: row.material_grade,
+    alternateMaterialAcceptable: row.alternate_material_acceptable,
     estimatedWeight: row.estimated_weight === null ? null : Number(row.estimated_weight),
     estimatePartPrice: estimate && !estimate.contactRequired ? estimate.unitPrice : null,
     projectValue,
@@ -352,10 +361,11 @@ export async function createProject(input: ProjectInput, createdBy: number) {
     `INSERT INTO projects (project_number, customer_id, customer_contact, customer_part_number,
        internal_part_number, customer_machined_part_number, customer_painted_part_number,
        customer_unpainted_part_number, project_name, project_description, annual_usage, material,
+       client_part_description, material_grade, alternate_material_acceptable,
        estimated_weight, casting_process, machining_required, heat_treatment, painting_required,
        assigned_engineer_id, assigned_sales_id, priority, target_quote_date, notes, current_stage,
        created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
      RETURNING id`,
     [
       projectNumber, input.customerId, input.customerContact ?? null,
@@ -363,6 +373,8 @@ export async function createProject(input: ProjectInput, createdBy: number) {
       input.customerMachinedPartNumber ?? null, input.customerPaintedPartNumber ?? null,
       input.customerUnpaintedPartNumber ?? null, input.projectName,
       input.projectDescription ?? null, input.annualUsage ?? null, input.material ?? null,
+      input.clientPartDescription ?? null, input.materialGrade ?? null,
+      input.alternateMaterialAcceptable,
       input.estimatedWeight ?? null, input.castingProcess ?? null, input.machiningRequired,
       input.heatTreatment, input.paintingRequired, input.assignedEngineerId ?? null,
       input.assignedSalesId ?? null, input.priority, input.targetQuoteDate ?? null,
@@ -383,10 +395,12 @@ export async function updateProject(id: number, input: ProjectInput) {
     `UPDATE projects SET customer_id=$2, customer_contact=$3, customer_part_number=$4,
        internal_part_number=$5, customer_machined_part_number=$6, customer_painted_part_number=$7,
        customer_unpainted_part_number=$8, project_name=$9, project_description=$10, annual_usage=$11,
-       material=$12, estimated_weight=$13, casting_process=$14, machining_required=$15,
-       heat_treatment=$16, painting_required=$17, assigned_engineer_id=$18, assigned_sales_id=$19,
-       priority=$20, target_quote_date=$21, notes=$22, current_stage=$23,
-       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $23 THEN NOW() ELSE stage_started_at END,
+       material=$12, client_part_description=$13, material_grade=$14,
+       alternate_material_acceptable=$15, estimated_weight=$16, casting_process=$17,
+       machining_required=$18, heat_treatment=$19, painting_required=$20,
+       assigned_engineer_id=$21, assigned_sales_id=$22,
+       priority=$23, target_quote_date=$24, notes=$25, current_stage=$26,
+       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $26 THEN NOW() ELSE stage_started_at END,
        updated_at=NOW()
      WHERE id=$1`,
     [
@@ -394,7 +408,9 @@ export async function updateProject(id: number, input: ProjectInput) {
       input.internalPartNumber ?? null, input.customerMachinedPartNumber ?? null,
       input.customerPaintedPartNumber ?? null, input.customerUnpaintedPartNumber ?? null,
       input.projectName, input.projectDescription ?? null,
-      input.annualUsage ?? null, input.material ?? null, input.estimatedWeight ?? null,
+      input.annualUsage ?? null, input.material ?? null,
+      input.clientPartDescription ?? null, input.materialGrade ?? null,
+      input.alternateMaterialAcceptable, input.estimatedWeight ?? null,
       input.castingProcess ?? null, input.machiningRequired, input.heatTreatment,
       input.paintingRequired, input.assignedEngineerId ?? null, input.assignedSalesId ?? null,
       input.priority, input.targetQuoteDate ?? null, input.notes ?? null, input.currentStage,

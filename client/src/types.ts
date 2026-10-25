@@ -56,6 +56,9 @@ export interface Project {
   annualUsage: number | null;
   customerQuotePrice: number | null;
   material: string | null;
+  clientPartDescription: string | null;
+  materialGrade: string | null;
+  alternateMaterialAcceptable: boolean;
   estimatedWeight: number | null;
   estimatePartPrice: number | null;
   projectValue: number | null;
@@ -235,6 +238,9 @@ export interface ProjectFilters {
   salesId?: number | '';
   priority?: string;
   material?: string;
+  clientPartDescription?: string;
+  materialGrade?: string;
+  alternateMaterialAcceptable?: boolean;
   castingProcess?: string;
   createdFrom?: string;
   createdTo?: string;

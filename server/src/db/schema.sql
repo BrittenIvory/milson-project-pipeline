@@ -257,6 +257,9 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_machined_part_number TEXT
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_painted_part_number TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_unpainted_part_number TEXT;
 
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS client_part_description TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS material_grade TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS alternate_material_acceptable BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_date DATE;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS requested_date DATE;
