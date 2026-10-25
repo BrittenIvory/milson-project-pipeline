@@ -257,7 +257,12 @@ function buildProjectWhere(options: ProjectFilters) {
   eq(options.updatedTo, (i) => `p.updated_at < $${i}::date + 1`);
   eq(options.targetFrom, (i) => `p.target_quote_date >= $${i}::date`);
   eq(options.targetTo, (i) => `p.target_quote_date <= $${i}::date`);
-  eq(options.partNumber, (i) => `${PART_NUMBER_KEY} = $${i}`);
+  // partNumber is a value filter, not a dropdown choice: 'all' is a legitimate
+  // part number and must not be skipped like the enum-style filters above.
+  if (options.partNumber) {
+    params.push(options.partNumber);
+    where.push(`${PART_NUMBER_KEY} = $${params.length}`);
+  }
 
   return { params, clause: where.length ? `WHERE ${where.join(' AND ')}` : '' };
 }
