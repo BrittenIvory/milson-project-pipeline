@@ -650,11 +650,10 @@ export default function TasksPanel({
                                   if (
                                     e.key === 'Enter' &&
                                     !e.shiftKey &&
-                                    !e.repeat &&
                                     !e.nativeEvent.isComposing
                                   ) {
                                     e.preventDefault();
-                                    addComment(task.id);
+                                    if (!e.repeat) addComment(task.id);
                                   }
                                 }}
                                 placeholder="Add a comment… use @ to mention someone"

@@ -213,12 +213,10 @@ export default function NotificationBell() {
                               if (
                                 e.key === 'Enter' &&
                                 !e.shiftKey &&
-                                !e.repeat &&
-                                !e.nativeEvent.isComposing &&
-                                replyHasText
+                                !e.nativeEvent.isComposing
                               ) {
                                 e.preventDefault();
-                                sendReply(notification);
+                                if (!e.repeat && replyHasText) sendReply(notification);
                               }
                             }}
                             placeholder="Reply to this comment…"
