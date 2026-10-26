@@ -343,6 +343,10 @@ export default function TasksPanel({
       .filter((group) => group.tasks.length > 0),
     ...(groups.get('other')?.length ? [{ key: 'other', tasks: groups.get('other')! }] : []),
   ];
+  const STAGE_ORDER = new Map<string, number>(
+    PROJECT_STAGES.map((stage, index) => [stage.value, index]),
+  );
+  const currentStageIdx = currentStage ? (STAGE_ORDER.get(currentStage) ?? -1) : -1;
 
   const moveTask = async (task: ProjectTask, direction: 'up' | 'down') => {
     try {
@@ -389,7 +393,12 @@ export default function TasksPanel({
             const active = group.key === currentStage;
             const doneCount = group.tasks.filter((task) => CLOSED_TASK_STATUSES.includes(task.status)).length;
             const allDone = group.tasks.length > 0 && doneCount === group.tasks.length;
-            const collapsed = collapsedOverride[group.key] ?? (allDone && !active);
+            // Default open: the current stage, plus any earlier stage still
+            // holding unfinished tasks. Everything else starts collapsed.
+            const stageIdx = STAGE_ORDER.get(group.key) ?? -1;
+            const isEarlier = !active && currentStageIdx !== -1 && stageIdx < currentStageIdx;
+            const defaultOpen = active || (isEarlier && !allDone);
+            const collapsed = collapsedOverride[group.key] ?? !defaultOpen;
             return (
               <section key={group.key} className={clsx(
                 'overflow-hidden rounded-xl border bg-white',
