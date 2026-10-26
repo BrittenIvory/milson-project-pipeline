@@ -18,6 +18,7 @@ export interface TaskRow {
   customer_quote_price: string | null;
   priority: string;
   status: string;
+  sort_order: number | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -77,7 +78,7 @@ export function toTaskDto(row: TaskRow) {
 export async function listTasks(projectId: number) {
   const rows = await query<TaskRow>(
     `${SELECT_TASK} WHERE t.project_id = $1
-     ORDER BY t.created_at, t.id`,
+     ORDER BY t.sort_order, t.id`,
     [projectId],
   );
   return rows.map(toTaskDto);
@@ -95,8 +96,9 @@ export async function getTask(projectId: number, id: number) {
 export async function createTask(projectId: number, input: TaskInput, createdBy: number, stage: string) {
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO tasks (project_id, task_name, description, assigned_user_id, due_date, start_date,
-       completed_date, requested_date, actual_date, customer_quote_price, priority, status, completed_at, created_by, stage)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+       completed_date, requested_date, actual_date, customer_quote_price, priority, status, completed_at, created_by, stage, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+       (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM tasks WHERE project_id = $1)) RETURNING id`,
     [
       projectId,
       input.taskName,
@@ -152,6 +154,48 @@ export async function updateTask(projectId: number, id: number, input: TaskInput
     ],
   );
   return getTask(projectId, id);
+}
+
+/**
+ * Swaps a task with its neighbor within its stage list and rewrites that
+ * stage's sort_order sequentially, so ordering stays dense and stable.
+ */
+export async function moveTask(projectId: number, id: number, direction: 'up' | 'down') {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Serialize reorders per project: a concurrent move must read the order
+    // this transaction committed, not a stale snapshot.
+    await client.query('SELECT pg_advisory_xact_lock($1)', [projectId]);
+    const taskResult = await client.query(
+      'SELECT id, stage FROM tasks WHERE id = $1 AND project_id = $2',
+      [id, projectId],
+    );
+    const task = taskResult.rows[0] as TaskRow | undefined;
+    if (!task) throw new HttpError(404, 'Task not found');
+    const siblings = await client.query(
+      `SELECT id FROM tasks WHERE project_id = $1 AND stage IS NOT DISTINCT FROM $2
+       ORDER BY sort_order, id`,
+      [projectId, task.stage],
+    );
+    const ids = (siblings.rows as { id: number }[]).map((row) => row.id);
+    const index = ids.indexOf(id);
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || target < 0 || target >= ids.length) {
+      await client.query('COMMIT');
+      return;
+    }
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    for (let position = 0; position < ids.length; position += 1) {
+      await client.query('UPDATE tasks SET sort_order = $1 WHERE id = $2', [position + 1, ids[position]]);
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function deleteTask(projectId: number, id: number) {

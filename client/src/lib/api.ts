@@ -207,6 +207,10 @@ export const tasksApi = {
     http.put<ProjectTask>(`/projects/${projectId}/tasks/${taskId}`, payload).then((r) => r.data),
   remove: (projectId: number, taskId: number) =>
     http.delete(`/projects/${projectId}/tasks/${taskId}`),
+  move: (projectId: number, taskId: number, direction: 'up' | 'down') =>
+    http
+      .post<ProjectTask[]>(`/projects/${projectId}/tasks/${taskId}/move`, { direction })
+      .then((r) => r.data),
 };
 
 export const taskCommentsApi = {
@@ -267,12 +271,51 @@ export const notesApi = {
 /** Dispatched on window after notification mutations so other listeners reload. */
 export const NOTIFICATIONS_CHANGED_EVENT = 'milson:notifications-changed';
 
+let unreadNoteProjectsPromise: Promise<Set<number>> | null = null;
+
+/** Dispatched once per notification change after the unread set has refetched. */
+export const UNREAD_NOTE_PROJECTS_EVENT = 'milson:unread-note-projects-changed';
+
+/**
+ * Project ids that have unread note-related notifications (mentions/replies)
+ * for the current user — powers the unread dot on the comments buttons.
+ * Shared and cached so every project row doesn't issue its own request.
+ */
+export function unreadNoteProjectIds(): Promise<Set<number>> {
+  if (!unreadNoteProjectsPromise) {
+    unreadNoteProjectsPromise = notificationsApi
+      .list(false, 0, 200, true)
+      .then(
+        (r) =>
+          new Set(
+            r.items
+              .filter((n) => n.entityType === 'note' && n.projectId !== null)
+              .map((n) => n.projectId as number),
+          ),
+      )
+      .catch(() => new Set<number>());
+  }
+  return unreadNoteProjectsPromise;
+}
+
+// One global listener refetches once per notification change; row components
+// subscribe to UNREAD_NOTE_PROJECTS_EVENT and read the shared cache.
+if (typeof window !== 'undefined') {
+  window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, () => {
+    unreadNoteProjectsPromise = null;
+    unreadNoteProjectIds().then(() =>
+      window.dispatchEvent(new Event(UNREAD_NOTE_PROJECTS_EVENT)),
+    );
+  });
+}
+
 export const notificationsApi = {
-  list: (archived = false, offset?: number, limit?: number) =>
+  list: (archived = false, offset?: number, limit?: number, unreadOnly = false) =>
     http
       .get<{ items: AppNotification[]; unread: number }>('/notifications', {
         params: {
           ...(archived ? { archived: 'true' } : {}),
+          ...(unreadOnly ? { unread: 'true' } : {}),
           ...(offset ? { offset } : {}),
           ...(limit ? { limit } : {}),
         },

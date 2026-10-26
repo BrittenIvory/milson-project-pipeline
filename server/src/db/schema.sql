@@ -339,3 +339,13 @@ ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_
   'stage_2_production','production','qa','completed'
 ));
 ALTER TABLE projects ALTER COLUMN current_stage SET DEFAULT 'intake';
+
+-- Per-stage manual ordering for tasks. Backfill preserves the existing
+-- created_at order; new rows take MAX(sort_order)+1.
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS sort_order INTEGER;
+UPDATE tasks t SET sort_order = sub.rn
+FROM (
+  SELECT id, ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY created_at, id) AS rn
+  FROM tasks
+) sub
+WHERE t.id = sub.id AND t.sort_order IS NULL;
