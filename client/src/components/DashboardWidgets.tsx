@@ -23,12 +23,12 @@ export function StageCard({
   return (
     <Link
       to={`/projects?stage=${stage}`}
-      className="card flex flex-col gap-2 p-4 transition-shadow hover:shadow-md"
+      className="card flex flex-col gap-1 p-3 transition-shadow hover:shadow-md"
     >
-      <span className={clsx('inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-medium', tone)}>
+      <span className={clsx('inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-medium', tone)}>
         {label}
       </span>
-      <span className="text-2xl font-semibold text-slate-900">{count}</span>
+      <span className="text-xl font-semibold text-slate-900">{count}</span>
       <span className="text-xs text-slate-500">{count === 1 ? 'project' : 'projects'}</span>
     </Link>
   );
@@ -45,13 +45,13 @@ export function MetricCard({
   icon: LucideIcon;
 }) {
   return (
-    <div className="card flex items-center gap-4 p-4">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-        <Icon className="h-5 w-5" />
+    <div className="card flex items-center gap-3 p-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+        <Icon className="h-4 w-4" />
       </div>
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="text-xl font-semibold text-slate-900">{value}</p>
+        <p className="text-lg font-semibold text-slate-900">{value}</p>
       </div>
     </div>
   );
@@ -87,7 +87,7 @@ export function ProjectListWidget({
             <li key={project.id}>
               <Link
                 to={`/projects/${project.id}`}
-                className="flex items-center gap-3 py-2.5 hover:opacity-80"
+                className="flex items-center gap-3 py-2 hover:opacity-80"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-slate-800">

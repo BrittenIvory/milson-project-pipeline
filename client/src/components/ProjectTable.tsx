@@ -271,7 +271,7 @@ export default function ProjectTable({
                     left: pinned ? offsets[column.id] : undefined,
                   }}
                   className={clsx(
-                    'group relative select-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 cursor-grab active:cursor-grabbing',
+                    'group relative select-none px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 cursor-grab active:cursor-grabbing',
                     pinned && 'sticky z-10 bg-slate-50',
                     dragOverId === column.id && 'bg-brand-50 ring-2 ring-inset ring-brand-300',
                   )}
@@ -324,7 +324,7 @@ export default function ProjectTable({
             if (stageProjects.length === 0) return [];
             return [
               <tr key={`stage-${stage.value}`} className="border-b border-slate-200 bg-slate-50">
-                <td colSpan={columns.length} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                <td colSpan={columns.length} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   {stage.label} <span className="font-normal text-slate-400">({stageProjects.length})</span>
                 </td>
               </tr>,
@@ -340,7 +340,7 @@ export default function ProjectTable({
                           left: pinned ? offsets[column.id] : undefined,
                         }}
                         className={clsx(
-                          'truncate px-4 py-3 text-slate-700',
+                          'truncate px-3 py-2 text-slate-700',
                           pinned && 'sticky z-10 bg-white',
                         )}
                       >
@@ -355,7 +355,7 @@ export default function ProjectTable({
           {projects.some((project) => !PROJECT_STAGES.some((stage) => stage.value === project.currentStage)) && (
             <>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <td colSpan={columns.length} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                <td colSpan={columns.length} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   Other
                 </td>
               </tr>
@@ -373,7 +373,7 @@ export default function ProjectTable({
                             left: pinned ? offsets[column.id] : undefined,
                           }}
                           className={clsx(
-                            'truncate px-4 py-3 text-slate-700',
+                            'truncate px-3 py-2 text-slate-700',
                             pinned && 'sticky z-10 bg-white',
                           )}
                         >

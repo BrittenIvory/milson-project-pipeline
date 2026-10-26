@@ -49,7 +49,7 @@ export default function ChangePasswordPage() {
         {done && !user?.mustChangePassword ? (
           <p className="text-sm text-emerald-700">Password updated.</p>
         ) : (
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className="space-y-3">
             <ErrorBanner message={error} />
             <Field label="Current password">
               <TextInput

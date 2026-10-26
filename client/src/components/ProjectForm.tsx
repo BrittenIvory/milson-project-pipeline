@@ -117,13 +117,13 @@ export default function ProjectForm({
   };
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <ErrorBanner message={error} />
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">Project details</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Project details</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Project Number" hint="Generated automatically">
             <TextInput value={projectNumber} readOnly disabled />
           </Field>
@@ -207,8 +207,8 @@ export default function ProjectForm({
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">Manufacturing</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Manufacturing</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Annual Usage">
             <TextInput
               type="number"
@@ -273,8 +273,8 @@ export default function ProjectForm({
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">Ownership &amp; scheduling</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Ownership &amp; scheduling</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Assigned Engineer">
             <Select
               value={value.assignedEngineerId ?? ''}

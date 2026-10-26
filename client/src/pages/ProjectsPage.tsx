@@ -347,7 +347,7 @@ export default function ProjectsPage() {
           onReorderColumn={reorderColumn}
         />
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {PROJECT_STAGES.map((stage) => {
             const stageProjects = projects.filter((project) => project.currentStage === stage.value);
             if (stageProjects.length === 0) return null;

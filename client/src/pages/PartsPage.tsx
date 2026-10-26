@@ -40,12 +40,12 @@ export default function PartsPage() {
           No parts yet — parts appear once a project has a part number.
         </p>
       ) : (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((part) => (
             <li key={part.partNumber}>
               <Link
                 to={`/parts/${encodeURIComponent(part.partNumber)}`}
-                className="flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
+                className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand-300 hover:shadow"
               >
                 {part.imageProjectId ? (
                   <img

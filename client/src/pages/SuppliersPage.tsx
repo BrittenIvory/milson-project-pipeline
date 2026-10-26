@@ -92,16 +92,16 @@ export default function SuppliersPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr><th className="px-5 py-3">Supplier</th><th className="px-5 py-3">Contact</th><th className="px-5 py-3">Email</th><th className="px-5 py-3">Status</th><th className="px-5 py-3" /></tr>
+                    <tr><th className="px-4 py-2">Supplier</th><th className="px-4 py-2">Contact</th><th className="px-4 py-2">Email</th><th className="px-4 py-2">Status</th><th className="px-4 py-2" /></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {suppliers.map((supplier) => (
                       <tr key={supplier.id}>
-                        <td className="px-5 py-3 font-medium text-slate-800">{supplier.name}</td>
-                        <td className="px-5 py-3 text-slate-600">{supplier.contactName ?? '—'}</td>
-                        <td className="px-5 py-3 text-slate-600">{supplier.email ?? '—'}</td>
-                        <td className="px-5 py-3"><Badge tone={supplier.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>{supplier.isActive ? 'Active' : 'Inactive'}</Badge></td>
-                        <td className="px-5 py-3 text-right">{canManage && <button type="button" aria-label={`Edit ${supplier.name}`} onClick={() => openForm(supplier)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil className="h-4 w-4" /></button>}</td>
+                        <td className="px-4 py-2 font-medium text-slate-800">{supplier.name}</td>
+                        <td className="px-4 py-2 text-slate-600">{supplier.contactName ?? '—'}</td>
+                        <td className="px-4 py-2 text-slate-600">{supplier.email ?? '—'}</td>
+                        <td className="px-4 py-2"><Badge tone={supplier.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>{supplier.isActive ? 'Active' : 'Inactive'}</Badge></td>
+                        <td className="px-4 py-2 text-right">{canManage && <button type="button" aria-label={`Edit ${supplier.name}`} onClick={() => openForm(supplier)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil className="h-4 w-4" /></button>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -116,10 +116,10 @@ export default function SuppliersPage() {
         onClose={() => { setEditing(null); setModalOpen(false); }}
         footer={<><Button variant="secondary" type="button" onClick={() => { setEditing(null); setModalOpen(false); }}>Cancel</Button><Button type="submit" form="supplier-form" loading={saving}>{editing ? 'Save changes' : 'Create supplier'}</Button></>}
       >
-        <form id="supplier-form" onSubmit={save} className="space-y-4">
+        <form id="supplier-form" onSubmit={save} className="space-y-3">
           <ErrorBanner message={formError} />
           <Field label="Supplier name"><TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Contact name"><TextInput value={form.contactName ?? ''} onChange={(e) => setForm({ ...form, contactName: e.target.value })} /></Field>
             <Field label="Email"><TextInput type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
             <Field label="Phone"><TextInput value={form.phone ?? ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>

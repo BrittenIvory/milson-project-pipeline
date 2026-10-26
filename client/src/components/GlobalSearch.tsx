@@ -77,7 +77,7 @@ export default function GlobalSearch() {
       {open && term.trim().length >= 2 && (
         <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           {!hasResults ? (
-            <p className="px-4 py-4 text-sm text-slate-500">No matches.</p>
+            <p className="px-4 py-3 text-sm text-slate-500">No matches.</p>
           ) : (
             <div className="max-h-96 overflow-y-auto py-1">
               {results.projects.length > 0 && (

@@ -111,7 +111,7 @@ export default function DocumentsPanel({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Documents</h2>
@@ -181,28 +181,28 @@ export default function DocumentsPanel({
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3">File Name</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Uploaded By</th>
-                <th className="px-4 py-3">Upload Date</th>
-                <th className="px-4 py-3">Size</th>
-                <th className="px-4 py-3" />
+                <th className="px-3 py-2">File Name</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Uploaded By</th>
+                <th className="px-3 py-2">Upload Date</th>
+                <th className="px-3 py-2">Size</th>
+                <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
               {documents.map((doc) => (
                 <tr key={doc.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 shrink-0 text-slate-400" />
                       <span className="font-medium text-slate-800">{doc.fileName}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 uppercase text-slate-500">{doc.extension ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{doc.uploadedByName ?? 'Unknown'}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDateTime(doc.createdAt)}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatBytes(doc.sizeBytes)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 uppercase text-slate-500">{doc.extension ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-600">{doc.uploadedByName ?? 'Unknown'}</td>
+                  <td className="px-3 py-2 text-slate-600">{formatDateTime(doc.createdAt)}</td>
+                  <td className="px-3 py-2 text-slate-600">{formatBytes(doc.sizeBytes)}</td>
+                  <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
                       {PREVIEWABLE.includes(doc.extension ?? '') && (
                         <button

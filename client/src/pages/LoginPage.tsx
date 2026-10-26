@@ -44,7 +44,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="card space-y-4 p-6">
+        <form onSubmit={handleSubmit} className="card space-y-3 p-6">
           <ErrorBanner message={error} />
           <Field label="Email">
             <TextInput

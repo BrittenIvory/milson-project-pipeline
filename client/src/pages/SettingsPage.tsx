@@ -42,7 +42,7 @@ function TempPasswordBanner({
         Share this temporary password with <span className="font-medium">{email}</span>. It is shown
         only once; the user must set a new password at their next sign-in.
       </p>
-      <p className="mt-3 select-all rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center font-mono text-sm">
+      <p className="mt-3 select-all rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center font-mono text-sm">
         {password}
       </p>
     </Modal>
@@ -125,13 +125,13 @@ export default function SettingsPage() {
         </Card>
       ) : (
         <Card>
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <h2 className="text-base font-semibold text-slate-900">User Management</h2>
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4" /> New user
             </Button>
           </div>
-          <div className="px-5 py-4">
+          <div className="px-4 py-3">
             <ErrorBanner message={error} />
             <div className="overflow-x-auto">
               <table className="w-full min-w-[36rem] text-sm">
@@ -147,19 +147,19 @@ export default function SettingsPage() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-slate-100 last:border-0">
-                    <td className="py-2.5 pr-4 font-medium text-slate-800">
+                    <td className="py-2 pr-4 font-medium text-slate-800">
                       {u.fullName}
                       {u.id === currentUser?.id && (
                         <span className="ml-2 text-xs text-slate-400">(you)</span>
                       )}
                     </td>
-                    <td className="py-2.5 pr-4 text-slate-600">{u.email}</td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-2 pr-4 text-slate-600">{u.email}</td>
+                    <td className="py-2 pr-4">
                       <Badge tone={u.role === 'administrator' ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-600'}>
                         {ROLE_LABELS[u.role]}
                       </Badge>
                     </td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-2 pr-4">
                       <Badge tone={u.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
                         {u.isActive ? 'Active' : 'Deactivated'}
                       </Badge>
@@ -293,7 +293,7 @@ function CreateUserModal({
         </>
       }
     >
-      <form id="create-user-form" onSubmit={submit} className="space-y-4">
+      <form id="create-user-form" onSubmit={submit} className="space-y-3">
         <ErrorBanner message={error} />
         <Field label="Full name">
           <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} required />

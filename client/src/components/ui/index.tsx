@@ -24,7 +24,7 @@ export function Button({ variant = 'primary', loading, className, children, ...p
       {...props}
       disabled={props.disabled || loading}
       className={clsx(
-        'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium',
+        'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium',
         'transition-colors focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:cursor-not-allowed',
         buttonVariants[variant],
         className,
@@ -38,12 +38,12 @@ export function Button({ variant = 'primary', loading, className, children, ...p
 
 /** Rounded surface used for every panel in the app. */
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={clsx('card p-5', className)}>{children}</div>;
+  return <div className={clsx('card p-4', className)}>{children}</div>;
 }
 
 export function Badge({ tone, children }: { tone: string; children: ReactNode }) {
   return (
-    <span className={clsx('inline-flex rounded-full px-2.5 py-1 text-xs font-medium', tone)}>
+    <span className={clsx('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', tone)}>
       {children}
     </span>
   );
@@ -62,7 +62,7 @@ export function Field({ label, hint, className, children }: FieldProps) {
     <div className={className}>
       <label className="label">{label}</label>
       {children}
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
     </div>
   );
 }
@@ -73,7 +73,7 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
 
 export const TextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
   function TextArea(props, ref) {
-    return <textarea ref={ref} {...props} className={clsx('input min-h-[90px]', props.className)} />;
+    return <textarea ref={ref} {...props} className={clsx('input min-h-[70px]', props.className)} />;
   },
 );
 
@@ -92,7 +92,7 @@ export function Checkbox({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-50">
       <input
         type="checkbox"
         checked={checked}
@@ -118,7 +118,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center">
       <p className="text-sm font-semibold text-slate-700">{title}</p>
       {description && <p className="max-w-md text-sm text-slate-500">{description}</p>}
       {action}
@@ -129,7 +129,7 @@ export function EmptyState({
 export function ErrorBanner({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+    <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
       {message}
     </div>
   );
@@ -155,7 +155,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-8">
       <div className={clsx('w-full rounded-2xl bg-white shadow-xl', width)}>
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           <button
             type="button"
@@ -166,9 +166,9 @@ export function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="px-5 py-5">{children}</div>
+        <div className="px-4 py-4">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">{footer}</div>
+          <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">{footer}</div>
         )}
       </div>
     </div>
@@ -186,9 +186,9 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
         {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -250,7 +250,7 @@ export function WidgetCard({
 }) {
   return (
     <Card className={className}>
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
         {action}
       </div>

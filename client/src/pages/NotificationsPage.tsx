@@ -233,7 +233,7 @@ export default function NotificationsPage() {
             {items.map((notification) => (
               <li
                 key={notification.id}
-                className={clsx('flex gap-3 py-3', !notification.readAt && 'bg-brand-50/40')}
+                className={clsx('flex gap-3 py-2', !notification.readAt && 'bg-brand-50/40')}
               >
                 {notification.hasPartImage && notification.projectId && (
                   <img

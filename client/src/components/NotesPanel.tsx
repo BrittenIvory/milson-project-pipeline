@@ -319,7 +319,7 @@ export default function NotesPanel({
       : users.filter((option) => option.fullName.toLowerCase().includes(mentionQuery)).slice(0, 5);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
         <h2 className="text-sm font-semibold text-slate-900">Comments</h2>
         <p className="text-xs text-slate-500">Mention a teammate with @ to notify them.</p>
@@ -360,7 +360,7 @@ export default function NotesPanel({
             const visibleReplies = earlierOpen ? replies : replies.slice(-1);
             return (
             <li key={note.id} id={`note-${note.id}`} className="scroll-mt-24">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">
                   <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>{' '}

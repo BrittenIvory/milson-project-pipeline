@@ -44,7 +44,7 @@ export default function PartDetailPage() {
   }
 
   return (
-    <div className="px-4 py-6">
+    <div className="px-4 py-5">
       <Link
         to="/parts"
         className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
@@ -53,7 +53,7 @@ export default function PartDetailPage() {
         All parts
       </Link>
 
-      <div className="mt-4 flex items-start gap-5">
+      <div className="mt-4 flex items-start gap-4">
         {part.imageProjectId ? (
           <img
             src={`/api/projects/${part.imageProjectId}/part-image`}
@@ -101,18 +101,18 @@ export default function PartDetailPage() {
         <table className="min-w-full divide-y divide-slate-100 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-2.5">Project</th>
-              <th className="px-4 py-2.5">Name</th>
-              <th className="px-4 py-2.5">Customer</th>
-              <th className="px-4 py-2.5">Stage</th>
-              <th className="px-4 py-2.5">Engineer</th>
-              <th className="px-4 py-2.5 text-right">Value</th>
+              <th className="px-3 py-2">Project</th>
+              <th className="px-3 py-2">Name</th>
+              <th className="px-3 py-2">Customer</th>
+              <th className="px-3 py-2">Stage</th>
+              <th className="px-3 py-2">Engineer</th>
+              <th className="px-3 py-2 text-right">Value</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {part.projects.map((project) => (
               <tr key={project.id} className="hover:bg-slate-50">
-                <td className="px-4 py-2.5">
+                <td className="px-3 py-2">
                   <Link
                     to={`/projects/${project.id}`}
                     className="font-medium text-brand-700 hover:underline"
@@ -120,15 +120,15 @@ export default function PartDetailPage() {
                     {project.projectNumber}
                   </Link>
                 </td>
-                <td className="px-4 py-2.5 text-slate-700">{project.projectName}</td>
-                <td className="px-4 py-2.5 text-slate-700">{project.customerName ?? '—'}</td>
-                <td className="px-4 py-2.5 text-slate-700">
+                <td className="px-3 py-2 text-slate-700">{project.projectName}</td>
+                <td className="px-3 py-2 text-slate-700">{project.customerName ?? '—'}</td>
+                <td className="px-3 py-2 text-slate-700">
                   {STAGE_LABELS.get(project.currentStage) ?? project.currentStage}
                 </td>
-                <td className="px-4 py-2.5 text-slate-700">
+                <td className="px-3 py-2 text-slate-700">
                   {project.assignedEngineerName ?? '—'}
                 </td>
-                <td className="px-4 py-2.5 text-right text-slate-700">
+                <td className="px-3 py-2 text-right text-slate-700">
                   {project.projectValue !== null
                     ? formatCurrency(project.projectValue, project.projectValueCurrency ?? 'USD')
                     : '—'}

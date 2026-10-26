@@ -61,8 +61,9 @@ export default function DashboardPage() {
           <SkeletonRows rows={6} />
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
+          {/* Eight stage cards: 4 columns x 2 rows on desktop. */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {PROJECT_STAGES.map((stage) => (
               <StageCard
                 key={stage.value}
@@ -88,7 +89,7 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             <ProjectListWidget
               title="Recent projects"
               projects={summary.recent}
