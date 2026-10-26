@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { Archive, ArchiveRestore, Inbox, MailOpen, Reply } from 'lucide-react';
+import { Archive, ArchiveRestore, Eye, Inbox, MailOpen, Reply } from 'lucide-react';
+import NotificationPreviewPanel from '../components/NotificationPreviewPanel';
 import {
   apiErrorMessage,
   NOTIFICATIONS_CHANGED_EVENT,
@@ -35,6 +36,7 @@ export default function NotificationsPage() {
   const [replying, setReplying] = useState(false);
   const replyingRef = useRef(false);
   const [replyError, setReplyError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<AppNotification | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -171,7 +173,8 @@ export default function NotificationsPage() {
     .trim().length > 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-4">
+    <div className="mx-auto flex max-w-6xl gap-4 px-4 py-4">
+      <div className="min-w-0 flex-1">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
           <Inbox className="h-5 w-5 text-brand-600" />
@@ -276,15 +279,26 @@ export default function NotificationsPage() {
                       {formatDateTime(notification.createdAt)}
                     </p>
                   </button>
-                  {canReply(notification) && replyingTo !== notification.id && (
-                    <button
-                      onClick={() => startReply(notification)}
-                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800"
-                    >
-                      <Reply className="h-3 w-3" />
-                      Reply
-                    </button>
-                  )}
+                  <div className="mt-1.5 flex items-center gap-3">
+                    {canReply(notification) && replyingTo !== notification.id && (
+                      <button
+                        onClick={() => startReply(notification)}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800"
+                      >
+                        <Reply className="h-3 w-3" />
+                        Reply
+                      </button>
+                    )}
+                    {notification.projectId && (
+                      <button
+                        onClick={() => setPreview(notification)}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800"
+                      >
+                        <Eye className="h-3 w-3" />
+                        Preview
+                      </button>
+                    )}
+                  </div>
                   {replyingTo === notification.id && (
                     <div className="mt-2">
                       <textarea
@@ -356,6 +370,15 @@ export default function NotificationsPage() {
             </div>
           )}
         </>
+      )}
+      </div>
+      {preview && (
+        <div className="fixed inset-x-3 bottom-3 top-14 z-40 lg:sticky lg:top-4 lg:z-auto lg:h-[calc(100vh-6rem)] lg:w-96 lg:shrink-0">
+          <NotificationPreviewPanel
+            notification={preview}
+            onClose={() => setPreview(null)}
+          />
+        </div>
       )}
     </div>
   );
