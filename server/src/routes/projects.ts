@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { config } from '../config';
-import { queryOne } from '../db/pool';
+import { query, queryOne } from '../db/pool';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { listActivity, logActivity, toActivityDto } from '../services/activityService';
@@ -354,6 +354,43 @@ router.put(
       console.error('Unable to refresh project estimate quote', err);
     }
     res.json(project);
+  }),
+);
+
+router.delete(
+  '/:id',
+  canEditProjects,
+  asyncHandler(async (req, res) => {
+    const projectId = Number(req.params.id);
+    if (!Number.isFinite(projectId)) {
+      res.status(400).json({ error: 'Invalid project id' });
+      return;
+    }
+    // Collect stored files first: child rows (documents) and the part image
+    // all cascade on project delete, so their keys would be lost otherwise.
+    const files = await query<{ storage_key: string | null; storage_driver: string | null }>(
+      `SELECT storage_key, storage_driver FROM documents WHERE project_id = $1
+       UNION ALL
+       SELECT part_image_storage_key, part_image_storage_driver FROM projects
+        WHERE id = $1 AND part_image_storage_key IS NOT NULL`,
+      [projectId],
+    );
+    const deleted = await queryOne<{ id: number; project_number: string }>(
+      'DELETE FROM projects WHERE id = $1 RETURNING id, project_number',
+      [projectId],
+    );
+    if (!deleted) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+    for (const file of files) {
+      if (file.storage_key) {
+        await storageFor(file.storage_driver ?? 'local')
+          .remove(file.storage_key)
+          .catch(() => undefined);
+      }
+    }
+    res.json({ ok: true });
   }),
 );
 

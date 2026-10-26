@@ -34,7 +34,7 @@ export default function DashboardPage() {
   }, [canViewProjects]);
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto max-w-[110rem]">
       <PageHeader
         title="Dashboard"
         description="Pipeline health across every stage."
