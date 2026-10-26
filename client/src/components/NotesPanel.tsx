@@ -46,6 +46,8 @@ export default function NotesPanel({
   // Scroll to the latest comment only on first load and right after posting —
   // not on every list change, or edits/deletes would yank the reader to the bottom.
   const scrollToEndRef = useRef(true);
+  // When set, scroll this top-level comment into view instead of the bottom.
+  const pendingScrollIdRef = useRef<number | null>(null);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -77,7 +79,14 @@ export default function NotesPanel({
   }, [load]);
 
   useEffect(() => {
-    if (loading || !scrollToEndRef.current) return;
+    if (loading) return;
+    if (pendingScrollIdRef.current !== null) {
+      const el = document.getElementById(`note-${pendingScrollIdRef.current}`);
+      pendingScrollIdRef.current = null;
+      el?.scrollIntoView({ block: 'start' });
+      return;
+    }
+    if (!scrollToEndRef.current) return;
     scrollToEndRef.current = false;
     listEndRef.current?.scrollIntoView({ block: 'end' });
   }, [loading, notes.length]);
@@ -107,9 +116,11 @@ export default function NotesPanel({
       if (replyTo) {
         const rootId = rootIdOf(replyTo);
         setOpenThreads((current) => new Set(current).add(rootId));
+        pendingScrollIdRef.current = rootId;
+      } else {
+        scrollToEndRef.current = true;
       }
       setReplyTo(null);
-      scrollToEndRef.current = true;
       await load();
       onChanged?.();
     } catch (err) {
@@ -176,8 +187,21 @@ export default function NotesPanel({
     }
   }
 
-  const visibleNotes = expanded ? topLevel : topLevel.slice(-RECENT_COUNT);
-  const hiddenCount = topLevel.length - visibleNotes.length;
+  // Order threads by latest activity so a fresh reply lifts an older thread
+  // into the recent view instead of hiding behind "Show earlier comments".
+  const activityOf = (note: ProjectNote) => {
+    let latest = note.createdAt;
+    for (const reply of repliesByRoot.get(note.id) ?? []) {
+      if (reply.createdAt > latest) latest = reply.createdAt;
+    }
+    return latest;
+  };
+  const sortedTopLevel = [...topLevel].sort((a, b) =>
+    activityOf(a) < activityOf(b) ? -1 : activityOf(a) > activityOf(b) ? 1 : 0,
+  );
+
+  const visibleNotes = expanded ? sortedTopLevel : sortedTopLevel.slice(-RECENT_COUNT);
+  const hiddenCount = sortedTopLevel.length - visibleNotes.length;
 
   const toggleThread = (noteId: number) =>
     setOpenThreads((current) => {
@@ -230,7 +254,7 @@ export default function NotesPanel({
             const replies = repliesByRoot.get(note.id) ?? [];
             const threadOpen = openThreads.has(note.id);
             return (
-            <li key={note.id}>
+            <li key={note.id} id={`note-${note.id}`}>
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">
