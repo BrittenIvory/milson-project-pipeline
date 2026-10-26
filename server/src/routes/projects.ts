@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { config } from '../config';
-import { query, queryOne } from '../db/pool';
+import { pool, query, queryOne } from '../db/pool';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { listActivity, logActivity, toActivityDto } from '../services/activityService';
@@ -164,15 +164,34 @@ router.post(
     const key = await storage.save(projectId, req.file.originalname, req.file.buffer, req.file.mimetype);
     const previousKey = project.partImageStorageKey;
     const previousDriver = project.partImageStorageDriver ?? 'local';
-    const updated = await queryOne<{ id: number }>(
-      `UPDATE projects
-       SET part_image_storage_key=$2, part_image_storage_driver=$3,
-           part_image_file_name=$4, part_image_mime_type=$5,
-           part_image_size_bytes=$6, updated_at=NOW()
-       WHERE id=$1
-       RETURNING id`,
-      [projectId, key, storage.driver, req.file.originalname, req.file.mimetype, req.file.size],
-    );
+    // Lock the project row so a concurrent project delete either finishes
+    // first (and this update then misses) or waits for this upload to land.
+    const client = await pool.connect();
+    let updated = false;
+    try {
+      await client.query('BEGIN');
+      const locked = await client.query('SELECT 1 FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
+      if (locked.rowCount === 0) {
+        await client.query('ROLLBACK');
+      } else {
+        await client.query(
+          `UPDATE projects
+           SET part_image_storage_key=$2, part_image_storage_driver=$3,
+               part_image_file_name=$4, part_image_mime_type=$5,
+               part_image_size_bytes=$6, updated_at=NOW()
+           WHERE id=$1`,
+          [projectId, key, storage.driver, req.file.originalname, req.file.mimetype, req.file.size],
+        );
+        updated = true;
+        await client.query('COMMIT');
+      }
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+      await storage.remove(key).catch(() => undefined);
+      throw err;
+    }
+    client.release();
     if (!updated) {
       await storage.remove(key).catch(() => undefined);
       res.status(404).json({ error: 'Project not found' });
@@ -368,26 +387,45 @@ router.delete(
     }
     // Collect stored files first: child rows (documents) and the part image
     // all cascade on project delete, so their keys would be lost otherwise.
-    const files = await query<{ storage_key: string | null; storage_driver: string | null }>(
-      `SELECT storage_key, storage_driver FROM documents WHERE project_id = $1
-       UNION ALL
-       SELECT part_image_storage_key, part_image_storage_driver FROM projects
-        WHERE id = $1 AND part_image_storage_key IS NOT NULL`,
-      [projectId],
-    );
-    const deleted = await queryOne<{ id: number; project_number: string }>(
-      'DELETE FROM projects WHERE id = $1 RETURNING id, project_number',
-      [projectId],
-    );
-    if (!deleted) {
-      res.status(404).json({ error: 'Project not found' });
-      return;
+    // Lock the project row so an in-flight upload finishes before keys are
+    // collected; an upload that starts after this lock sees no project and
+    // fails instead of leaving an orphaned file behind.
+    const client = await pool.connect();
+    let files: { storage_key: string | null; storage_driver: string | null }[] = [];
+    try {
+      await client.query('BEGIN');
+      const locked = await client.query('SELECT 1 FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
+      if (locked.rowCount === 0) {
+        await client.query('ROLLBACK');
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+      files = (
+        await client.query<{ storage_key: string | null; storage_driver: string | null }>(
+          `SELECT storage_key, storage_driver FROM documents WHERE project_id = $1
+           UNION ALL
+           SELECT part_image_storage_key, part_image_storage_driver FROM projects
+            WHERE id = $1 AND part_image_storage_key IS NOT NULL`,
+          [projectId],
+        )
+      ).rows;
+      await client.query('DELETE FROM projects WHERE id = $1', [projectId]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
     }
     for (const file of files) {
       if (file.storage_key) {
-        await storageFor(file.storage_driver ?? 'local')
-          .remove(file.storage_key)
-          .catch(() => undefined);
+        // A retired storage driver or a missing file must not fail the
+        // request — the project row is already gone at this point.
+        try {
+          await storageFor(file.storage_driver ?? 'local').remove(file.storage_key);
+        } catch {
+          /* best effort */
+        }
       }
     }
     res.json({ ok: true });

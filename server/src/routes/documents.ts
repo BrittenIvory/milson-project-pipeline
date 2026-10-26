@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { config } from '../config';
-import { query, queryOne } from '../db/pool';
+import { pool, query, queryOne } from '../db/pool';
 import { requirePermission } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errors';
 import { logActivity } from '../services/activityService';
@@ -105,15 +105,41 @@ router.post(
     // client-supplied upload header.
     const mimeType = mimeTypeFor(extension);
     const key = await storage.save(projectId, req.file.originalname, req.file.buffer, mimeType);
-    const row = await queryOne<DocumentRow>(
-      `INSERT INTO documents (project_id, file_name, storage_key, storage_driver, mime_type,
-         extension, size_bytes, document_kind, uploaded_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'uploaded',$8) RETURNING *`,
-      [
-        projectId, req.file.originalname, key, storage.driver, mimeType,
-        extension, req.file.size, req.user?.id ?? null,
-      ],
-    );
+    // Lock the project row so a concurrent project delete either finishes
+    // first (and this insert then misses) or waits for this upload to land —
+    // otherwise the stored file would be orphaned when the row cascades away.
+    const client = await pool.connect();
+    let row: DocumentRow | null = null;
+    try {
+      await client.query('BEGIN');
+      const locked = await client.query('SELECT 1 FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
+      if (locked.rowCount === 0) {
+        await client.query('ROLLBACK');
+      } else {
+        row = (
+          await client.query<DocumentRow>(
+            `INSERT INTO documents (project_id, file_name, storage_key, storage_driver, mime_type,
+               extension, size_bytes, document_kind, uploaded_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,'uploaded',$8) RETURNING *`,
+            [
+              projectId, req.file.originalname, key, storage.driver, mimeType,
+              extension, req.file.size, req.user?.id ?? null,
+            ],
+          )
+        ).rows[0];
+        await client.query('COMMIT');
+      }
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+      await storage.remove(key).catch(() => undefined);
+      throw err;
+    }
+    client.release();
+    if (!row) {
+      await storage.remove(key).catch(() => undefined);
+      throw new HttpError(404, 'Project not found');
+    }
     await logActivity({
       actor: req.user ?? null,
       action: 'Document Uploaded',
