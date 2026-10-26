@@ -20,6 +20,9 @@ export interface NotificationRow {
   internal_part_number?: string | null;
   has_part_image?: boolean;
   comment_author_name?: string | null;
+  /** For note_reply notifications: the comment that was replied to. */
+  replied_to_body?: string | null;
+  replied_to_author_name?: string | null;
 }
 
 export interface NotifyInput {
@@ -80,6 +83,10 @@ export function toNotificationDto(row: NotificationRow) {
     internalPartNumber: row.internal_part_number ?? null,
     hasPartImage: row.has_part_image ?? false,
     commentAuthorName: row.comment_author_name ?? null,
+    repliedToAuthorName: row.replied_to_author_name ?? null,
+    repliedToPreview: row.replied_to_body
+      ? row.replied_to_body.slice(0, 140)
+      : null,
   };
 }
 
@@ -97,10 +104,15 @@ export async function listNotifications(
             p.current_stage AS project_stage,
             p.internal_part_number,
             (p.part_image_storage_key IS NOT NULL) AS has_part_image,
-            actor.full_name AS comment_author_name
+            actor.full_name AS comment_author_name,
+            pn.body AS replied_to_body,
+            pu.full_name AS replied_to_author_name
      FROM notifications n
      LEFT JOIN projects p ON p.id = n.project_id
      LEFT JOIN users actor ON actor.id = n.actor_id
+     LEFT JOIN project_notes rn ON n.entity_type = 'note' AND rn.id = n.entity_id
+     LEFT JOIN project_notes pn ON pn.id = rn.reply_to_note_id
+     LEFT JOIN users pu ON pu.id = pn.author_id
      WHERE n.user_id = $1
        AND n.archived_at IS ${archived ? 'NOT ' : ''}NULL
        ${unreadOnly ? 'AND n.read_at IS NULL' : ''}

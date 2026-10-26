@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { Archive, ArchiveRestore, Inbox, MailOpen } from 'lucide-react';
+import { Archive, ArchiveRestore, Inbox, MailOpen, Reply } from 'lucide-react';
 import {
   apiErrorMessage,
   NOTIFICATIONS_CHANGED_EVENT,
+  notesApi,
   notificationsApi,
+  taskCommentsApi,
 } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import { PROJECT_STAGES } from '../lib/constants';
@@ -27,6 +29,12 @@ export default function NotificationsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replyMention, setReplyMention] = useState('');
+  const [replying, setReplying] = useState(false);
+  const replyingRef = useRef(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -95,6 +103,72 @@ export default function NotificationsPage() {
     signalChanged();
     await load();
   };
+
+  /** Same reply rules as the notification bell: comment/reply alerts only. */
+  const canReply = (notification: AppNotification) =>
+    notification.projectId !== null &&
+    (notification.type === 'note_mention' ||
+      notification.type === 'comment_mention' ||
+      notification.type === 'note_reply');
+
+  const escapeRegExp = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const startReply = (notification: AppNotification) => {
+    setReplyingTo(notification.id);
+    const mention = notification.commentAuthorName
+      ? `@${notification.commentAuthorName} `
+      : '';
+    setReplyMention(mention);
+    setReplyDraft(mention);
+    setReplyError(null);
+  };
+
+  const sendReply = async (notification: AppNotification) => {
+    if (!replyDraft.trim() || !notification.projectId || replyingRef.current) return;
+    replyingRef.current = true;
+    setReplying(true);
+    setReplyError(null);
+    try {
+      if (notification.entityType === 'task' && notification.entityId) {
+        await taskCommentsApi.create(
+          notification.projectId,
+          notification.entityId,
+          replyDraft.trim(),
+        );
+      } else {
+        await notesApi.create(
+          notification.projectId,
+          replyDraft.trim(),
+          notification.entityType === 'note' ? (notification.entityId ?? undefined) : undefined,
+        );
+      }
+      // The comment is persisted — close the composer before any secondary
+      // work so a failed mark-read can't be mistaken for a failed post.
+      setReplyingTo(null);
+      setReplyDraft('');
+      if (!notification.readAt) {
+        await notificationsApi.markRead(notification.id).catch(() => undefined);
+        signalChanged();
+      }
+      await load();
+    } catch (err) {
+      setReplyError(apiErrorMessage(err, 'Unable to post reply'));
+    } finally {
+      replyingRef.current = false;
+      setReplying(false);
+    }
+  };
+
+  const replyMentionPattern = replyMention.trimEnd()
+    ? new RegExp(`^${escapeRegExp(replyMention.trimEnd())}\\s*`)
+    : null;
+  const replyHasText = (
+    replyMentionPattern
+      ? replyDraft.replace(replyMentionPattern, '')
+      : replyDraft
+  )
+    .trim().length > 0;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
@@ -185,6 +259,14 @@ export default function NotificationsPage() {
                           ` · ${STAGE_LABELS.get(notification.projectStage) ?? notification.projectStage}`}
                       </p>
                     )}
+                    {notification.repliedToPreview && (
+                      <p className="mt-0.5 border-l-2 border-slate-200 pl-2 text-xs text-slate-500">
+                        <span className="font-medium text-slate-600">
+                          {notification.repliedToAuthorName ?? 'Deleted comment'}
+                        </span>
+                        : {notification.repliedToPreview}
+                      </p>
+                    )}
                     {notification.body && (
                       <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
                         {notification.body}
@@ -194,6 +276,55 @@ export default function NotificationsPage() {
                       {formatDateTime(notification.createdAt)}
                     </p>
                   </button>
+                  {canReply(notification) && replyingTo !== notification.id && (
+                    <button
+                      onClick={() => startReply(notification)}
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800"
+                    >
+                      <Reply className="h-3 w-3" />
+                      Reply
+                    </button>
+                  )}
+                  {replyingTo === notification.id && (
+                    <div className="mt-2">
+                      <textarea
+                        autoFocus
+                        value={replyDraft}
+                        onChange={(e) => setReplyDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === 'Enter' &&
+                            !e.shiftKey &&
+                            !e.nativeEvent.isComposing
+                          ) {
+                            e.preventDefault();
+                            if (!e.repeat && replyHasText) sendReply(notification);
+                          }
+                        }}
+                        placeholder="Reply to this comment…"
+                        rows={2}
+                        className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:border-brand-400 focus:outline-none"
+                      />
+                      {replyError && (
+                        <p className="mt-1 text-xs text-rose-600">{replyError}</p>
+                      )}
+                      <div className="mt-1.5 flex justify-end gap-2">
+                        <button
+                          onClick={() => setReplyingTo(null)}
+                          className="text-xs text-slate-500 hover:text-slate-700"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => sendReply(notification)}
+                          disabled={replying || !replyHasText}
+                          className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                        >
+                          {replying ? 'Sending…' : 'Send reply'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-start gap-2">
                   {!notification.readAt && (

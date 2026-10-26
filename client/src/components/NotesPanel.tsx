@@ -62,7 +62,6 @@ export default function NotesPanel({
   const [replyTo, setReplyTo] = useState<ProjectNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  const [openThreads, setOpenThreads] = useState<Set<number>>(new Set());
   const [earlierRepliesOpen, setEarlierRepliesOpen] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,9 +130,6 @@ export default function NotesPanel({
     setReplyTo(target);
     setReplyDraft('');
     setReplyMentionQuery(null);
-    // Revealing the thread keeps the freshly posted reply visible in place.
-    const rootId = rootIdOf(target);
-    setOpenThreads((current) => new Set(current).add(rootId));
   };
 
   const savingRef = useRef(false);
@@ -161,12 +157,10 @@ export default function NotesPanel({
     savingRef.current = true;
     setSaving(true);
     try {
-      const rootId = rootIdOf(replyTo);
       const created = await notesApi.create(projectId, replyDraft.trim(), replyTo.id);
       setReplyTo(null);
       setReplyDraft('');
       setReplyMentionQuery(null);
-      setOpenThreads((current) => new Set(current).add(rootId));
       // Scroll to the new reply itself: in a long thread the root's header
       // is far above it and would leave it off-screen.
       pendingScrollIdRef.current = created.id;
@@ -311,14 +305,6 @@ export default function NotesPanel({
   const visibleNotes = expanded ? topLevel : topLevel.slice(-RECENT_COUNT);
   const hiddenCount = topLevel.length - visibleNotes.length;
 
-  const toggleThread = (noteId: number) =>
-    setOpenThreads((current) => {
-      const next = new Set(current);
-      if (next.has(noteId)) next.delete(noteId);
-      else next.add(noteId);
-      return next;
-    });
-
   const toggleEarlierReplies = (noteId: number) =>
     setEarlierRepliesOpen((current) => {
       const next = new Set(current);
@@ -368,10 +354,9 @@ export default function NotesPanel({
         <ul className="space-y-3">
           {visibleNotes.map((note) => {
             const replies = repliesByRoot.get(note.id) ?? [];
-            const threadOpen = openThreads.has(note.id);
             const earlierOpen = earlierRepliesOpen.has(note.id);
-            // Open threads show only the latest reply; earlier replies hide
-            // behind their own toggle.
+            // The latest reply always shows; earlier replies hide behind a
+            // single toggle.
             const visibleReplies = earlierOpen ? replies : replies.slice(-1);
             return (
             <li key={note.id} id={`note-${note.id}`} className="scroll-mt-24">
@@ -454,26 +439,17 @@ export default function NotesPanel({
             {renderReplyBox(note)}
             {replies.length > 0 && (
               <div className="ml-6 mt-2 border-l-2 border-slate-200 pl-3">
-                <button
-                  type="button"
-                  onClick={() => toggleThread(note.id)}
-                  className="text-xs font-medium text-brand-700 hover:text-brand-900"
-                >
-                  {threadOpen ? 'Hide' : 'Show'} {replies.length}{' '}
-                  {replies.length === 1 ? 'reply' : 'replies'}
-                </button>
-                {threadOpen && replies.length > 1 && (
+                {replies.length > 1 && (
                   <button
                     type="button"
                     onClick={() => toggleEarlierReplies(note.id)}
-                    className="mt-1 block text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="text-xs font-medium text-brand-700 hover:text-brand-900"
                   >
                     {earlierOpen ? 'Hide' : 'Show'} {replies.length - 1} earlier{' '}
                     {replies.length - 1 === 1 ? 'reply' : 'replies'}
                   </button>
                 )}
-                {threadOpen && (
-                  <ul className="mt-2 space-y-2">
+                <ul className="mt-2 space-y-2">
                     {visibleReplies.map((reply) => (
                       <li
                         key={reply.id}
@@ -560,7 +536,6 @@ export default function NotesPanel({
                       </li>
                     ))}
                   </ul>
-                )}
               </div>
             )}
             </li>

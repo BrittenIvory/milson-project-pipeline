@@ -207,6 +207,8 @@ export interface AppNotification {
   internalPartNumber: string | null;
   hasPartImage: boolean;
   commentAuthorName: string | null;
+  repliedToAuthorName: string | null;
+  repliedToPreview: string | null;
 }
 
 export interface PartSummary {
