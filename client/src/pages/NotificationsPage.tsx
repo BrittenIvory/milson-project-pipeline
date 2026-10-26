@@ -38,26 +38,35 @@ export default function NotificationsPage() {
   const [replyError, setReplyError] = useState<string | null>(null);
   const [preview, setPreview] = useState<AppNotification | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await notificationsApi.list(tab === 'archive', 0, PAGE_SIZE);
-      setItems(data.items);
-      setHasMore(data.items.length === PAGE_SIZE);
-      setUnread(data.unread);
-      setError(null);
-    } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to load notifications'));
-    }
-  }, [tab]);
+  const load = useCallback(
+    async (preserveCount = 0) => {
+      try {
+        // Keep any pages the user already loaded behind Load more.
+        const limit = Math.max(preserveCount, PAGE_SIZE);
+        const data = await notificationsApi.list(tab === 'archive', 0, limit);
+        setItems(data.items);
+        setHasMore(data.items.length === limit);
+        setUnread(data.unread);
+        setError(null);
+      } catch (err) {
+        setError(apiErrorMessage(err, 'Unable to load notifications'));
+      }
+    },
+    [tab],
+  );
+
+  const itemsCountRef = useRef(0);
+  itemsCountRef.current = items.length;
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   // A preview panel marks its notification read after a successful reply;
-  // refresh the list so the badge/row state stays in sync.
+  // refresh the list so the badge/row state stays in sync — without
+  // dropping pages the user already loaded.
   useEffect(() => {
-    const reload = () => void load();
+    const reload = () => void load(itemsCountRef.current);
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, reload);
     return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, reload);
   }, [load]);

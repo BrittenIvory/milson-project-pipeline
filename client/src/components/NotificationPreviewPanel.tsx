@@ -77,6 +77,8 @@ export default function NotificationPreviewPanel({
     setError(null);
     setProject(null);
     setNotes([]);
+    setTaskComments([]);
+    setTaskName(null);
     setReplyTo(null);
     setDraft('');
     projectsApi
