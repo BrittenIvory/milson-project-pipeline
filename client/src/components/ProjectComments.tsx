@@ -204,6 +204,13 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
       setReplyTo(null);
       setReplyDraft('');
       setReplyMentionQuery(null);
+      // The new reply can land below the popover's scroll viewport — bring it
+      // into view once the DOM has it.
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`pc-note-${created.id}`)
+          ?.scrollIntoView({ block: 'nearest' });
+      });
       setError(null);
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add comment'));
@@ -460,7 +467,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
                     const earlierOpen = earlierRepliesOpen.has(note.id);
                     const visibleReplies = earlierOpen ? replies : replies.slice(-1);
                     return (
-                      <div key={note.id}>
+                      <div key={note.id} id={`pc-note-${note.id}`}>
                         {renderNoteCard(note, false)}
                         {renderReplyBox(note)}
                         {replies.length > 0 && (
@@ -477,7 +484,7 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
                             )}
                             <ul className="mt-1 space-y-1.5">
                               {visibleReplies.map((reply) => (
-                                <li key={reply.id}>
+                                <li key={reply.id} id={`pc-note-${reply.id}`}>
                                   {renderNoteCard(reply, true)}
                                   {renderReplyBox(reply)}
                                 </li>
