@@ -404,6 +404,7 @@ export default function ProjectDetailPage() {
               {showAllDetails ? 'Show fewer details' : 'Show all details'}
             </button>
             {showAllDetails && (
+              <>
               <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-3">
                 <DetailItem
                   label="Customer Part Number"
@@ -440,13 +441,14 @@ export default function ProjectDetailPage() {
                   value={project.paintingRequired ? 'Yes' : 'No'}
                 />
               </div>
+              <div className="mt-4">
+                <p className="label">Description</p>
+                <p className="whitespace-pre-line text-sm text-slate-700">
+                  {orDash(project.projectDescription)}
+                </p>
+              </div>
+              </>
             )}
-            <div className="mt-4">
-              <p className="label">Description</p>
-              <p className="whitespace-pre-line text-sm text-slate-700">
-                {orDash(project.projectDescription)}
-              </p>
-            </div>
           </Card>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
