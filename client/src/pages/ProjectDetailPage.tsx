@@ -331,7 +331,7 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      <div className="sticky top-0 z-10 -mx-4 -mt-6 mb-5 flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 pt-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div id="project-tabs" className="sticky top-0 z-10 -mx-4 -mt-6 mb-5 flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 pt-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {tabs.map((item) => (
           <button
             key={item.id}
