@@ -161,24 +161,31 @@ export async function updateTask(projectId: number, id: number, input: TaskInput
  * stage's sort_order sequentially, so ordering stays dense and stable.
  */
 export async function moveTask(projectId: number, id: number, direction: 'up' | 'down') {
-  const task = await queryOne<TaskRow>(
-    'SELECT id, stage FROM tasks WHERE id = $1 AND project_id = $2',
-    [id, projectId],
-  );
-  if (!task) throw new HttpError(404, 'Task not found');
-  const siblings = await query<{ id: number }>(
-    `SELECT id FROM tasks WHERE project_id = $1 AND stage IS NOT DISTINCT FROM $2
-     ORDER BY sort_order, id`,
-    [projectId, task.stage],
-  );
-  const ids = siblings.map((row) => row.id);
-  const index = ids.indexOf(id);
-  const target = direction === 'up' ? index - 1 : index + 1;
-  if (index === -1 || target < 0 || target >= ids.length) return;
-  [ids[index], ids[target]] = [ids[target], ids[index]];
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Serialize reorders per project: a concurrent move must read the order
+    // this transaction committed, not a stale snapshot.
+    await client.query('SELECT pg_advisory_xact_lock($1)', [projectId]);
+    const taskResult = await client.query(
+      'SELECT id, stage FROM tasks WHERE id = $1 AND project_id = $2',
+      [id, projectId],
+    );
+    const task = taskResult.rows[0] as TaskRow | undefined;
+    if (!task) throw new HttpError(404, 'Task not found');
+    const siblings = await client.query(
+      `SELECT id FROM tasks WHERE project_id = $1 AND stage IS NOT DISTINCT FROM $2
+       ORDER BY sort_order, id`,
+      [projectId, task.stage],
+    );
+    const ids = (siblings.rows as { id: number }[]).map((row) => row.id);
+    const index = ids.indexOf(id);
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || target < 0 || target >= ids.length) {
+      await client.query('COMMIT');
+      return;
+    }
+    [ids[index], ids[target]] = [ids[target], ids[index]];
     for (let position = 0; position < ids.length; position += 1) {
       await client.query('UPDATE tasks SET sort_order = $1 WHERE id = $2', [position + 1, ids[position]]);
     }

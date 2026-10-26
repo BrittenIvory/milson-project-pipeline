@@ -273,6 +273,9 @@ export const NOTIFICATIONS_CHANGED_EVENT = 'milson:notifications-changed';
 
 let unreadNoteProjectsPromise: Promise<Set<number>> | null = null;
 
+/** Dispatched once per notification change after the unread set has refetched. */
+export const UNREAD_NOTE_PROJECTS_EVENT = 'milson:unread-note-projects-changed';
+
 /**
  * Project ids that have unread note-related notifications (mentions/replies)
  * for the current user — powers the unread dot on the comments buttons.
@@ -295,9 +298,15 @@ export function unreadNoteProjectIds(): Promise<Set<number>> {
   return unreadNoteProjectsPromise;
 }
 
-/** Drop the cache so the next read refetches (call on NOTIFICATIONS_CHANGED_EVENT). */
-export function resetUnreadNoteProjects() {
-  unreadNoteProjectsPromise = null;
+// One global listener refetches once per notification change; row components
+// subscribe to UNREAD_NOTE_PROJECTS_EVENT and read the shared cache.
+if (typeof window !== 'undefined') {
+  window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, () => {
+    unreadNoteProjectsPromise = null;
+    unreadNoteProjectIds().then(() =>
+      window.dispatchEvent(new Event(UNREAD_NOTE_PROJECTS_EVENT)),
+    );
+  });
 }
 
 export const notificationsApi = {

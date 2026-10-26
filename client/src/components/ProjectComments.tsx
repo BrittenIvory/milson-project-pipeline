@@ -6,8 +6,7 @@ import NoteReactions from './NoteReactions';
 import {
   apiErrorMessage,
   notesApi,
-  NOTIFICATIONS_CHANGED_EVENT,
-  resetUnreadNoteProjects,
+  UNREAD_NOTE_PROJECTS_EVENT,
   unreadNoteProjectIds,
   usersApi,
 } from '../lib/api';
@@ -46,16 +45,15 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
   useEffect(() => {
     let cancelled = false;
     const refresh = () => {
-      resetUnreadNoteProjects();
       unreadNoteProjectIds().then((ids) => {
         if (!cancelled) setHasUnread(ids.has(projectId));
       });
     };
     refresh();
-    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+    window.addEventListener(UNREAD_NOTE_PROJECTS_EVENT, refresh);
     return () => {
       cancelled = true;
-      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+      window.removeEventListener(UNREAD_NOTE_PROJECTS_EVENT, refresh);
     };
   }, [projectId]);
 
