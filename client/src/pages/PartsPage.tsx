@@ -22,7 +22,7 @@ export default function PartsPage() {
   }, []);
 
   return (
-    <div className="px-4 py-6">
+    <div className="px-4 py-4">
       <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
         <Package className="h-5 w-5 text-brand-600" />
         Parts
@@ -34,9 +34,9 @@ export default function PartsPage() {
       {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
 
       {loading ? (
-        <p className="py-12 text-center text-sm text-slate-500">Loading…</p>
+        <p className="py-8 text-center text-sm text-slate-500">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="py-12 text-center text-sm text-slate-500">
+        <p className="py-8 text-center text-sm text-slate-500">
           No parts yet — parts appear once a project has a part number.
         </p>
       ) : (

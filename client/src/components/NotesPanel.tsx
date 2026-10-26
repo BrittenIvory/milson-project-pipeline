@@ -360,7 +360,7 @@ export default function NotesPanel({
             const visibleReplies = earlierOpen ? replies : replies.slice(-1);
             return (
             <li key={note.id} id={`note-${note.id}`} className="scroll-mt-24">
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">
                   <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>{' '}

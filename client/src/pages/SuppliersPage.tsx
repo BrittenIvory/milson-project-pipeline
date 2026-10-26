@@ -85,7 +85,7 @@ export default function SuppliersPage() {
       />
       <ErrorBanner message={error} />
       <div className="mt-4">
-        {loading ? <div className="flex justify-center py-16"><Spinner className="h-7 w-7" /></div>
+        {loading ? <div className="flex justify-center py-10"><Spinner className="h-7 w-7" /></div>
           : suppliers.length === 0 ? <EmptyState title="No suppliers yet" description="Add suppliers here so they can be selected on quoting tasks." />
           : (
             <Card className="overflow-hidden p-0">

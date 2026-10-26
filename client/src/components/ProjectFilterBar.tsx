@@ -26,7 +26,7 @@ export default function ProjectFilterBar({
   const set = (patch: Partial<ProjectFilters>) => onChange({ ...filters, ...patch });
 
   return (
-    <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
       <Field label="Customer">
         <Select
           value={filters.customerId ?? ''}

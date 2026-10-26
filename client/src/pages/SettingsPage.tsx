@@ -115,7 +115,7 @@ export default function SettingsPage() {
       />
 
       {!isAdmin ? (
-        <Card className="p-6 text-sm text-slate-500">
+        <Card className="p-4 text-sm text-slate-500">
           User management is only available to administrators. Use the button above to change your
           own password.
         </Card>

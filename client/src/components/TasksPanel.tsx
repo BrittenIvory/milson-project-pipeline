@@ -392,7 +392,7 @@ export default function TasksPanel({
             const collapsed = collapsedOverride[group.key] ?? (allDone && !active);
             return (
               <section key={group.key} className={clsx(
-                'overflow-hidden rounded-2xl border bg-white',
+                'overflow-hidden rounded-xl border bg-white',
                 active ? 'border-brand-300 ring-2 ring-brand-100' : 'border-slate-200',
               )}>
                 <button

@@ -45,7 +45,7 @@ export default function ChangePasswordPage() {
             : 'Update the password for your account.'
         }
       />
-      <Card className="p-6">
+      <Card className="p-4">
         {done && !user?.mustChangePassword ? (
           <p className="text-sm text-emerald-700">Password updated.</p>
         ) : (

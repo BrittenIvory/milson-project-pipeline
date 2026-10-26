@@ -12,8 +12,8 @@ export default function PlaceholderPage({
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={title} />
-      <Card className="flex flex-col items-center gap-3 py-16 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+      <Card className="flex flex-col items-center gap-3 py-10 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
           <Construction className="h-6 w-6" />
         </div>
         <p className="text-sm font-semibold text-slate-800">Coming in a future phase</p>

@@ -171,7 +171,7 @@ export default function NotificationsPage() {
     .trim().length > 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
+    <div className="mx-auto max-w-4xl px-4 py-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-800">
           <Inbox className="h-5 w-5 text-brand-600" />
@@ -224,7 +224,7 @@ export default function NotificationsPage() {
       {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
 
       {items.length === 0 ? (
-        <p className="py-12 text-center text-sm text-slate-500">
+        <p className="py-8 text-center text-sm text-slate-500">
           {tab === 'archive' ? 'Nothing archived.' : 'You are all caught up.'}
         </p>
       ) : (
@@ -346,7 +346,7 @@ export default function NotificationsPage() {
             ))}
           </ul>
           {hasMore && (
-            <div className="py-4 text-center">
+            <div className="py-3 text-center">
               <button
                 onClick={loadMore}
                 className="rounded-md border border-slate-300 px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"

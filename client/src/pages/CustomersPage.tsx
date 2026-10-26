@@ -101,7 +101,7 @@ export default function CustomersPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
+        <div className="flex justify-center py-10">
           <Spinner className="h-7 w-7" />
         </div>
       ) : customers.length === 0 ? (
