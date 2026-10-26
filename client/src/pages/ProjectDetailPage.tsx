@@ -8,6 +8,7 @@ import {
   Badge,
   Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   ErrorBanner,
   Select,
@@ -98,6 +99,22 @@ export default function ProjectDetailPage() {
   const [partImageUrl, setPartImageUrl] = useState<string | null>(null);
   const [partImageBusy, setPartImageBusy] = useState(false);
   const partImageInput = useRef<HTMLInputElement>(null);
+  const [showAllDetails, setShowAllDetails] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteProject = async () => {
+    if (deleting || !project) return;
+    setDeleting(true);
+    try {
+      await projectsApi.remove(projectId);
+      navigate('/projects');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to delete project'));
+      setDeleting(false);
+      setPendingDelete(false);
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -262,7 +279,7 @@ export default function ProjectDetailPage() {
   const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0];
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-[110rem]">
       <button
         onClick={() => navigate('/projects')}
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
@@ -327,11 +344,14 @@ export default function ProjectDetailPage() {
             <Button variant="secondary" onClick={startEditing}>
               <Pencil className="h-4 w-4" /> Edit project
             </Button>
+            <Button variant="danger" onClick={() => setPendingDelete(true)}>
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
           </div>
         )}
       </div>
 
-      <div id="project-tabs" className="sticky top-0 z-10 -mx-4 -mt-6 mb-5 flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 pt-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div id="project-tabs" className="sticky top-0 z-10 -mx-4 -mt-5 mb-5 flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 pt-5 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6">
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -355,7 +375,8 @@ export default function ProjectDetailPage() {
           <div className="space-y-4 lg:col-span-2">
           <Card>
             <h2 className="mb-4 text-sm font-semibold text-slate-900">General information</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Key fields stay visible; the rest collapse behind a toggle. */}
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <DetailItem label="Project Number" value={project.projectNumber} />
               <DetailItem label="Project Name" value={project.projectName} />
               <DetailItem
@@ -363,52 +384,63 @@ export default function ProjectDetailPage() {
                 value={<PartLink partNumber={project.internalPartNumber} />}
               />
               <DetailItem
-                label="Customer Part Number"
-                value={
-                  <PartLink
-                    partNumber={
-                      project.customerPartNumber
-                        ? (project.internalPartNumber || project.customerPartNumber)
-                        : null
-                    }
-                  >
-                    {project.customerPartNumber ?? '—'}
-                  </PartLink>
-                }
-              />
-              <DetailItem label="Customer Machined Part Number" value={orDash(project.customerMachinedPartNumber)} />
-              <DetailItem label="Customer Painted Part Number" value={orDash(project.customerPaintedPartNumber)} />
-              <DetailItem label="Customer Unpainted Part Number" value={orDash(project.customerUnpaintedPartNumber)} />
-              <DetailItem label="Annual Usage" value={orDash(project.annualUsage)} />
-              <DetailItem label="Estimate Part Price (USD)" value={formatCurrency(project.estimatePartPrice, 'USD')} />
-              <DetailItem label="Customer Quote Price (USD)" value={formatCurrency(project.customerQuotePrice, 'USD')} />
-              <DetailItem
                 label={`Project Value${project.projectValueCurrency ? ` (${project.projectValueCurrency})` : ''}`}
                 value={formatCurrency(project.projectValue, project.projectValueCurrency ?? 'USD')}
               />
+              <DetailItem label="Annual Usage" value={orDash(project.annualUsage)} />
               <DetailItem label="Material" value={orDash(project.material)} />
-              <DetailItem label="Client Part Description" value={orDash(project.clientPartDescription)} />
-              <DetailItem label="Material Grade" value={orDash(project.materialGrade)} />
-              <DetailItem
-                label="Alternate Material Acceptable"
-                value={project.alternateMaterialAcceptable ? 'Yes' : 'No'}
-              />
               <DetailItem label="Estimated Weight" value={orDash(project.estimatedWeight)} />
               <DetailItem label="Casting Process" value={orDash(project.castingProcess)} />
               <DetailItem
                 label="Days in Current Stage"
                 value={`${project.currentStageDays} ${project.currentStageDays === 1 ? 'day' : 'days'}`}
               />
-              <DetailItem
-                label="Machining Required"
-                value={project.machiningRequired ? 'Yes' : 'No'}
-              />
-              <DetailItem label="Heat Treatment" value={project.heatTreatment ? 'Yes' : 'No'} />
-              <DetailItem
-                label="Painting Required"
-                value={project.paintingRequired ? 'Yes' : 'No'}
-              />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowAllDetails((current) => !current)}
+              className="mt-4 text-xs font-medium text-brand-600 hover:text-brand-800"
+            >
+              {showAllDetails ? 'Show fewer details' : 'Show all details'}
+            </button>
+            {showAllDetails && (
+              <div className="mt-4 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-3">
+                <DetailItem
+                  label="Customer Part Number"
+                  value={
+                    <PartLink
+                      partNumber={
+                        project.customerPartNumber
+                          ? (project.internalPartNumber || project.customerPartNumber)
+                          : null
+                      }
+                    >
+                      {project.customerPartNumber ?? '—'}
+                    </PartLink>
+                  }
+                />
+                <DetailItem label="Customer Machined Part Number" value={orDash(project.customerMachinedPartNumber)} />
+                <DetailItem label="Customer Painted Part Number" value={orDash(project.customerPaintedPartNumber)} />
+                <DetailItem label="Customer Unpainted Part Number" value={orDash(project.customerUnpaintedPartNumber)} />
+                <DetailItem label="Estimate Part Price (USD)" value={formatCurrency(project.estimatePartPrice, 'USD')} />
+                <DetailItem label="Customer Quote Price (USD)" value={formatCurrency(project.customerQuotePrice, 'USD')} />
+                <DetailItem label="Client Part Description" value={orDash(project.clientPartDescription)} />
+                <DetailItem label="Material Grade" value={orDash(project.materialGrade)} />
+                <DetailItem
+                  label="Alternate Material Acceptable"
+                  value={project.alternateMaterialAcceptable ? 'Yes' : 'No'}
+                />
+                <DetailItem
+                  label="Machining Required"
+                  value={project.machiningRequired ? 'Yes' : 'No'}
+                />
+                <DetailItem label="Heat Treatment" value={project.heatTreatment ? 'Yes' : 'No'} />
+                <DetailItem
+                  label="Painting Required"
+                  value={project.paintingRequired ? 'Yes' : 'No'}
+                />
+              </div>
+            )}
             <div className="mt-5">
               <p className="label">Description</p>
               <p className="whitespace-pre-line text-sm text-slate-700">
@@ -547,6 +579,16 @@ export default function ProjectDetailPage() {
       {activeTab.placeholder && (
         <EmptyState title={activeTab.label} description={activeTab.placeholder} />
       )}
+
+      <ConfirmDialog
+        open={pendingDelete}
+        title="Delete project"
+        message={`Delete project “${project.projectNumber} — ${project.projectName}”? Its tasks, documents, and comments are permanently removed. This cannot be undone.`}
+        confirmLabel="Delete project"
+        loading={deleting}
+        onConfirm={deleteProject}
+        onCancel={() => setPendingDelete(false)}
+      />
     </div>
   );
 }

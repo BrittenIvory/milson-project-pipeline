@@ -113,6 +113,7 @@ export const projectsApi = {
     http.post<Project>('/projects', payload).then((r) => r.data),
   update: (id: number, payload: ProjectPayload) =>
     http.put<Project>(`/projects/${id}`, payload).then((r) => r.data),
+  remove: (id: number) => http.delete(`/projects/${id}`).then((r) => r.data),
   nextNumber: () =>
     http.get<{ projectNumber: string }>('/projects/next-number').then((r) => r.data.projectNumber),
   stats: () => http.get<ProjectStats>('/projects/stats').then((r) => r.data),
