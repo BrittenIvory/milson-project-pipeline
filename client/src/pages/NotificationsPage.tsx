@@ -54,6 +54,14 @@ export default function NotificationsPage() {
     load();
   }, [load]);
 
+  // A preview panel marks its notification read after a successful reply;
+  // refresh the list so the badge/row state stays in sync.
+  useEffect(() => {
+    const reload = () => void load();
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, reload);
+  }, [load]);
+
   const loadMore = async () => {
     try {
       const data = await notificationsApi.list(tab === 'archive', items.length, PAGE_SIZE);
@@ -151,8 +159,9 @@ export default function NotificationsPage() {
       setReplyDraft('');
       if (!notification.readAt) {
         await notificationsApi.markRead(notification.id).catch(() => undefined);
-        signalChanged();
       }
+      // Notify the bell and any open preview panel so they refresh.
+      signalChanged();
       await load();
     } catch (err) {
       setReplyError(apiErrorMessage(err, 'Unable to post reply'));
