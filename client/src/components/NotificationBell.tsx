@@ -188,7 +188,7 @@ export default function NotificationBell() {
               {items.map((notification) => (
                 <li
                   key={notification.id}
-                  className={clsx('px-4 py-3', !notification.readAt && 'bg-brand-50/40')}
+                  className={clsx('px-3 py-2', !notification.readAt && 'bg-brand-50/40')}
                 >
                   <div className="flex gap-3">
                     {notification.hasPartImage && notification.projectId && (

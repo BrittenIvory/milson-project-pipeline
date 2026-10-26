@@ -56,7 +56,7 @@ export default function SearchPage() {
               <li key={project.id}>
                 <Link
                   to={`/projects/${project.id}`}
-                  className="flex items-center justify-between gap-3 py-3 hover:opacity-80"
+                  className="flex items-center justify-between gap-3 py-2 hover:opacity-80"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-800">
@@ -81,7 +81,7 @@ export default function SearchPage() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Customers</h2>
           <ul className="divide-y divide-slate-100">
             {customers.map((customer) => (
-              <li key={customer.id} className="flex items-center justify-between gap-3 py-3">
+              <li key={customer.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-800">
                     {customer.companyName}

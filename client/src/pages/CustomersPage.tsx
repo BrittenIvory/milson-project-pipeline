@@ -115,31 +115,31 @@ export default function CustomersPage() {
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Company</th>
-                  <th className="px-5 py-3 font-semibold">Number</th>
-                  <th className="px-5 py-3 font-semibold">Primary Contact</th>
-                  <th className="px-5 py-3 font-semibold">Email</th>
-                  <th className="px-5 py-3 font-semibold">Location</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3" />
+                  <th className="px-4 py-2 font-semibold">Company</th>
+                  <th className="px-4 py-2 font-semibold">Number</th>
+                  <th className="px-4 py-2 font-semibold">Primary Contact</th>
+                  <th className="px-4 py-2 font-semibold">Email</th>
+                  <th className="px-4 py-2 font-semibold">Location</th>
+                  <th className="px-4 py-2 font-semibold">Status</th>
+                  <th className="px-4 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {customers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-slate-50/70">
-                    <td className="px-5 py-3 font-medium text-slate-800">{customer.companyName}</td>
-                    <td className="px-5 py-3 text-slate-600">{customer.customerNumber}</td>
-                    <td className="px-5 py-3 text-slate-600">{orDash(customer.primaryContact)}</td>
-                    <td className="px-5 py-3 text-slate-600">{orDash(customer.email)}</td>
-                    <td className="px-5 py-3 text-slate-600">
+                    <td className="px-4 py-2 font-medium text-slate-800">{customer.companyName}</td>
+                    <td className="px-4 py-2 text-slate-600">{customer.customerNumber}</td>
+                    <td className="px-4 py-2 text-slate-600">{orDash(customer.primaryContact)}</td>
+                    <td className="px-4 py-2 text-slate-600">{orDash(customer.email)}</td>
+                    <td className="px-4 py-2 text-slate-600">
                       {[customer.state, customer.country].filter(Boolean).join(', ') || '—'}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-2">
                       <Badge tone={customerStatusMeta(customer.status).tone}>
                         {customerStatusMeta(customer.status).label}
                       </Badge>
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-2">
                       {canEdit && (
                         <div className="flex justify-end gap-1">
                           <button

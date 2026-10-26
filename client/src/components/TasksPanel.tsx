@@ -360,7 +360,7 @@ export default function TasksPanel({
   const editingIndex = editingSiblings.findIndex((t) => t.id === editing?.id);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Tasks</h2>
@@ -381,7 +381,7 @@ export default function TasksPanel({
       ) : tasks.length === 0 ? (
         <EmptyState title="No tasks yet" description="Break the project down into assignable work items." />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {orderedGroups.map((group) => {
             const meta = group.key === 'other'
               ? { label: 'Other', tone: 'bg-slate-100 text-slate-700' }
@@ -401,7 +401,7 @@ export default function TasksPanel({
                     ...current,
                     [group.key]: !collapsed,
                   }))}
-                  className="flex w-full items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-left"
+                  className="flex w-full items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-2 text-left"
                 >
                   <div className="flex items-center gap-2">
                     {collapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
@@ -425,7 +425,7 @@ export default function TasksPanel({
                       ? []
                       : users.filter((option) => option.fullName.toLowerCase().includes(query)).slice(0, 5);
                     return (
-                      <li key={task.id} className={clsx('px-4 py-3', overdue && 'bg-rose-50')}>
+                      <li key={task.id} className={clsx('px-3 py-2', overdue && 'bg-rose-50')}>
                         <div className="flex items-start gap-3">
                           <div className="min-w-0 flex-1">
                             <p className={clsx(
@@ -706,7 +706,7 @@ export default function TasksPanel({
         footer={<><Button variant="secondary" onClick={() => setForm(null)}>Cancel</Button><Button loading={saving} onClick={submit}>{editing ? 'Save task' : 'Create task'}</Button></>}
       >
         {form && (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Task Name" className="sm:col-span-2"><TextInput value={form.taskName} onChange={(e) => setForm({ ...form, taskName: e.target.value })} placeholder="Review customer drawing" /></Field>
             <Field label="Description" className="sm:col-span-2"><TextArea value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
             <Field label="Assigned User"><Select value={form.assignedUserId ?? ''} onChange={(e) => setForm({ ...form, assignedUserId: e.target.value ? Number(e.target.value) : null })}><option value="">Unassigned</option>{users.map((option) => <option key={option.id} value={option.id}>{option.fullName}</option>)}</Select></Field>

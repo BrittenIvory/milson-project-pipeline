@@ -287,10 +287,10 @@ export default function ProjectDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Projects
       </button>
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
               {project.projectName}
             </h1>
             <Badge tone={stageMeta(project.currentStage).tone}>
@@ -351,7 +351,7 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      <div id="project-tabs" className="sticky top-0 z-10 -mx-4 -mt-5 mb-5 flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 pt-5 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6">
+      <div id="project-tabs" className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex flex-wrap gap-1 border-b border-slate-200 bg-white px-4 pt-4 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6">
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -371,12 +371,12 @@ export default function ProjectDetailPage() {
       <ErrorBanner message={error} />
 
       {tab === 'summary' && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
           <Card>
             <h2 className="mb-4 text-sm font-semibold text-slate-900">General information</h2>
             {/* Key fields stay visible; the rest collapse behind a toggle. */}
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <DetailItem label="Project Number" value={project.projectNumber} />
               <DetailItem label="Project Name" value={project.projectName} />
               <DetailItem
@@ -404,7 +404,7 @@ export default function ProjectDetailPage() {
               {showAllDetails ? 'Show fewer details' : 'Show all details'}
             </button>
             {showAllDetails && (
-              <div className="mt-4 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-3">
                 <DetailItem
                   label="Customer Part Number"
                   value={
@@ -451,7 +451,7 @@ export default function ProjectDetailPage() {
 
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Card>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -496,7 +496,7 @@ export default function ProjectDetailPage() {
 
             <Card>
               <h2 className="mb-4 text-sm font-semibold text-slate-900">Customer information</h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <DetailItem label="Customer" value={orDash(project.customerName)} />
                 <DetailItem label="Customer Number" value={orDash(project.customerNumber)} />
                 <DetailItem label="Customer Contact" value={orDash(project.customerContact)} />
@@ -509,7 +509,7 @@ export default function ProjectDetailPage() {
 
             <Card>
               <h2 className="mb-4 text-sm font-semibold text-slate-900">Assignments</h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <DetailItem label="Assigned Engineer" value={orDash(project.assignedEngineerName)} />
                 <DetailItem
                   label="Assigned Salesperson"
@@ -520,7 +520,7 @@ export default function ProjectDetailPage() {
 
             <Card>
               <h2 className="mb-4 text-sm font-semibold text-slate-900">Dates</h2>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <DetailItem label="Target Quote Date" value={formatDate(project.targetQuoteDate)} />
                 <DetailItem label="Created" value={formatDateTime(project.createdAt)} />
                 <DetailItem label="Last Updated" value={formatDateTime(project.updatedAt)} />
@@ -558,7 +558,7 @@ export default function ProjectDetailPage() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {activity.map((record) => (
-                <li key={record.id} className="flex items-start gap-3 py-3">
+                <li key={record.id} className="flex items-start gap-3 py-2">
                   <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-800">

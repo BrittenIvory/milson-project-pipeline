@@ -97,7 +97,7 @@ export default function CustomerFormModal({
         </>
       }
     >
-      <form id="customer-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="customer-form" onSubmit={handleSubmit} className="space-y-3">
         <ErrorBanner message={error} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Company Name">
