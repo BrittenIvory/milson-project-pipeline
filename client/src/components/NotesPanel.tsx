@@ -47,6 +47,9 @@ export default function NotesPanel({
   // Scroll to the latest comment only on first load and right after posting —
   // not on every list change, or edits/deletes would yank the reader to the bottom.
   const scrollToEndRef = useRef(true);
+  // Replies re-sort their thread by latest activity, which can move it —
+  // scroll the thread back into view after posting so it isn't lost.
+  const pendingScrollIdRef = useRef<number | null>(null);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -81,6 +84,18 @@ export default function NotesPanel({
 
   useEffect(() => {
     if (loading) return;
+    if (pendingScrollIdRef.current !== null) {
+      const el = document.getElementById(`note-${pendingScrollIdRef.current}`);
+      pendingScrollIdRef.current = null;
+      if (el) {
+        // The sticky tab bar wraps to a variable height on narrow screens,
+        // so measure it rather than rely on a fixed scroll-mt.
+        const tabs = document.getElementById('project-tabs');
+        if (tabs) el.style.scrollMarginTop = `${tabs.getBoundingClientRect().height + 12}px`;
+        el.scrollIntoView({ block: 'start' });
+      }
+      return;
+    }
     if (!scrollToEndRef.current) return;
     scrollToEndRef.current = false;
     listEndRef.current?.scrollIntoView({ block: 'end' });
@@ -151,6 +166,7 @@ export default function NotesPanel({
       setReplyDraft('');
       setReplyMentionQuery(null);
       setOpenThreads((current) => new Set(current).add(rootId));
+      pendingScrollIdRef.current = rootId;
       await load();
       onChanged?.();
     } catch (err) {
@@ -354,7 +370,7 @@ export default function NotesPanel({
             const replies = repliesByRoot.get(note.id) ?? [];
             const threadOpen = openThreads.has(note.id);
             return (
-            <li key={note.id} id={`note-${note.id}`}>
+            <li key={note.id} id={`note-${note.id}`} className="scroll-mt-24">
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">
