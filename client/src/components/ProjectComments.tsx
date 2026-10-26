@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageSquare, Reply, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
 import NoteReactions from './NoteReactions';
 import {
@@ -36,6 +36,11 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [replyTo, setReplyTo] = useState<ProjectNote | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replyMentionQuery, setReplyMentionQuery] = useState<string | null>(null);
+  const [earlierRepliesOpen, setEarlierRepliesOpen] = useState<Set<number>>(new Set());
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [mentionError, setMentionError] = useState<string | null>(null);
   const notesLoadVersion = useRef(0);
@@ -171,6 +176,50 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
 
   const savingRef = useRef(false);
 
+  const handleReplyDraftChange = (value: string) => {
+    setReplyDraft(value);
+    const match = /@([\w.-]*)$/.exec(value);
+    setReplyMentionQuery(match ? match[1].toLowerCase() : null);
+  };
+
+  const applyReplyMention = (name: string) => {
+    setReplyDraft((current) => current.replace(/@([\w.-]*)$/, `@${name} `));
+    setReplyMentionQuery(null);
+    replyTextareaRef.current?.focus();
+  };
+
+  const startReply = (target: ProjectNote) => {
+    setReplyTo(target);
+    setReplyDraft('');
+    setReplyMentionQuery(null);
+  };
+
+  const addReply = async () => {
+    if (!replyTo || !replyDraft.trim() || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const created = await notesApi.create(projectId, replyDraft.trim(), replyTo.id);
+      setNotes((current) => [...current, created]);
+      setReplyTo(null);
+      setReplyDraft('');
+      setReplyMentionQuery(null);
+      setError(null);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to add comment'));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const replySuggestions =
+    replyMentionQuery === null
+      ? []
+      : users
+          .filter((option) => option.fullName.toLowerCase().includes(replyMentionQuery))
+          .slice(0, 5);
+
   const addComment = async () => {
     if (!draft.trim() || savingRef.current) return;
     savingRef.current = true;
@@ -198,6 +247,150 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
     mentionQuery === null
       ? []
       : users.filter((user) => user.fullName.toLowerCase().includes(mentionQuery)).slice(0, 5);
+
+  // Same threading model as the Comments tab: replies group under their
+  // top-level ancestor, the latest reply always shows, earlier replies
+  // hide behind one toggle.
+  const noteById = new Map(notes.map((n) => [n.id, n]));
+  const rootIdOf = (note: ProjectNote): number => {
+    let root = note;
+    const seen = new Set<number>();
+    while (root.replyToId !== null && !seen.has(root.id)) {
+      seen.add(root.id);
+      const parent = noteById.get(root.replyToId);
+      if (!parent) break;
+      root = parent;
+    }
+    return root.id;
+  };
+  const repliesByRoot = new Map<number, ProjectNote[]>();
+  const topLevel: ProjectNote[] = [];
+  for (const note of notes) {
+    if (note.replyToId === null || rootIdOf(note) === note.id) {
+      topLevel.push(note);
+    } else {
+      const list = repliesByRoot.get(rootIdOf(note)) ?? [];
+      list.push(note);
+      repliesByRoot.set(rootIdOf(note), list);
+    }
+  }
+
+  const toggleEarlierReplies = (noteId: number) =>
+    setEarlierRepliesOpen((current) => {
+      const next = new Set(current);
+      if (next.has(noteId)) next.delete(noteId);
+      else next.add(noteId);
+      return next;
+    });
+
+  const renderNoteCard = (note: ProjectNote, isReply: boolean) => (
+    <div className={`rounded-lg p-2 ${isReply ? 'border border-slate-200 bg-slate-50' : 'bg-slate-50'}`}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] text-slate-500">
+          <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>
+          {' · '}
+          {formatDateTime(note.createdAt)}
+        </p>
+        <button
+          type="button"
+          title="Reply — notifies the commenter without @tagging them"
+          aria-label="Reply to comment"
+          onClick={() => startReply(note)}
+          className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+        >
+          <Reply className="h-3 w-3" />
+        </button>
+      </div>
+      {note.replyToId && (
+        <p className="mt-1 border-l-2 border-slate-200 pl-2 text-[11px] text-slate-500">
+          <span className="font-medium text-slate-600">
+            {note.replyToAuthorName ?? 'Deleted comment'}
+          </span>
+          {note.replyToPreview ? `: ${note.replyToPreview}` : ''}
+        </p>
+      )}
+      <p className="mt-1 whitespace-pre-line text-xs text-slate-700">{note.body}</p>
+      <NoteReactions
+        projectId={projectId}
+        note={note}
+        onUpdated={(updated) =>
+          setNotes((current) =>
+            current.map((n) => (n.id === updated.id ? updated : n)),
+          )
+        }
+      />
+    </div>
+  );
+
+  const renderReplyBox = (target: ProjectNote) => {
+    if (replyTo?.id !== target.id) return null;
+    return (
+      <div className="relative mt-2 rounded-lg border border-brand-200 bg-brand-50/60 p-2">
+        <div className="mb-1 flex items-center justify-between text-[11px] text-brand-800">
+          <span>Replying to {target.authorName ?? 'Unknown'} — they'll be notified</span>
+          <button
+            type="button"
+            aria-label="Cancel reply"
+            onClick={() => {
+              setReplyTo(null);
+              setReplyDraft('');
+            }}
+            className="rounded p-0.5 text-brand-600 hover:bg-brand-100"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+        <TextArea
+          ref={replyTextareaRef}
+          value={replyDraft}
+          onChange={(e) => handleReplyDraftChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              if (!e.repeat) addReply();
+            }
+          }}
+          placeholder="Write a reply… use @ to mention someone"
+          className="min-h-[56px] text-xs"
+          autoFocus
+        />
+        {replySuggestions.length > 0 && (
+          <div className="absolute bottom-full z-20 mb-1 w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+            {replySuggestions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => applyReplyMention(option.fullName)}
+                className="block w-full rounded-md px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+              >
+                {option.fullName}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="mt-1.5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setReplyTo(null);
+              setReplyDraft('');
+            }}
+            className="text-xs text-slate-500 hover:text-slate-700"
+          >
+            Cancel
+          </button>
+          <Button
+            loading={saving}
+            disabled={!replyDraft.trim()}
+            onClick={addReply}
+            className="px-3 py-1.5 text-xs"
+          >
+            Reply
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   const toggleComments = () => {
     if (open) {
@@ -261,26 +454,40 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
               {notes.length === 0 ? (
                 <EmptyState title="No comments yet" description="Add the first project comment." />
               ) : (
-                <div ref={notesListRef} className="mb-3 max-h-48 space-y-2 overflow-y-auto">
-                  {notes.map((note) => (
-                    <div key={note.id} className="rounded-lg bg-slate-50 p-2">
-                      <p className="text-[11px] text-slate-500">
-                        <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>
-                        {' · '}
-                        {formatDateTime(note.createdAt)}
-                      </p>
-                      <p className="mt-1 whitespace-pre-line text-xs text-slate-700">{note.body}</p>
-                      <NoteReactions
-                        projectId={projectId}
-                        note={note}
-                        onUpdated={(updated) =>
-                          setNotes((current) =>
-                            current.map((n) => (n.id === updated.id ? updated : n)),
-                          )
-                        }
-                      />
-                    </div>
-                  ))}
+                <div ref={notesListRef} className="mb-3 max-h-72 space-y-2 overflow-y-auto">
+                  {topLevel.map((note) => {
+                    const replies = repliesByRoot.get(note.id) ?? [];
+                    const earlierOpen = earlierRepliesOpen.has(note.id);
+                    const visibleReplies = earlierOpen ? replies : replies.slice(-1);
+                    return (
+                      <div key={note.id}>
+                        {renderNoteCard(note, false)}
+                        {renderReplyBox(note)}
+                        {replies.length > 0 && (
+                          <div className="ml-4 mt-1.5 border-l-2 border-slate-200 pl-2">
+                            {replies.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => toggleEarlierReplies(note.id)}
+                                className="text-[11px] font-medium text-brand-700 hover:text-brand-900"
+                              >
+                                {earlierOpen ? 'Hide' : 'Show'} {replies.length - 1} earlier{' '}
+                                {replies.length - 1 === 1 ? 'reply' : 'replies'}
+                              </button>
+                            )}
+                            <ul className="mt-1 space-y-1.5">
+                              {visibleReplies.map((reply) => (
+                                <li key={reply.id}>
+                                  {renderNoteCard(reply, true)}
+                                  {renderReplyBox(reply)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <div className="relative">

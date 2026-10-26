@@ -213,6 +213,14 @@ export default function NotificationBell() {
                               ` · ${STAGE_LABELS.get(notification.projectStage) ?? notification.projectStage}`}
                           </p>
                         )}
+                        {notification.repliedToPreview && (
+                          <p className="mt-0.5 border-l-2 border-slate-200 pl-2 text-xs text-slate-500">
+                            <span className="font-medium text-slate-600">
+                              {notification.repliedToAuthorName ?? 'Deleted comment'}
+                            </span>
+                            : {notification.repliedToPreview}
+                          </p>
+                        )}
                         {notification.body && (
                           <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
                             {notification.body}
