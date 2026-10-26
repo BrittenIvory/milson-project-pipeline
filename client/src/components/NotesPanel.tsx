@@ -161,12 +161,14 @@ export default function NotesPanel({
     setSaving(true);
     try {
       const rootId = rootIdOf(replyTo);
-      await notesApi.create(projectId, replyDraft.trim(), replyTo.id);
+      const created = await notesApi.create(projectId, replyDraft.trim(), replyTo.id);
       setReplyTo(null);
       setReplyDraft('');
       setReplyMentionQuery(null);
       setOpenThreads((current) => new Set(current).add(rootId));
-      pendingScrollIdRef.current = rootId;
+      // Scroll to the new reply itself: in a long thread the root's header
+      // is far above it and would leave it off-screen.
+      pendingScrollIdRef.current = created.id;
       await load();
       onChanged?.();
     } catch (err) {
@@ -463,6 +465,7 @@ export default function NotesPanel({
                     {replies.map((reply) => (
                       <li
                         key={reply.id}
+                        id={`note-${reply.id}`}
                         className="rounded-xl border border-slate-200 bg-slate-50 p-3"
                       >
                         <div className="mb-1 flex items-center justify-between gap-2">
