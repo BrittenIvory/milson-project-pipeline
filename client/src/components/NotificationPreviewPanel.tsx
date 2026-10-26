@@ -3,10 +3,25 @@ import { ExternalLink, Reply, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
 import NoteReactions from './NoteReactions';
-import { apiErrorMessage, notesApi, projectsApi, usersApi } from '../lib/api';
+import {
+  apiErrorMessage,
+  NOTIFICATIONS_CHANGED_EVENT,
+  notesApi,
+  notificationsApi,
+  projectsApi,
+  taskCommentsApi,
+  tasksApi,
+  usersApi,
+} from '../lib/api';
 import { formatDateTime, orDash } from '../lib/format';
 import { PROJECT_STAGES } from '../lib/constants';
-import type { AppNotification, Project, ProjectNote, User } from '../types';
+import type {
+  AppNotification,
+  Project,
+  ProjectNote,
+  ProjectTaskComment,
+  User,
+} from '../types';
 
 const STAGE_LABELS = new Map<string, string>(
   PROJECT_STAGES.map((stage) => [stage.value, stage.label]),
@@ -36,8 +51,11 @@ export default function NotificationPreviewPanel({
   onClose,
 }: NotificationPreviewPanelProps) {
   const projectId = notification.projectId!;
+  const taskId = notification.entityType === 'task' ? notification.entityId : null;
   const [project, setProject] = useState<Project | null>(null);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
+  const [taskComments, setTaskComments] = useState<ProjectTaskComment[]>([]);
+  const [taskName, setTaskName] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +77,8 @@ export default function NotificationPreviewPanel({
     setError(null);
     setProject(null);
     setNotes([]);
+    setTaskComments([]);
+    setTaskName(null);
     setReplyTo(null);
     setDraft('');
     projectsApi
@@ -69,22 +89,53 @@ export default function NotificationPreviewPanel({
       .catch((err) => {
         if (!cancelled) setError(apiErrorMessage(err, 'Unable to load project'));
       });
-    notesApi
-      .list(projectId)
-      .then((noteData) => {
-        if (cancelled) return;
-        setNotes(noteData);
+    const loadComments = () => {
+      const scrollToEnd = () =>
         requestAnimationFrame(() => {
           const el = notesListRef.current;
           if (el) el.scrollTop = el.scrollHeight;
         });
-      })
-      .catch((err) => {
-        if (!cancelled) setError(apiErrorMessage(err, 'Unable to load comments'));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      if (taskId) {
+        // Task alerts discuss the task's own comment list, not project notes.
+        taskCommentsApi
+          .list(projectId, taskId)
+          .then((data) => {
+            if (cancelled) return;
+            setTaskComments(data);
+            scrollToEnd();
+          })
+          .catch((err) => {
+            if (!cancelled) setError(apiErrorMessage(err, 'Unable to load comments'));
+          })
+          .finally(() => {
+            if (!cancelled) setLoading(false);
+          });
+        tasksApi
+          .list(projectId)
+          .then((data) => {
+            if (cancelled) return;
+            setTaskName(data.find((task) => task.id === taskId)?.taskName ?? null);
+          })
+          .catch(() => undefined);
+      } else {
+        notesApi
+          .list(projectId)
+          .then((noteData) => {
+            if (cancelled) return;
+            setNotes(noteData);
+            scrollToEnd();
+          })
+          .catch((err) => {
+            if (!cancelled) setError(apiErrorMessage(err, 'Unable to load comments'));
+          })
+          .finally(() => {
+            if (!cancelled) setLoading(false);
+          });
+      }
+    };
+    loadComments();
+    // Refresh when another composer (e.g. the inbox reply box) posts.
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, loadComments);
     usersApi
       .list()
       .then((data) => {
@@ -93,8 +144,9 @@ export default function NotificationPreviewPanel({
       .catch(() => undefined);
     return () => {
       cancelled = true;
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, loadComments);
     };
-  }, [projectId]);
+  }, [projectId, taskId]);
 
   const handleDraftChange = (value: string) => {
     setDraft(value);
@@ -108,13 +160,26 @@ export default function NotificationPreviewPanel({
     setReplyMentionQuery(match ? match[1].toLowerCase() : null);
   };
 
+  /** A reply posted through the preview resolves the alert it came from. */
+  const markNotificationHandled = async () => {
+    if (!notification.readAt) {
+      await notificationsApi.markRead(notification.id).catch(() => undefined);
+    }
+    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+  };
+
   const addComment = async () => {
     if (!draft.trim() || savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
     try {
-      const note = await notesApi.create(projectId, draft.trim());
-      setNotes((current) => [...current, note]);
+      if (taskId) {
+        const comment = await taskCommentsApi.create(projectId, taskId, draft.trim());
+        setTaskComments((current) => [...current, comment]);
+      } else {
+        const note = await notesApi.create(projectId, draft.trim());
+        setNotes((current) => [...current, note]);
+      }
       setDraft('');
       setMentionQuery(null);
       setError(null);
@@ -122,6 +187,7 @@ export default function NotificationPreviewPanel({
         const el = notesListRef.current;
         if (el) el.scrollTop = el.scrollHeight;
       });
+      await markNotificationHandled();
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add comment'));
     } finally {
@@ -146,6 +212,7 @@ export default function NotificationPreviewPanel({
           .getElementById(`np-note-${created.id}`)
           ?.scrollIntoView({ block: 'nearest' });
       });
+      await markNotificationHandled();
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add reply'));
     } finally {
@@ -378,10 +445,31 @@ export default function NotificationPreviewPanel({
           </div>
 
           <p className="mb-2 border-t border-slate-100 pt-2 text-xs font-semibold text-slate-700">
-            Comments
+            {taskId ? `Task comments${taskName ? ` — ${taskName}` : ''}` : 'Comments'}
           </p>
           {loading ? (
             <SkeletonRows rows={2} />
+          ) : taskId ? (
+            taskComments.length === 0 ? (
+              <EmptyState title="No comments yet" description="Add the first task comment." />
+            ) : (
+              <div ref={notesListRef} className="mb-3 max-h-80 space-y-2 overflow-y-auto">
+                {taskComments.map((comment) => (
+                  <div key={comment.id} className="rounded-lg bg-slate-50 p-2">
+                    <p className="text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-700">
+                        {comment.authorName ?? 'Unknown'}
+                      </span>
+                      {' · '}
+                      {formatDateTime(comment.createdAt)}
+                    </p>
+                    <p className="mt-1 whitespace-pre-line text-xs text-slate-700">
+                      {comment.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )
           ) : notes.length === 0 ? (
             <EmptyState title="No comments yet" description="Add the first project comment." />
           ) : (
