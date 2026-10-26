@@ -254,7 +254,7 @@ export default function NotesPanel({
             const replies = repliesByRoot.get(note.id) ?? [];
             const threadOpen = openThreads.has(note.id);
             return (
-            <li key={note.id} id={`note-${note.id}`}>
+            <li key={note.id} id={`note-${note.id}`} className="scroll-mt-24">
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">
