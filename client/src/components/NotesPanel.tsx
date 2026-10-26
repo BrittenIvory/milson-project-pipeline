@@ -56,6 +56,7 @@ export default function NotesPanel({
   const [replyTo, setReplyTo] = useState<ProjectNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [openThreads, setOpenThreads] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +104,10 @@ export default function NotesPanel({
     try {
       await notesApi.create(projectId, draft.trim(), replyTo?.id);
       setDraft('');
+      if (replyTo) {
+        const rootId = rootIdOf(replyTo);
+        setOpenThreads((current) => new Set(current).add(rootId));
+      }
       setReplyTo(null);
       scrollToEndRef.current = true;
       await load();
@@ -144,8 +149,43 @@ export default function NotesPanel({
   };
 
   const RECENT_COUNT = 5;
-  const visibleNotes = expanded ? notes : notes.slice(-RECENT_COUNT);
-  const hiddenCount = notes.length - visibleNotes.length;
+
+  // Group replies under their top-level ancestor. A reply whose parent is
+  // missing from the list (e.g. deleted) falls back to top-level.
+  const noteById = new Map(notes.map((n) => [n.id, n]));
+  const rootIdOf = (note: ProjectNote): number => {
+    let root = note;
+    const seen = new Set<number>();
+    while (root.replyToId !== null && !seen.has(root.id)) {
+      seen.add(root.id);
+      const parent = noteById.get(root.replyToId);
+      if (!parent) break;
+      root = parent;
+    }
+    return root.id;
+  };
+  const repliesByRoot = new Map<number, ProjectNote[]>();
+  const topLevel: ProjectNote[] = [];
+  for (const note of notes) {
+    if (note.replyToId === null || rootIdOf(note) === note.id) {
+      topLevel.push(note);
+    } else {
+      const list = repliesByRoot.get(rootIdOf(note)) ?? [];
+      list.push(note);
+      repliesByRoot.set(rootIdOf(note), list);
+    }
+  }
+
+  const visibleNotes = expanded ? topLevel : topLevel.slice(-RECENT_COUNT);
+  const hiddenCount = topLevel.length - visibleNotes.length;
+
+  const toggleThread = (noteId: number) =>
+    setOpenThreads((current) => {
+      const next = new Set(current);
+      if (next.has(noteId)) next.delete(noteId);
+      else next.add(noteId);
+      return next;
+    });
 
   const suggestions =
     mentionQuery === null
@@ -186,8 +226,12 @@ export default function NotesPanel({
           </button>
         )}
         <ul className="space-y-3">
-          {visibleNotes.map((note) => (
-            <li key={note.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+          {visibleNotes.map((note) => {
+            const replies = repliesByRoot.get(note.id) ?? [];
+            const threadOpen = openThreads.has(note.id);
+            return (
+            <li key={note.id}>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">
                   <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>{' '}
@@ -265,8 +309,112 @@ export default function NotesPanel({
                   )
                 }
               />
+            </div>
+            {replies.length > 0 && (
+              <div className="ml-6 mt-2 border-l-2 border-slate-200 pl-3">
+                <button
+                  type="button"
+                  onClick={() => toggleThread(note.id)}
+                  className="text-xs font-medium text-brand-700 hover:text-brand-900"
+                >
+                  {threadOpen ? 'Hide' : 'Show'} {replies.length}{' '}
+                  {replies.length === 1 ? 'reply' : 'replies'}
+                </button>
+                {threadOpen && (
+                  <ul className="mt-2 space-y-2">
+                    {replies.map((reply) => (
+                      <li
+                        key={reply.id}
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                      >
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="text-xs text-slate-500">
+                            <span className="font-medium text-slate-700">
+                              {reply.authorName ?? 'Unknown'}
+                            </span>{' '}
+                            · {formatDateTime(reply.createdAt)}
+                          </p>
+                          <div className="flex gap-1">
+                            <button
+                              title="Reply — notifies the commenter without @tagging them"
+                              aria-label="Reply to comment"
+                              onClick={() => {
+                                setReplyTo(reply);
+                                textareaRef.current?.focus();
+                              }}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            >
+                              <Reply className="h-3.5 w-3.5" />
+                            </button>
+                            {(user?.id === reply.authorId || user?.role === 'administrator') && (
+                              <>
+                                <button
+                                  title="Edit comment"
+                                  aria-label="Edit comment"
+                                  onClick={() => {
+                                    setEditingId(reply.id);
+                                    setEditingBody(reply.body);
+                                  }}
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  title="Delete comment"
+                                  aria-label="Delete comment"
+                                  onClick={() => setPendingDelete(reply)}
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {reply.replyToId && (
+                          <p className="mb-2 border-l-2 border-slate-200 pl-2 text-xs text-slate-500">
+                            <span className="font-medium text-slate-600">
+                              {reply.replyToAuthorName ?? 'Deleted comment'}
+                            </span>
+                            {reply.replyToPreview ? `: ${reply.replyToPreview}` : ''}
+                          </p>
+                        )}
+                        {editingId === reply.id ? (
+                          <div className="space-y-2">
+                            <TextArea
+                              value={editingBody}
+                              onChange={(e) => setEditingBody(e.target.value)}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button variant="secondary" onClick={() => setEditingId(null)}>
+                                Cancel
+                              </Button>
+                              <Button loading={saving} onClick={() => saveEdit(reply)}>
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <NoteBody body={reply.body} />
+                        )}
+                        <NoteReactions
+                          projectId={projectId}
+                          note={reply}
+                          onUpdated={(updated) =>
+                            setNotes((current) =>
+                              current.map((n) => (n.id === updated.id ? updated : n)),
+                            )
+                          }
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             </li>
-          ))}
+            );
+          })}
         </ul>
         </>
       )}
