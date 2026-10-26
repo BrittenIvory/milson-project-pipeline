@@ -3,7 +3,14 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
 import NoteReactions from './NoteReactions';
-import { apiErrorMessage, notesApi, usersApi } from '../lib/api';
+import {
+  apiErrorMessage,
+  notesApi,
+  NOTIFICATIONS_CHANGED_EVENT,
+  resetUnreadNoteProjects,
+  unreadNoteProjectIds,
+  usersApi,
+} from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import type { ProjectNote, User } from '../types';
 
@@ -34,6 +41,23 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
   const [mentionError, setMentionError] = useState<string | null>(null);
   const notesLoadVersion = useRef(0);
   const usersLoadVersion = useRef(0);
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      resetUnreadNoteProjects();
+      unreadNoteProjectIds().then((ids) => {
+        if (!cancelled) setHasUnread(ids.has(projectId));
+      });
+    };
+    refresh();
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+    };
+  }, [projectId]);
 
   useEffect(() => {
     const closeIfAnotherOpened = (event: Event) => {
@@ -194,7 +218,15 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
         onClick={toggleComments}
         className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:text-brand-900"
       >
-        <MessageSquare className="h-3.5 w-3.5" />
+        <span className="relative inline-flex">
+          <MessageSquare className="h-3.5 w-3.5" />
+          {hasUnread && (
+            <span
+              aria-label="Unread comment notification"
+              className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-rose-500"
+            />
+          )}
+        </span>
         Comments
         {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
       </button>

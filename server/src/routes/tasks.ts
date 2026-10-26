@@ -13,6 +13,7 @@ import {
   deleteTask,
   getTask,
   listTasks,
+  moveTask,
   taskSchema,
   updateTask,
 } from '../services/taskService';
@@ -137,6 +138,20 @@ router.put(
     }
     await notifyStageAdvance(project, req.user, projectId);
     res.json(task);
+  }),
+);
+
+router.post(
+  '/:taskId/move',
+  canManageTasks,
+  asyncHandler(async (req, res) => {
+    const projectId = projectIdOf(req.params as Record<string, string>);
+    const direction = req.body?.direction;
+    if (direction !== 'up' && direction !== 'down') {
+      throw new HttpError(400, 'direction must be "up" or "down"');
+    }
+    await moveTask(projectId, Number(req.params.taskId), direction);
+    res.json(await listTasks(projectId));
   }),
 );
 

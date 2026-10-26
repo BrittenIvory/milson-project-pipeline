@@ -63,6 +63,7 @@ export default function NotesPanel({
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [openThreads, setOpenThreads] = useState<Set<number>>(new Set());
+  const [earlierRepliesOpen, setEarlierRepliesOpen] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -305,24 +306,21 @@ export default function NotesPanel({
     }
   }
 
-  // Order threads by latest activity so a fresh reply lifts an older thread
-  // into the recent view instead of hiding behind "Show earlier comments".
-  const activityOf = (note: ProjectNote) => {
-    let latest = note.createdAt;
-    for (const reply of repliesByRoot.get(note.id) ?? []) {
-      if (reply.createdAt > latest) latest = reply.createdAt;
-    }
-    return latest;
-  };
-  const sortedTopLevel = [...topLevel].sort((a, b) =>
-    activityOf(a) < activityOf(b) ? -1 : activityOf(a) > activityOf(b) ? 1 : 0,
-  );
-
-  const visibleNotes = expanded ? sortedTopLevel : sortedTopLevel.slice(-RECENT_COUNT);
-  const hiddenCount = sortedTopLevel.length - visibleNotes.length;
+  // Threads stay in root-comment date order: replying must not move the
+  // main comment to the bottom.
+  const visibleNotes = expanded ? topLevel : topLevel.slice(-RECENT_COUNT);
+  const hiddenCount = topLevel.length - visibleNotes.length;
 
   const toggleThread = (noteId: number) =>
     setOpenThreads((current) => {
+      const next = new Set(current);
+      if (next.has(noteId)) next.delete(noteId);
+      else next.add(noteId);
+      return next;
+    });
+
+  const toggleEarlierReplies = (noteId: number) =>
+    setEarlierRepliesOpen((current) => {
       const next = new Set(current);
       if (next.has(noteId)) next.delete(noteId);
       else next.add(noteId);
@@ -371,6 +369,10 @@ export default function NotesPanel({
           {visibleNotes.map((note) => {
             const replies = repliesByRoot.get(note.id) ?? [];
             const threadOpen = openThreads.has(note.id);
+            const earlierOpen = earlierRepliesOpen.has(note.id);
+            // Open threads show only the latest reply; earlier replies hide
+            // behind their own toggle.
+            const visibleReplies = earlierOpen ? replies : replies.slice(-1);
             return (
             <li key={note.id} id={`note-${note.id}`} className="scroll-mt-24">
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -460,9 +462,19 @@ export default function NotesPanel({
                   {threadOpen ? 'Hide' : 'Show'} {replies.length}{' '}
                   {replies.length === 1 ? 'reply' : 'replies'}
                 </button>
+                {threadOpen && replies.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => toggleEarlierReplies(note.id)}
+                    className="mt-1 block text-xs font-medium text-slate-500 hover:text-slate-700"
+                  >
+                    {earlierOpen ? 'Hide' : 'Show'} {replies.length - 1} earlier{' '}
+                    {replies.length - 1 === 1 ? 'reply' : 'replies'}
+                  </button>
+                )}
                 {threadOpen && (
                   <ul className="mt-2 space-y-2">
-                    {replies.map((reply) => (
+                    {visibleReplies.map((reply) => (
                       <li
                         key={reply.id}
                         id={`note-${reply.id}`}

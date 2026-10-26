@@ -207,6 +207,10 @@ export const tasksApi = {
     http.put<ProjectTask>(`/projects/${projectId}/tasks/${taskId}`, payload).then((r) => r.data),
   remove: (projectId: number, taskId: number) =>
     http.delete(`/projects/${projectId}/tasks/${taskId}`),
+  move: (projectId: number, taskId: number, direction: 'up' | 'down') =>
+    http
+      .post<ProjectTask[]>(`/projects/${projectId}/tasks/${taskId}/move`, { direction })
+      .then((r) => r.data),
 };
 
 export const taskCommentsApi = {
@@ -267,12 +271,42 @@ export const notesApi = {
 /** Dispatched on window after notification mutations so other listeners reload. */
 export const NOTIFICATIONS_CHANGED_EVENT = 'milson:notifications-changed';
 
+let unreadNoteProjectsPromise: Promise<Set<number>> | null = null;
+
+/**
+ * Project ids that have unread note-related notifications (mentions/replies)
+ * for the current user — powers the unread dot on the comments buttons.
+ * Shared and cached so every project row doesn't issue its own request.
+ */
+export function unreadNoteProjectIds(): Promise<Set<number>> {
+  if (!unreadNoteProjectsPromise) {
+    unreadNoteProjectsPromise = notificationsApi
+      .list(false, 0, 200, true)
+      .then(
+        (r) =>
+          new Set(
+            r.items
+              .filter((n) => n.entityType === 'note' && n.projectId !== null)
+              .map((n) => n.projectId as number),
+          ),
+      )
+      .catch(() => new Set<number>());
+  }
+  return unreadNoteProjectsPromise;
+}
+
+/** Drop the cache so the next read refetches (call on NOTIFICATIONS_CHANGED_EVENT). */
+export function resetUnreadNoteProjects() {
+  unreadNoteProjectsPromise = null;
+}
+
 export const notificationsApi = {
-  list: (archived = false, offset?: number, limit?: number) =>
+  list: (archived = false, offset?: number, limit?: number, unreadOnly = false) =>
     http
       .get<{ items: AppNotification[]; unread: number }>('/notifications', {
         params: {
           ...(archived ? { archived: 'true' } : {}),
+          ...(unreadOnly ? { unread: 'true' } : {}),
           ...(offset ? { offset } : {}),
           ...(limit ? { limit } : {}),
         },

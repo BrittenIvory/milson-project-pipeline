@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
-import { AlertTriangle, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -343,6 +343,21 @@ export default function TasksPanel({
       .filter((group) => group.tasks.length > 0),
     ...(groups.get('other')?.length ? [{ key: 'other', tasks: groups.get('other')! }] : []),
   ];
+
+  const moveTask = async (task: ProjectTask, direction: 'up' | 'down') => {
+    try {
+      const updated = await tasksApi.move(projectId, task.id, direction);
+      setTasks(updated);
+      onChanged?.();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to move task'));
+    }
+  };
+
+  const editingSiblings = editing
+    ? (orderedGroups.find((g) => g.tasks.some((t) => t.id === editing.id))?.tasks ?? [])
+    : [];
+  const editingIndex = editingSiblings.findIndex((t) => t.id === editing?.id);
 
   return (
     <div className="space-y-4">
@@ -699,6 +714,29 @@ export default function TasksPanel({
             <Field label="Completed Date"><TextInput type="date" value={form.completedDate ?? ''} onChange={(e) => setForm({ ...form, completedDate: e.target.value })} /></Field>
             <Field label="Priority"><Select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as TaskPayload['priority'] })}>{PRIORITIES.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}</Select></Field>
             <Field label="Status"><Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as TaskPayload['status'] })}>{TASK_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</Select></Field>
+            {editing && (
+              <Field label="Position" className="sm:col-span-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={editingIndex <= 0}
+                    onClick={() => moveTask(editing, 'up')}
+                  >
+                    <ArrowUp className="h-4 w-4" /> Move up
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={editingIndex === -1 || editingIndex >= editingSiblings.length - 1}
+                    onClick={() => moveTask(editing, 'down')}
+                  >
+                    <ArrowDown className="h-4 w-4" /> Move down
+                  </Button>
+                  <span className="text-xs text-slate-500">
+                    Reorders this task within its stage list.
+                  </span>
+                </div>
+              </Field>
+            )}
           </div>
         )}
       </Modal>
