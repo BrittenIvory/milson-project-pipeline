@@ -395,8 +395,9 @@ export default function TasksPanel({
             const allDone = group.tasks.length > 0 && doneCount === group.tasks.length;
             // Default open: the current stage, plus any earlier stage still
             // holding unfinished tasks. Everything else starts collapsed.
-            const stageIdx = STAGE_ORDER.get(group.key) ?? -1;
-            const isEarlier = !active && currentStageIdx !== -1 && stageIdx < currentStageIdx;
+            const stageIdx = STAGE_ORDER.get(group.key);
+            const isEarlier =
+              !active && stageIdx !== undefined && currentStageIdx !== -1 && stageIdx < currentStageIdx;
             const defaultOpen = active || (isEarlier && !allDone);
             const collapsed = collapsedOverride[group.key] ?? !defaultOpen;
             return (
