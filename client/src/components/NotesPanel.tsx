@@ -83,7 +83,13 @@ export default function NotesPanel({
     if (pendingScrollIdRef.current !== null) {
       const el = document.getElementById(`note-${pendingScrollIdRef.current}`);
       pendingScrollIdRef.current = null;
-      el?.scrollIntoView({ block: 'start' });
+      if (el) {
+        // The sticky tab bar wraps to a variable height on narrow screens,
+        // so measure it rather than rely on a fixed scroll-mt.
+        const tabs = document.getElementById('project-tabs');
+        if (tabs) el.style.scrollMarginTop = `${tabs.getBoundingClientRect().height + 12}px`;
+        el.scrollIntoView({ block: 'start' });
+      }
       return;
     }
     if (!scrollToEndRef.current) return;
