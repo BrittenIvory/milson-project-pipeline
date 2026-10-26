@@ -417,50 +417,51 @@ export default function ProjectDetailPage() {
             </div>
           </Card>
 
-          <Card>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">Part image</h2>
-                <p className="mt-1 text-xs text-slate-500">Used as the project profile image and included in estimate PDFs.</p>
-              </div>
-              {canEdit && (
-                <Button variant="secondary" loading={partImageBusy} onClick={() => partImageInput.current?.click()}>
-                  <Upload className="h-4 w-4" /> {project.partImageFileName ? 'Replace image' : 'Upload image'}
-                </Button>
-              )}
-            </div>
-            <input
-              ref={partImageInput}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void uploadPartImage(file);
-                event.target.value = '';
-              }}
-            />
-            <div className="mt-4 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
-              {partImageUrl ? (
-                <img src={partImageUrl} alt={`${project.projectName} part`} className="max-h-64 max-w-full object-contain" />
-              ) : (
-                <p className="text-sm text-slate-500">No part image uploaded yet.</p>
-              )}
-            </div>
-            {project.partImageFileName && (
-              <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
-                <span className="truncate">{project.partImageFileName}</span>
-                {canEdit && (
-                  <button type="button" onClick={removePartImage} className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700">
-                    <Trash2 className="h-3.5 w-3.5" /> Remove
-                  </button>
-                )}
-              </div>
-            )}
-          </Card>
           </div>
 
           <div className="space-y-4">
+            <Card>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Part image</h2>
+                  <p className="mt-1 text-xs text-slate-500">Used as the project profile image and included in estimate PDFs.</p>
+                </div>
+                {canEdit && (
+                  <Button variant="secondary" loading={partImageBusy} onClick={() => partImageInput.current?.click()}>
+                    <Upload className="h-4 w-4" /> {project.partImageFileName ? 'Replace image' : 'Upload image'}
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={partImageInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void uploadPartImage(file);
+                  event.target.value = '';
+                }}
+              />
+              <div className="mt-4 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+                {partImageUrl ? (
+                  <img src={partImageUrl} alt={`${project.projectName} part`} className="max-h-64 max-w-full object-contain" />
+                ) : (
+                  <p className="text-sm text-slate-500">No part image uploaded yet.</p>
+                )}
+              </div>
+              {project.partImageFileName && (
+                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
+                  <span className="truncate">{project.partImageFileName}</span>
+                  {canEdit && (
+                    <button type="button" onClick={removePartImage} className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700">
+                      <Trash2 className="h-3.5 w-3.5" /> Remove
+                    </button>
+                  )}
+                </div>
+              )}
+            </Card>
+
             <Card>
               <h2 className="mb-4 text-sm font-semibold text-slate-900">Customer information</h2>
               <div className="space-y-4">
