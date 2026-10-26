@@ -449,6 +449,41 @@ export default function ProjectDetailPage() {
             </div>
           </Card>
 
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <Card>
+                <h2 className="mb-4 text-sm font-semibold text-slate-900">Customer information</h2>
+                <div className="space-y-3">
+                  <DetailItem label="Customer" value={orDash(project.customerName)} />
+                  <DetailItem label="Customer Number" value={orDash(project.customerNumber)} />
+                  <DetailItem label="Customer Contact" value={orDash(project.customerContact)} />
+                  <DetailItem
+                    label="Customer Part Number"
+                    value={orDash(project.customerPartNumber)}
+                  />
+                </div>
+              </Card>
+
+              <Card>
+                <h2 className="mb-4 text-sm font-semibold text-slate-900">Assignments</h2>
+                <div className="space-y-3">
+                  <DetailItem label="Assigned Engineer" value={orDash(project.assignedEngineerName)} />
+                  <DetailItem
+                    label="Assigned Salesperson"
+                    value={orDash(project.assignedSalesName)}
+                  />
+                </div>
+              </Card>
+
+              <Card>
+                <h2 className="mb-4 text-sm font-semibold text-slate-900">Dates</h2>
+                <div className="space-y-3">
+                  <DetailItem label="Target Quote Date" value={formatDate(project.targetQuoteDate)} />
+                  <DetailItem label="Created" value={formatDateTime(project.createdAt)} />
+                  <DetailItem label="Last Updated" value={formatDateTime(project.updatedAt)} />
+                </div>
+              </Card>
+            </div>
+
           </div>
 
           <div className="space-y-3">
@@ -494,38 +529,6 @@ export default function ProjectDetailPage() {
               )}
             </Card>
 
-            <Card>
-              <h2 className="mb-4 text-sm font-semibold text-slate-900">Customer information</h2>
-              <div className="space-y-3">
-                <DetailItem label="Customer" value={orDash(project.customerName)} />
-                <DetailItem label="Customer Number" value={orDash(project.customerNumber)} />
-                <DetailItem label="Customer Contact" value={orDash(project.customerContact)} />
-                <DetailItem
-                  label="Customer Part Number"
-                  value={orDash(project.customerPartNumber)}
-                />
-              </div>
-            </Card>
-
-            <Card>
-              <h2 className="mb-4 text-sm font-semibold text-slate-900">Assignments</h2>
-              <div className="space-y-3">
-                <DetailItem label="Assigned Engineer" value={orDash(project.assignedEngineerName)} />
-                <DetailItem
-                  label="Assigned Salesperson"
-                  value={orDash(project.assignedSalesName)}
-                />
-              </div>
-            </Card>
-
-            <Card>
-              <h2 className="mb-4 text-sm font-semibold text-slate-900">Dates</h2>
-              <div className="space-y-3">
-                <DetailItem label="Target Quote Date" value={formatDate(project.targetQuoteDate)} />
-                <DetailItem label="Created" value={formatDateTime(project.createdAt)} />
-                <DetailItem label="Last Updated" value={formatDateTime(project.updatedAt)} />
-              </div>
-            </Card>
           </div>
         </div>
       )}
