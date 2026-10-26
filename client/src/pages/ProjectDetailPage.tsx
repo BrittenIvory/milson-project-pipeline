@@ -441,7 +441,7 @@ export default function ProjectDetailPage() {
                 />
               </div>
             )}
-            <div className="mt-5">
+            <div className="mt-4">
               <p className="label">Description</p>
               <p className="whitespace-pre-line text-sm text-slate-700">
                 {orDash(project.projectDescription)}
@@ -554,7 +554,7 @@ export default function ProjectDetailPage() {
         <Card>
           <h2 className="mb-4 text-sm font-semibold text-slate-900">Activity timeline</h2>
           {activity.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">No activity yet.</p>
+            <p className="py-4 text-center text-sm text-slate-500">No activity yet.</p>
           ) : (
             <ul className="divide-y divide-slate-100">
               {activity.map((record) => (

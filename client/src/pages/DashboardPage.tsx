@@ -51,7 +51,7 @@ export default function DashboardPage() {
 
       <ErrorBanner message={error} />
       {!canViewProjects && (
-        <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+        <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
           Your account does not have access to projects. Ask an administrator if you need access.
         </p>
       )}

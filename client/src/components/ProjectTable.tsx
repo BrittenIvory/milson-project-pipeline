@@ -239,7 +239,7 @@ export default function ProjectTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
       <table className="min-w-full table-fixed border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-left">

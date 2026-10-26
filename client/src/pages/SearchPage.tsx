@@ -36,7 +36,7 @@ export default function SearchPage() {
       <PageHeader title="Search" description={term ? `Results for “${term}”` : 'Enter a search term'} />
 
       {loading && (
-        <div className="flex justify-center py-16">
+        <div className="flex justify-center py-10">
           <Spinner className="h-7 w-7" />
         </div>
       )}

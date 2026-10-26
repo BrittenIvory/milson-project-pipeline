@@ -153,8 +153,8 @@ export function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-8">
-      <div className={clsx('w-full rounded-2xl bg-white shadow-xl', width)}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-3 sm:p-6">
+      <div className={clsx('w-full rounded-xl bg-white shadow-xl', width)}>
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           <button

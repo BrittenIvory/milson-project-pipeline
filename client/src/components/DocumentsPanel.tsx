@@ -161,7 +161,7 @@ export default function DocumentsPanel({
             uploadFiles(e.dataTransfer.files);
           }}
           className={clsx(
-            'rounded-2xl border-2 border-dashed px-6 py-6 text-center text-sm transition-colors',
+            'rounded-xl border-2 border-dashed px-4 py-4 text-center text-sm transition-colors',
             dragging ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-500',
           )}
         >
@@ -177,7 +177,7 @@ export default function DocumentsPanel({
           description="Upload drawings, models or supplier quotes to keep them with the project."
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">

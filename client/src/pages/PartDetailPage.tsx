@@ -30,11 +30,11 @@ export default function PartDetailPage() {
   }, [partNumber]);
 
   if (loading) {
-    return <p className="px-4 py-12 text-center text-sm text-slate-500">Loading…</p>;
+    return <p className="px-4 py-8 text-center text-sm text-slate-500">Loading…</p>;
   }
   if (error || !part) {
     return (
-      <div className="px-4 py-12 text-center">
+      <div className="px-4 py-8 text-center">
         <p className="text-sm text-rose-600">{error ?? 'Part not found'}</p>
         <Link to="/parts" className="mt-2 inline-block text-sm text-brand-600 hover:underline">
           Back to parts
@@ -44,7 +44,7 @@ export default function PartDetailPage() {
   }
 
   return (
-    <div className="px-4 py-5">
+    <div className="px-4 py-4">
       <Link
         to="/parts"
         className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"

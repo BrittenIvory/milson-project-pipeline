@@ -32,10 +32,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-slate-50 px-4 py-12">
+    <div className="flex min-h-full items-center justify-center bg-slate-50 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-lg font-bold text-white">
             M
           </div>
           <div>
@@ -44,7 +44,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="card space-y-3 p-6">
+        <form onSubmit={handleSubmit} className="card space-y-3 p-4">
           <ErrorBanner message={error} />
           <Field label="Email">
             <TextInput
