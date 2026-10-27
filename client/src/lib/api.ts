@@ -31,8 +31,14 @@ export function apiErrorMessage(error: unknown, fallback = 'Something went wrong
 }
 
 /** Public deployment flags (sandbox banner etc.). */
+export interface DeployInfo {
+  commit: string | null;
+  branch: string | null;
+  pr: string | null;
+}
 export const configApi = {
-  get: async (): Promise<{ sandbox: boolean }> => (await http.get('/config')).data,
+  get: async (): Promise<{ sandbox: boolean; deploy: DeployInfo }> =>
+    (await http.get('/config')).data,
 };
 
 export const authApi = {

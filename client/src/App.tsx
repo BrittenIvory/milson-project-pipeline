@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { configApi } from './lib/api';
+import { configApi, type DeployInfo } from './lib/api';
+
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import CustomersPage from './pages/CustomersPage';
@@ -18,17 +19,42 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import SettingsPage from './pages/SettingsPage';
 import SuppliersPage from './pages/SuppliersPage';
 
+const REPO_URL = 'https://github.com/BrittenIvory/milson-project-pipeline';
+
 /** Route table. Everything except /login sits behind ProtectedRoute. */
 export default function App() {
   const [sandbox, setSandbox] = useState(false);
+  const [deploy, setDeploy] = useState<DeployInfo | null>(null);
   useEffect(() => {
-    configApi.get().then((c) => setSandbox(c.sandbox)).catch(() => undefined);
+    configApi
+      .get()
+      .then((c) => {
+        setSandbox(c.sandbox);
+        setDeploy(c.deploy);
+      })
+      .catch(() => undefined);
   }, []);
+  const deployHref = deploy?.pr
+    ? `${REPO_URL}/pull/${deploy.pr}`
+    : deploy?.commit
+      ? `${REPO_URL}/commit/${deploy.commit}`
+      : null;
   return (
     <div className="flex h-full flex-col">
       {sandbox && (
-        <div className="shrink-0 bg-amber-500 px-4 py-1.5 text-center text-xs font-bold uppercase tracking-widest text-black">
+        <div className="relative shrink-0 bg-amber-500 px-4 py-1.5 text-center text-xs font-bold uppercase tracking-widest text-black">
           Sandbox environment — not production data
+          {deployHref && (
+            <a
+              href={deployHref}
+              target="_blank"
+              rel="noreferrer"
+              title="View the deployed build on GitHub"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded bg-black/10 px-2 py-0.5 font-semibold normal-case tracking-normal hover:bg-black/20"
+            >
+              {deploy?.pr ? `PR #${deploy.pr}` : 'Build'} {deploy?.commit?.slice(0, 7)}
+            </a>
+          )}
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">
