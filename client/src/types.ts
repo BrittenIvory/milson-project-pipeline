@@ -130,6 +130,7 @@ export interface ProjectTask {
   customerQuotePrice: number | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: TaskStatus;
+  addedByUser: boolean;
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
