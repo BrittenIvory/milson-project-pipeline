@@ -35,6 +35,7 @@ const FORMAL_QUOTE_TASK = 'Formal quote generated';
 
 const emptyTask: TaskPayload = {
   taskName: '',
+  stage: 'intake',
   description: '',
   assignedUserId: null,
   dueDate: '',
@@ -60,6 +61,7 @@ function taskToPayload(task: ProjectTask): TaskPayload {
     customerQuotePrice: task.customerQuotePrice,
     priority: task.priority,
     status: task.status,
+    stage: task.stage,
   };
 }
 
@@ -371,7 +373,7 @@ export default function TasksPanel({
           <p className="text-xs text-slate-500">Work items tracked against this project.</p>
         </div>
         {canManageTasks && (
-          <Button onClick={() => { setEditing(null); setForm(emptyTask); }}>
+          <Button onClick={() => { setEditing(null); setForm({ ...emptyTask, stage: currentStage ?? 'intake' }); }}>
             <Plus className="h-4 w-4" /> New task
           </Button>
         )}
@@ -435,7 +437,7 @@ export default function TasksPanel({
                       ? []
                       : users.filter((option) => option.fullName.toLowerCase().includes(query)).slice(0, 5);
                     return (
-                      <li key={task.id} className={clsx('px-3 py-2', overdue && 'bg-rose-50')}>
+                      <li key={task.id} className={clsx('px-3 py-2', overdue ? 'bg-rose-50' : task.addedByUser && 'bg-sky-50/60')}>
                         <div className="flex items-start gap-3">
                           <div className="min-w-0 flex-1">
                             <p className={clsx(
@@ -455,6 +457,7 @@ export default function TasksPanel({
                                   <option key={status.value} value={status.value}>{status.label}</option>
                                 ))}
                               </Select>
+                              {task.addedByUser && <Badge tone="bg-sky-100 text-sky-700">Added</Badge>}
                               <Badge tone={priorityMeta(task.priority).tone}>{priorityMeta(task.priority).label}</Badge>
                               <Select
                                 aria-label={`Assigned user for ${task.taskName}`}
@@ -719,6 +722,13 @@ export default function TasksPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Task Name" className="sm:col-span-2"><TextInput value={form.taskName} onChange={(e) => setForm({ ...form, taskName: e.target.value })} placeholder="Review customer drawing" /></Field>
             <Field label="Description" className="sm:col-span-2"><TextArea value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
+            {!editing && (
+              <Field label="Stage">
+                <Select value={form.stage ?? 'intake'} onChange={(e) => setForm({ ...form, stage: e.target.value })}>
+                  {PROJECT_STAGES.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}
+                </Select>
+              </Field>
+            )}
             <Field label="Assigned User"><Select value={form.assignedUserId ?? ''} onChange={(e) => setForm({ ...form, assignedUserId: e.target.value ? Number(e.target.value) : null })}><option value="">Unassigned</option>{users.map((option) => <option key={option.id} value={option.id}>{option.fullName}</option>)}</Select></Field>
             <Field label="Start Date"><TextInput type="date" value={form.startDate ?? ''} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></Field>
             <Field label="Completed Date"><TextInput type="date" value={form.completedDate ?? ''} onChange={(e) => setForm({ ...form, completedDate: e.target.value })} /></Field>

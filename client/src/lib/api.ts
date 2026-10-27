@@ -196,7 +196,7 @@ export const activityApi = {
 
 export type TaskPayload = Pick<
   ProjectTask,
-  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'startDate' | 'completedDate' | 'requestedDate' | 'actualDate' | 'customerQuotePrice' | 'priority' | 'status'
+  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'startDate' | 'completedDate' | 'requestedDate' | 'actualDate' | 'customerQuotePrice' | 'priority' | 'status' | 'stage'
 >;
 
 export const tasksApi = {

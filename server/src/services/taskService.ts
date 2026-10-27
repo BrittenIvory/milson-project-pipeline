@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { pool, query, queryOne } from '../db/pool';
 import { HttpError } from '../middleware/errors';
-import { PRIORITIES, TASK_STATUSES } from '../types';
+import { PRIORITIES, PROJECT_STAGES, TASK_STATUSES } from '../types';
 
 export interface TaskRow {
   id: number;
@@ -19,6 +19,7 @@ export interface TaskRow {
   priority: string;
   status: string;
   sort_order: number | null;
+  created_by: number | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -41,6 +42,8 @@ export const taskSchema = z.object({
   customerQuotePrice: emptyToNull(z.coerce.number().finite().nonnegative()).optional(),
   priority: z.enum(PRIORITIES).default('medium'),
   status: z.enum(TASK_STATUSES).default('not_started'),
+  // Optional on create; ignored on update. Defaults to the project's current stage.
+  stage: z.enum(PROJECT_STAGES).optional(),
 });
 
 export type TaskInput = z.infer<typeof taskSchema>;
@@ -68,6 +71,7 @@ export function toTaskDto(row: TaskRow) {
     priority: row.priority,
     status: row.status,
     stage: row.stage,
+    addedByUser: row.created_by !== null,
     commentCount: row.comment_count,
     completedAt: row.completed_at,
     createdAt: row.created_at,

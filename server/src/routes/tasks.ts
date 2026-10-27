@@ -75,7 +75,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const projectId = projectIdOf(req.params as Record<string, string>);
     const project = await getProject(projectId);
-    const task = await createTask(projectId, taskSchema.parse(req.body), req.user!.id, project.currentStage);
+    const input = taskSchema.parse(req.body);
+    const task = await createTask(projectId, input, req.user!.id, input.stage ?? project.currentStage);
     await logActivity({
       actor: req.user ?? null,
       action: 'Task Created',
