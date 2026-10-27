@@ -77,4 +77,9 @@ export const config = {
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'Admin123!',
   /** Set on the sandbox deployment to render a visible SANDBOX banner. */
   sandbox: process.env.SANDBOX === 'true',
+  /** Deployed build info shown on the sandbox banner (Render injects these). */
+  deployCommit: process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT_SHA ?? null,
+  deployBranch: process.env.RENDER_GIT_BRANCH ?? process.env.GIT_BRANCH ?? null,
+  /** Optional PR number for the deploy (set DEPLOYED_PR to display it). */
+  deployPr: process.env.DEPLOYED_PR ?? null,
 };

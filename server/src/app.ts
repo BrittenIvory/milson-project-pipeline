@@ -33,7 +33,16 @@ export function createApp(): Express {
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
   // Public deployment flags so the client can show an environment banner.
-  app.get('/api/config', (_req, res) => res.json({ sandbox: config.sandbox }));
+  app.get('/api/config', (_req, res) =>
+    res.json({
+      sandbox: config.sandbox,
+      deploy: {
+        commit: config.deployCommit,
+        branch: config.deployBranch,
+        pr: config.deployPr,
+      },
+    }),
+  );
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/customers', customersRouter);
