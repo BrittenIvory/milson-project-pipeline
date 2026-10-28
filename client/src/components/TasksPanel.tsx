@@ -73,10 +73,13 @@ function taskToPayload(task: ProjectTask): TaskPayload {
 export default function TasksPanel({
   projectId,
   currentStage,
+  stages,
   onChanged,
 }: {
   projectId: number;
   currentStage?: string;
+  /** The project's own stage list (from its template snapshot); defaults to the standard pipeline. */
+  stages?: { key: string; label: string }[];
   onChanged?: () => void;
 }) {
   const { user, can } = useAuth();
@@ -379,13 +382,18 @@ export default function TasksPanel({
     const key = task.stage ?? 'other';
     groups.set(key, [...(groups.get(key) ?? []), task]);
   });
+  const stageList = stages?.length
+    ? stages
+    : PROJECT_STAGES.map((stage) => ({ key: stage.value, label: stage.label }));
+  const stageLabelOf = (key: string) =>
+    stageList.find((s) => s.key === key)?.label ?? stageMeta(key).label;
   const orderedGroups = [
-    ...PROJECT_STAGES.map((stage) => ({ key: stage.value, tasks: groups.get(stage.value) ?? [] }))
+    ...stageList.map((stage) => ({ key: stage.key, tasks: groups.get(stage.key) ?? [] }))
       .filter((group) => group.tasks.length > 0),
     ...(groups.get('other')?.length ? [{ key: 'other', tasks: groups.get('other')! }] : []),
   ];
   const STAGE_ORDER = new Map<string, number>(
-    PROJECT_STAGES.map((stage, index) => [stage.value, index]),
+    stageList.map((stage, index) => [stage.key, index]),
   );
   const currentStageIdx = currentStage ? (STAGE_ORDER.get(currentStage) ?? -1) : -1;
 
@@ -412,7 +420,7 @@ export default function TasksPanel({
           <p className="text-xs text-slate-500">Work items tracked against this project.</p>
         </div>
         {canManageTasks && (
-          <Button onClick={() => { setEditing(null); setForm({ ...emptyTask, stage: currentStage ?? 'intake' }); }}>
+          <Button onClick={() => { setEditing(null); setForm({ ...emptyTask, stage: currentStage ?? stageList[0]?.key ?? 'intake' }); }}>
             <Plus className="h-4 w-4" /> New task
           </Button>
         )}
@@ -430,7 +438,7 @@ export default function TasksPanel({
           {orderedGroups.map((group) => {
             const meta = group.key === 'other'
               ? { label: 'Other', tone: 'bg-slate-100 text-slate-700' }
-              : stageMeta(group.key);
+              : { ...stageMeta(group.key), label: stageLabelOf(group.key) };
             const active = group.key === currentStage;
             const doneCount = group.tasks.filter((task) => CLOSED_TASK_STATUSES.includes(task.status)).length;
             const allDone = group.tasks.length > 0 && doneCount === group.tasks.length;
@@ -845,8 +853,8 @@ export default function TasksPanel({
             <Field label="Description" className="sm:col-span-2"><TextArea value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
             {!editing && (
               <Field label="Stage">
-                <Select value={form.stage ?? 'intake'} onChange={(e) => setForm({ ...form, stage: e.target.value })}>
-                  {PROJECT_STAGES.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}
+                <Select value={form.stage ?? stageList[0]?.key ?? 'intake'} onChange={(e) => setForm({ ...form, stage: e.target.value })}>
+                  {stageList.map((stage) => <option key={stage.key} value={stage.key}>{stage.label}</option>)}
                 </Select>
               </Field>
             )}

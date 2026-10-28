@@ -19,7 +19,7 @@ import {
   projectStats,
   updateProject,
 } from '../services/projectService';
-import { seedStageTasks } from '../services/workflowService';
+import { applyProjectTemplate, seedStageTasks } from '../services/workflowService';
 import { storage, storageFor, streamToResponse } from '../services/storage';
 import documentsRouter from './documents';
 import notesRouter from './notes';
@@ -373,6 +373,26 @@ router.put(
     } catch (err) {
       console.error('Unable to refresh project estimate quote', err);
     }
+    res.json(project);
+  }),
+);
+
+// Re-applies the project type's latest template: replaces the seeded stage
+// checklist, keeps user-added tasks, stamps the new template version.
+router.post(
+  '/:id/apply-template',
+  canEditProjects,
+  asyncHandler(async (req, res) => {
+    const projectId = Number(req.params.id);
+    const version = await applyProjectTemplate(projectId);
+    const project = await getProject(projectId);
+    await logActivity({
+      actor: req.user ?? null,
+      action: 'Template Applied',
+      entityType: 'project',
+      entityId: project.id,
+      detail: `${project.projectNumber}: applied template v${version}`,
+    });
     res.json(project);
   }),
 );

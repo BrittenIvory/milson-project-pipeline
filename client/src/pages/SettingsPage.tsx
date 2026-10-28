@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { KeyRound, Plus, ShieldAlert, SlidersHorizontal, UserCheck, UserX } from 'lucide-react';
+import { ArrowDown, ArrowUp, KeyRound, Plus, ShieldAlert, SlidersHorizontal, UserCheck, UserX } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -12,6 +12,7 @@ import {
   PageHeader,
   Select,
   SkeletonRows,
+  TextArea,
   TextInput,
 } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
@@ -22,7 +23,7 @@ import {
   ROLE_LABELS,
   type Permission,
 } from '../lib/constants';
-import type { ManagedUser, ProjectType, Role } from '../types';
+import type { ManagedUser, ProjectType, Role, TemplateStage } from '../types';
 
 const ROLE_OPTIONS: Role[] = ['administrator', 'engineering', 'sales', 'production', 'quality'];
 
@@ -451,6 +452,7 @@ function ProjectTypesCard() {
   const [newName, setNewName] = useState('');
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ProjectType | null>(null);
+  const [templateFor, setTemplateFor] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -537,7 +539,8 @@ function ProjectTypesCard() {
             </thead>
             <tbody>
               {types.map((type) => (
-                <tr key={type.id} className="border-b border-slate-100 last:border-0">
+                <Fragment key={type.id}>
+                <tr className="border-b border-slate-100 last:border-0">
                   <td className="py-2 pr-4 font-medium text-slate-800">
                     {editing?.id === type.id ? (
                       <div className="flex items-center gap-2">
@@ -583,6 +586,13 @@ function ProjectTypesCard() {
                       <Button
                         variant="ghost"
                         disabled={busy}
+                        onClick={() => setTemplateFor(templateFor === type.id ? null : type.id)}
+                      >
+                        {templateFor === type.id ? 'Close template' : 'Template'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
                         onClick={() => setPendingDelete(type)}
                         title="Delete type"
                       >
@@ -591,6 +601,14 @@ function ProjectTypesCard() {
                     </div>
                   </td>
                 </tr>
+                {templateFor === type.id && (
+                  <tr className="border-b border-slate-100 last:border-0">
+                    <td colSpan={3} className="py-3">
+                      <TemplateEditor typeId={type.id} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -616,5 +634,158 @@ function ProjectTypesCard() {
         onCancel={() => setPendingDelete(null)}
       />
     </Card>
+  );
+}
+
+/** Editable stage/task template for one project type. Saving bumps the
+ * template version; existing projects adopt it only via "Update to new
+ * template" inside the project. */
+function TemplateEditor({ typeId }: { typeId: number }) {
+  const [stages, setStages] = useState<TemplateStage[] | null>(null);
+  const [version, setVersion] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [newStageLabel, setNewStageLabel] = useState('');
+
+  useEffect(() => {
+    projectTypesApi
+      .template(typeId)
+      .then((template) => {
+        setStages(template.stages);
+        setVersion(template.version);
+      })
+      .catch((err) => setError(apiErrorMessage(err, 'Unable to load the template')));
+  }, [typeId]);
+
+  const update = (index: number, changes: Partial<TemplateStage>) =>
+    setStages((current) =>
+      current ? current.map((s, i) => (i === index ? { ...s, ...changes } : s)) : current,
+    );
+
+  const move = (index: number, direction: -1 | 1) =>
+    setStages((current) => {
+      if (!current) return current;
+      const next = [...current];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return current;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+
+  const addStage = () => {
+    const label = newStageLabel.trim();
+    if (!label || !stages) return;
+    let key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!key) key = 'custom_stage';
+    let candidate = key;
+    let n = 1;
+    while (stages.some((s) => s.key === candidate)) candidate = `${key}_${++n}`;
+    setStages([...stages, { key: candidate, label, tasks: [] }]);
+    setNewStageLabel('');
+  };
+
+  const save = () => {
+    if (!stages) return;
+    setBusy(true);
+    setError(null);
+    setSavedNote(null);
+    projectTypesApi
+      .saveTemplate(
+        typeId,
+        stages.map((s) => ({
+          key: s.key,
+          label: s.label.trim() || s.key,
+          tasks: s.tasks.map((t) => t.trim()).filter(Boolean),
+        })),
+      )
+      .then((result) => {
+        setVersion(result.version);
+        setSavedNote(
+          `Template saved as version ${result.version}. New projects of this type get it automatically; existing projects update only when someone applies the new template inside the project.`,
+        );
+      })
+      .catch((err) => setError(apiErrorMessage(err, 'Unable to save the template')))
+      .finally(() => setBusy(false));
+  };
+
+  if (!stages) {
+    return error ? <ErrorBanner message={error} /> : <SkeletonRows rows={3} />;
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-slate-600">
+          Workflow template <span className="font-normal text-slate-400">(v{version || 'default'})</span>
+        </p>
+        <Button loading={busy} onClick={save}>Save template</Button>
+      </div>
+      <ErrorBanner message={error} />
+      {savedNote && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{savedNote}</p>}
+      {stages.map((stage, index) => (
+        <div key={stage.key} className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col">
+              <button
+                type="button"
+                onClick={() => move(index, -1)}
+                disabled={index === 0}
+                className="text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                aria-label="Move stage up"
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(index, 1)}
+                disabled={index === stages.length - 1}
+                className="text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                aria-label="Move stage down"
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <TextInput
+              value={stage.label}
+              onChange={(e) => update(index, { label: e.target.value })}
+              aria-label="Stage name"
+            />
+            <Button
+              variant="ghost"
+              onClick={() => setStages((current) => current!.filter((_, i) => i !== index))}
+            >
+              Remove
+            </Button>
+          </div>
+          <TextArea
+            value={stage.tasks.join('\n')}
+            onChange={(e) => update(index, { tasks: e.target.value.split('\n') })}
+            placeholder="Checklist tasks, one per line"
+            rows={3}
+          />
+        </div>
+      ))}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          addStage();
+        }}
+        className="flex items-center gap-2"
+      >
+        <TextInput
+          value={newStageLabel}
+          onChange={(e) => setNewStageLabel(e.target.value)}
+          placeholder="New stage name"
+        />
+        <Button type="submit" variant="secondary" disabled={!newStageLabel.trim()}>
+          <Plus className="h-4 w-4" /> Add stage
+        </Button>
+      </form>
+      <p className="text-xs text-slate-400">
+        Saving updates the template only — existing projects keep their current stages and tasks
+        until someone opens the project and chooses &quot;Update to new template&quot;.
+      </p>
+    </div>
   );
 }

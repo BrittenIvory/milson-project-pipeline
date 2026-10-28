@@ -19,6 +19,8 @@ import type {
   ProjectType,
   Supplier,
   SupplierQuote,
+  TemplateStage,
+  TypeTemplate,
   User,
 } from '../types';
 
@@ -110,6 +112,7 @@ export type ProjectPayload = Omit<
   | 'estimatePartPrice' | 'projectValue'
   | 'customerQuotePrice' | 'projectValueCurrency'
   | 'partImageFileName' | 'partImageMimeType' | 'partImageSizeBytes' | 'projectTypeName'
+  | 'stages' | 'templateUpdateAvailable'
 >;
 
 export const projectTypesApi = {
@@ -121,6 +124,10 @@ export const projectTypesApi = {
   update: (id: number, payload: { name: string; sortOrder?: number; isActive?: boolean }) =>
     http.put<ProjectType>(`/project-types/${id}`, payload).then((r) => r.data),
   remove: (id: number) => http.delete(`/project-types/${id}`),
+  template: (id: number) =>
+    http.get<TypeTemplate>(`/project-types/${id}/template`).then((r) => r.data),
+  saveTemplate: (id: number, stages: TemplateStage[]) =>
+    http.put<TypeTemplate>(`/project-types/${id}/template`, { stages }).then((r) => r.data),
 };
 
 export const projectsApi = {
@@ -154,6 +161,8 @@ export const projectsApi = {
     http.get<ActivityRecord[]>(`/projects/${id}/activity`).then((r) => r.data),
   generateQuickQuote: (id: number) =>
     http.post<ProjectDocument>(`/projects/${id}/quick-quote`).then((r) => r.data),
+  applyTemplate: (id: number) =>
+    http.post<Project>(`/projects/${id}/apply-template`).then((r) => r.data),
   uploadPartImage: (id: number, file: File) => {
     const form = new FormData();
     form.append('file', file);

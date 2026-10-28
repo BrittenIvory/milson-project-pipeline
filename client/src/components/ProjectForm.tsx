@@ -79,6 +79,8 @@ interface ProjectFormProps {
   submitLabel: string;
   /** Read-only project number shown at the top of the form. */
   projectNumber: string;
+  /** Stage options when editing (the project's own stages); create fetches the type template's. */
+  stageOptions?: { key: string; label: string }[];
 }
 
 /** Shared create/edit form for a project. */
@@ -91,17 +93,41 @@ export default function ProjectForm({
   error,
   submitLabel,
   projectNumber,
+  stageOptions,
 }: ProjectFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
+  const [templateStages, setTemplateStages] = useState<{ key: string; label: string }[] | null>(null);
 
   useEffect(() => {
     customersApi.list({ status: 'active' }).then(setCustomers);
     usersApi.list().then(setUsers);
     projectTypesApi.list().then(setProjectTypes);
   }, []);
+
+  // On create, the stage picker mirrors the selected type's template.
+  useEffect(() => {
+    if (stageOptions || value.projectTypeId == null) {
+      setTemplateStages(null);
+      return;
+    }
+    let active = true;
+    projectTypesApi.template(value.projectTypeId).then((template) => {
+      if (active) setTemplateStages(template.stages);
+    }).catch(() => active && setTemplateStages(null));
+    return () => {
+      active = false;
+    };
+  }, [stageOptions, value.projectTypeId]);
+
+  const stageList =
+    stageOptions && stageOptions.length
+      ? stageOptions
+      : templateStages && templateStages.length
+        ? templateStages
+        : PROJECT_STAGES.map((s) => ({ key: s.value, label: s.label }));
 
   const engineers = useMemo(
     () => users.filter((u) => u.role === 'engineering' || u.role === 'administrator'),
@@ -348,11 +374,14 @@ export default function ProjectForm({
               value={value.currentStage}
               onChange={(e) => set('currentStage', e.target.value)}
             >
-              {PROJECT_STAGES.map((stage) => (
-                <option key={stage.value} value={stage.value}>
+              {stageList.map((stage) => (
+                <option key={stage.key} value={stage.key}>
                   {stage.label}
                 </option>
               ))}
+              {!stageList.some((s) => s.key === value.currentStage) && (
+                <option value={value.currentStage}>{value.currentStage}</option>
+              )}
             </Select>
           </Field>
         </div>

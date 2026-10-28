@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { pool, query, queryOne } from '../db/pool';
 import { HttpError } from '../middleware/errors';
-import { PRIORITIES, PROJECT_STAGES, TASK_STATUSES } from '../types';
+import { PRIORITIES, TASK_STATUSES } from '../types';
+import { assertProjectStage } from './workflowService';
 
 export interface TaskRow {
   id: number;
@@ -43,7 +44,8 @@ export const taskSchema = z.object({
   priority: z.enum(PRIORITIES).default('medium'),
   status: z.enum(TASK_STATUSES).default('not_started'),
   // Optional on create; ignored on update. Defaults to the project's current stage.
-  stage: z.enum(PROJECT_STAGES).optional(),
+  // Free-form string: valid keys come from the project's own stage snapshot.
+  stage: z.string().trim().min(1).max(80).optional(),
 });
 
 export type TaskInput = z.infer<typeof taskSchema>;
@@ -98,6 +100,7 @@ export async function getTask(projectId: number, id: number) {
 }
 
 export async function createTask(projectId: number, input: TaskInput, createdBy: number, stage: string) {
+  await assertProjectStage(projectId, stage);
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO tasks (project_id, task_name, description, assigned_user_id, due_date, start_date,
        completed_date, requested_date, actual_date, customer_quote_price, priority, status, completed_at, created_by, stage, sort_order)
