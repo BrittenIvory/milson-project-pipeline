@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
-import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronRight, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -16,6 +16,7 @@ import {
   TextInput,
 } from './ui';
 import { useAuth } from '../context/AuthContext';
+import TaskCommentReactions from './TaskCommentReactions';
 import {
   apiErrorMessage,
   supplierQuotesApi,
@@ -117,6 +118,9 @@ export default function TasksPanel({
   const [collapsedOverride, setCollapsedOverride] = useState<Record<string, boolean>>({});
   const commentRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
   const commentSendRef = useRef(new Set<number>());
+  const [replyTarget, setReplyTarget] = useState<ProjectTaskComment | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [earlierRepliesOpen, setEarlierRepliesOpen] = useState<Set<number>>(new Set());
   const quoteLoadId = useRef(0);
 
   const load = useCallback(async () => {
@@ -304,6 +308,48 @@ export default function TasksPanel({
     } finally {
       commentSendRef.current.delete(taskId);
     }
+  };
+
+  const updateCommentInList = (taskId: number, updated: ProjectTaskComment) => {
+    setComments((current) => ({
+      ...current,
+      [taskId]: (current[taskId] ?? []).map((item) => (item.id === updated.id ? updated : item)),
+    }));
+  };
+
+  const toggleEarlierReplies = (rootId: number) => {
+    setEarlierRepliesOpen((current) => {
+      const next = new Set(current);
+      if (next.has(rootId)) next.delete(rootId);
+      else next.add(rootId);
+      return next;
+    });
+  };
+
+  const addReply = async (taskId: number, parent: ProjectTaskComment) => {
+    const body = replyDrafts[parent.id]?.trim();
+    if (!body) return;
+    try {
+      const comment = await taskCommentsApi.create(projectId, taskId, body, parent.id);
+      setComments((current) => ({ ...current, [taskId]: [...(current[taskId] ?? []), comment] }));
+      setReplyDrafts((current) => ({ ...current, [parent.id]: '' }));
+      setReplyTarget(null);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to add reply'));
+    }
+  };
+
+  const rootIdOf = (comment: ProjectTaskComment, list: ProjectTaskComment[]) => {
+    const byId = new Map(list.map((c) => [c.id, c]));
+    const seen = new Set<number>();
+    let current = comment;
+    while (current.replyToId && !seen.has(current.id)) {
+      seen.add(current.id);
+      const parent = byId.get(current.replyToId);
+      if (!parent) break;
+      current = parent;
+    }
+    return current.id;
   };
 
   const saveComment = async (comment: ProjectTaskComment) => {
@@ -650,30 +696,112 @@ export default function TasksPanel({
                         </button>
                         {expanded[task.id] && (
                           <div className="mt-3 space-y-3 rounded-xl bg-slate-50 p-3">
-                            {taskComments.map((comment) => (
-                              <div key={comment.id} className="rounded-lg border border-slate-200 bg-white p-3">
-                                <div className="mb-1 flex items-center justify-between gap-2">
-                                  <p className="text-xs text-slate-500">
-                                    <span className="font-medium text-slate-700">{comment.authorName ?? 'Unknown'}</span> · {formatDateTime(comment.createdAt)}
-                                  </p>
-                                  {(user?.id === comment.authorId || user?.role === 'administrator') && (
-                                    <div className="flex gap-1">
-                                      <button aria-label="Edit comment" onClick={() => { setEditingComment(comment.id); setEditingBody(comment.body); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil className="h-3.5 w-3.5" /></button>
-                                      <button aria-label="Delete comment" onClick={() => setPendingCommentDelete(comment)} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                                    </div>
-                                  )}
-                                </div>
-                                {editingComment === comment.id ? (
-                                  <div className="space-y-2">
-                                    <TextArea value={editingBody} onChange={(e) => setEditingBody(e.target.value)} />
+                            {(() => {
+                              const renderReplyBox = (parent: ProjectTaskComment) =>
+                                replyTarget?.id === parent.id ? (
+                                  <div className="mt-2 space-y-2">
+                                    <TextArea
+                                      autoFocus
+                                      value={replyDrafts[parent.id] ?? ''}
+                                      onChange={(e) =>
+                                        setReplyDrafts((current) => ({ ...current, [parent.id]: e.target.value }))
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                                          e.preventDefault();
+                                          if (!e.repeat) void addReply(task.id, parent);
+                                        }
+                                      }}
+                                      placeholder={`Reply to ${parent.authorName ?? 'comment'}… use @ to mention someone`}
+                                    />
                                     <div className="flex justify-end gap-2">
-                                      <Button variant="secondary" onClick={() => setEditingComment(null)}>Cancel</Button>
-                                      <Button onClick={() => saveComment(comment)}>Save</Button>
+                                      <Button variant="secondary" onClick={() => setReplyTarget(null)}>Cancel</Button>
+                                      <Button
+                                        disabled={!replyDrafts[parent.id]?.trim()}
+                                        onClick={() => void addReply(task.id, parent)}
+                                      >
+                                        Reply
+                                      </Button>
                                     </div>
                                   </div>
-                                ) : <NoteBody body={comment.body} />}
-                              </div>
-                            ))}
+                                ) : null;
+                              const renderComment = (comment: ProjectTaskComment) => (
+                                <div key={comment.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                                  <div className="mb-1 flex items-center justify-between gap-2">
+                                    <p className="text-xs text-slate-500">
+                                      <span className="font-medium text-slate-700">{comment.authorName ?? 'Unknown'}</span> · {formatDateTime(comment.createdAt)}
+                                    </p>
+                                    {(user?.id === comment.authorId || user?.role === 'administrator') && (
+                                      <div className="flex gap-1">
+                                        <button aria-label="Edit comment" onClick={() => { setEditingComment(comment.id); setEditingBody(comment.body); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil className="h-3.5 w-3.5" /></button>
+                                        <button aria-label="Delete comment" onClick={() => setPendingCommentDelete(comment)} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {editingComment === comment.id ? (
+                                    <div className="space-y-2">
+                                      <TextArea value={editingBody} onChange={(e) => setEditingBody(e.target.value)} />
+                                      <div className="flex justify-end gap-2">
+                                        <Button variant="secondary" onClick={() => setEditingComment(null)}>Cancel</Button>
+                                        <Button onClick={() => saveComment(comment)}>Save</Button>
+                                      </div>
+                                    </div>
+                                  ) : <NoteBody body={comment.body} />}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <TaskCommentReactions
+                                      projectId={projectId}
+                                      taskId={task.id}
+                                      comment={comment}
+                                      onUpdated={(updated) => updateCommentInList(task.id, updated)}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setReplyTarget((current) => (current?.id === comment.id ? null : comment))}
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-brand-700"
+                                    >
+                                      <Reply className="h-3.5 w-3.5" /> Reply
+                                    </button>
+                                  </div>
+                                  {renderReplyBox(comment)}
+                                </div>
+                              );
+                              const topLevel = taskComments.filter((c) => rootIdOf(c, taskComments) === c.id);
+                              const repliesByRoot = new Map<number, ProjectTaskComment[]>();
+                              for (const c of taskComments) {
+                                const rootId = rootIdOf(c, taskComments);
+                                if (rootId !== c.id) {
+                                  const list = repliesByRoot.get(rootId) ?? [];
+                                  list.push(c);
+                                  repliesByRoot.set(rootId, list);
+                                }
+                              }
+                              return topLevel.map((comment) => {
+                                const replies = repliesByRoot.get(comment.id) ?? [];
+                                const showEarlier = earlierRepliesOpen.has(comment.id);
+                                const visibleReplies = showEarlier ? replies : replies.slice(-1);
+                                return (
+                                  <Fragment key={comment.id}>
+                                    {renderComment(comment)}
+                                    {replies.length > 0 && (
+                                      <div className="ml-4 space-y-3 border-l-2 border-slate-200 pl-3">
+                                        {replies.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleEarlierReplies(comment.id)}
+                                            className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                                          >
+                                            {showEarlier
+                                              ? 'Show latest reply only'
+                                              : `Show ${replies.length - 1} earlier ${replies.length - 1 === 1 ? 'reply' : 'replies'}`}
+                                          </button>
+                                        )}
+                                        {visibleReplies.map(renderComment)}
+                                      </div>
+                                    )}
+                                  </Fragment>
+                                );
+                              });
+                            })()}
                             <div className="relative">
                               <TextArea
                                 ref={(element) => { commentRefs.current[task.id] = element; }}

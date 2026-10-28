@@ -142,8 +142,10 @@ export interface ProjectTaskComment {
   authorId: number | null;
   authorName: string | null;
   body: string;
+  replyToId: number | null;
   createdAt: string;
   updatedAt: string;
+  reactions: NoteReaction[];
 }
 
 export interface Supplier {

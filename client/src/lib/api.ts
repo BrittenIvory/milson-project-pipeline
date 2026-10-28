@@ -228,9 +228,12 @@ export const taskCommentsApi = {
     http
       .get<ProjectTaskComment[]>(`/projects/${projectId}/tasks/${taskId}/comments`)
       .then((r) => r.data),
-  create: (projectId: number, taskId: number, body: string) =>
+  create: (projectId: number, taskId: number, body: string, replyToCommentId?: number) =>
     http
-      .post<ProjectTaskComment>(`/projects/${projectId}/tasks/${taskId}/comments`, { body })
+      .post<ProjectTaskComment>(`/projects/${projectId}/tasks/${taskId}/comments`, {
+        body,
+        ...(replyToCommentId ? { replyToCommentId } : {}),
+      })
       .then((r) => r.data),
   update: (projectId: number, taskId: number, commentId: number, body: string) =>
     http
@@ -241,6 +244,13 @@ export const taskCommentsApi = {
       .then((r) => r.data),
   remove: (projectId: number, taskId: number, commentId: number) =>
     http.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`),
+  react: (projectId: number, taskId: number, commentId: number, emoji: string) =>
+    http
+      .put<ProjectTaskComment>(
+        `/projects/${projectId}/tasks/${taskId}/comments/${commentId}/reactions`,
+        { emoji },
+      )
+      .then((r) => r.data),
 };
 
 export type SupplierQuotePayload = Pick<

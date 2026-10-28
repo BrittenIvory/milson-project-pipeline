@@ -367,14 +367,6 @@ export default function NotesPanel({
                   · {formatDateTime(note.createdAt)}
                 </p>
                 <div className="flex gap-1">
-                  <button
-                    title="Reply — notifies the commenter without @tagging them"
-                    aria-label="Reply to comment"
-                    onClick={() => startReply(note)}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                  >
-                    <Reply className="h-3.5 w-3.5" />
-                  </button>
                 {(user?.id === note.authorId || user?.role === 'administrator') && (
                   <>
                     <button
@@ -400,14 +392,6 @@ export default function NotesPanel({
                 )}
                 </div>
               </div>
-              {note.replyToId && (
-                <p className="mb-2 border-l-2 border-slate-200 pl-2 text-xs text-slate-500">
-                  <span className="font-medium text-slate-600">
-                    {note.replyToAuthorName ?? 'Deleted comment'}
-                  </span>
-                  {note.replyToPreview ? `: ${note.replyToPreview}` : ''}
-                </p>
-              )}
               {editingId === note.id ? (
                 <div className="space-y-2">
                   <TextArea
@@ -426,15 +410,25 @@ export default function NotesPanel({
               ) : (
                 <NoteBody body={note.body} />
               )}
-              <NoteReactions
-                projectId={projectId}
-                note={note}
-                onUpdated={(updated) =>
-                  setNotes((current) =>
-                    current.map((n) => (n.id === updated.id ? updated : n)),
-                  )
-                }
-              />
+              <div className="flex items-center justify-between gap-2">
+                <NoteReactions
+                  projectId={projectId}
+                  note={note}
+                  onUpdated={(updated) =>
+                    setNotes((current) =>
+                      current.map((n) => (n.id === updated.id ? updated : n)),
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  title="Reply — notifies the commenter without @tagging them"
+                  onClick={() => startReply(note)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-brand-700"
+                >
+                  <Reply className="h-3.5 w-3.5" /> Reply
+                </button>
+              </div>
             </div>
             {renderReplyBox(note)}
             {replies.length > 0 && (
@@ -464,14 +458,6 @@ export default function NotesPanel({
                             · {formatDateTime(reply.createdAt)}
                           </p>
                           <div className="flex gap-1">
-                            <button
-                              title="Reply — notifies the commenter without @tagging them"
-                              aria-label="Reply to comment"
-                              onClick={() => startReply(reply)}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                            >
-                              <Reply className="h-3.5 w-3.5" />
-                            </button>
                             {(user?.id === reply.authorId || user?.role === 'administrator') && (
                               <>
                                 <button
@@ -497,14 +483,6 @@ export default function NotesPanel({
                             )}
                           </div>
                         </div>
-                        {reply.replyToId && (
-                          <p className="mb-2 border-l-2 border-slate-200 pl-2 text-xs text-slate-500">
-                            <span className="font-medium text-slate-600">
-                              {reply.replyToAuthorName ?? 'Deleted comment'}
-                            </span>
-                            {reply.replyToPreview ? `: ${reply.replyToPreview}` : ''}
-                          </p>
-                        )}
                         {editingId === reply.id ? (
                           <div className="space-y-2">
                             <TextArea
@@ -523,15 +501,25 @@ export default function NotesPanel({
                         ) : (
                           <NoteBody body={reply.body} />
                         )}
-                        <NoteReactions
-                          projectId={projectId}
-                          note={reply}
-                          onUpdated={(updated) =>
-                            setNotes((current) =>
-                              current.map((n) => (n.id === updated.id ? updated : n)),
-                            )
-                          }
-                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <NoteReactions
+                            projectId={projectId}
+                            note={reply}
+                            onUpdated={(updated) =>
+                              setNotes((current) =>
+                                current.map((n) => (n.id === updated.id ? updated : n)),
+                              )
+                            }
+                          />
+                          <button
+                            type="button"
+                            title="Reply — notifies the commenter without @tagging them"
+                            onClick={() => startReply(reply)}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-brand-700"
+                          >
+                            <Reply className="h-3.5 w-3.5" /> Reply
+                          </button>
+                        </div>
                         {renderReplyBox(reply)}
                       </li>
                     ))}

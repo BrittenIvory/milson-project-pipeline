@@ -10,7 +10,10 @@ import {
   createComment,
   deleteComment,
   getComment,
+  getCommentAuthorId,
   listComments,
+  reactionSchema,
+  toggleReaction,
   updateComment,
 } from '../services/taskCommentService';
 
@@ -47,7 +50,7 @@ router.post(
     const task = await getTask(projectId, taskId);
     const project = await getProject(projectId);
     const input = commentSchema.parse(req.body);
-    const comment = await createComment(taskId, input.body, req.user!.id);
+    const comment = await createComment(taskId, input.body, req.user!.id, input.replyToCommentId ?? null);
     await logActivity({
       actor: req.user ?? null,
       action: 'Comment Added',
@@ -55,13 +58,32 @@ router.post(
       entityId: projectId,
       detail: `${task.taskName}: ${input.body.slice(0, 120)}`,
     });
+    // The reply notification already reaches the parent author — don't also
+    // send them a mention alert if the reply body @tags them.
+    const replyRecipient = comment.replyToId
+      ? await getCommentAuthorId(taskId, comment.replyToId)
+      : null;
     for (const mention of await resolveMentions(input.body)) {
+      if (replyRecipient !== null && mention.id === replyRecipient && mention.id !== req.user?.id)
+        continue;
       await notify({
         userId: mention.id,
         actorId: req.user!.id,
         allowSelf: true,
         type: 'comment_mention',
         title: `${req.user!.fullName} mentioned you`,
+        body: `${project.projectNumber} — ${task.taskName}: ${input.body.slice(0, 120)}`,
+        projectId,
+        entityType: 'task',
+        entityId: taskId,
+      });
+    }
+    if (replyRecipient !== null) {
+      await notify({
+        userId: replyRecipient,
+        actorId: req.user?.id,
+        type: 'task_reply',
+        title: `${req.user?.fullName} replied to your comment`,
         body: `${project.projectNumber} — ${task.taskName}: ${input.body.slice(0, 120)}`,
         projectId,
         entityType: 'task',
@@ -82,6 +104,18 @@ router.put(
     const existing = await getComment(taskId, commentId);
     assertCanModify(existing.authorId, req);
     res.json(await updateComment(taskId, commentId, commentSchema.parse(req.body).body));
+  }),
+);
+
+router.put(
+  '/:commentId/reactions',
+  asyncHandler(async (req, res) => {
+    const projectId = idOf(req.params.projectId, 'project id');
+    const taskId = idOf(req.params.taskId, 'task id');
+    const commentId = idOf(req.params.commentId, 'comment id');
+    await getTask(projectId, taskId);
+    const { emoji } = reactionSchema.parse(req.body);
+    res.json(await toggleReaction(taskId, commentId, emoji, req.user!.id));
   }),
 );
 
