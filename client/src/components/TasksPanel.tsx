@@ -31,9 +31,20 @@ import { CLOSED_TASK_STATUSES, PRIORITIES, PROJECT_STAGES, TASK_STATUSES } from 
 import { formatDateTime, isOverdue, priorityMeta, stageMeta } from '../lib/format';
 import type { ProjectTask, ProjectTaskComment, Supplier, SupplierQuote, User } from '../types';
 
-const SUPPLIER_SELECTION_TASK = 'Supplier(s) selected';
-const QUOTE_REVIEW_TASK = 'Quote reviewed and accepted';
-const FORMAL_QUOTE_TASK = 'Formal quote generated';
+// Task-name matching covers both the legacy checklist names and the current
+// sheet-based template names (old project snapshots keep the former).
+const SUPPLIER_SELECTION_TASKS = new Set([
+  'Supplier(s) selected',
+  'Supplier(s) selected [tick boxes below for each supplier]',
+]);
+const QUOTE_REVIEW_TASKS = new Set([
+  'Quote reviewed and accepted',
+  'Quotes reviewed & accepted [task per supplier ticked]',
+]);
+const FORMAL_QUOTE_TASKS = new Set([
+  'Formal quote generated',
+  'Formal quote generated & sent to cust.',
+]);
 
 const emptyTask: TaskPayload = {
   taskName: '',
@@ -122,7 +133,7 @@ export default function TasksPanel({
       const taskData = await tasksApi.list(projectId);
       if (currentLoadId !== quoteLoadId.current) return;
       setTasks(taskData);
-      const formalQuoteTask = taskData.find((task) => task.taskName === FORMAL_QUOTE_TASK);
+      const formalQuoteTask = taskData.find((task) => FORMAL_QUOTE_TASKS.has(task.taskName));
       setCustomerQuoteDraft(formalQuoteTask?.customerQuotePrice?.toFixed(2) ?? '');
       setError(null);
     } catch (err) {
@@ -237,7 +248,7 @@ export default function TasksPanel({
   };
 
   const selectedQuotes = supplierQuotes.filter((quote) => quote.selected);
-  const formalQuoteTask = tasks.find((task) => task.taskName === FORMAL_QUOTE_TASK);
+  const formalQuoteTask = tasks.find((task) => FORMAL_QUOTE_TASKS.has(task.taskName));
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
@@ -543,7 +554,7 @@ export default function TasksPanel({
                                 </span>
                               )}
                             </div>
-                            {task.taskName === SUPPLIER_SELECTION_TASK && (
+                            {SUPPLIER_SELECTION_TASKS.has(task.taskName) && (
                               <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                                 <div className="mb-2 flex items-center justify-between gap-2">
                                   <div>
@@ -572,7 +583,7 @@ export default function TasksPanel({
                                 )}
                               </div>
                             )}
-                            {task.taskName === QUOTE_REVIEW_TASK && (
+                            {QUOTE_REVIEW_TASKS.has(task.taskName) && (
                               <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                                 <div className="mb-2">
                                   <p className="text-xs font-semibold text-slate-700">Supplier quotes</p>
@@ -637,7 +648,7 @@ export default function TasksPanel({
                                 )}
                               </div>
                             )}
-                            {task.taskName === FORMAL_QUOTE_TASK && (
+                            {FORMAL_QUOTE_TASKS.has(task.taskName) && (
                               <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                                 <p className="text-xs font-semibold text-slate-700">Customer quote</p>
                                 <p className="mt-1 text-xs text-slate-500">

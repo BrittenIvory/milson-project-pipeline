@@ -192,7 +192,7 @@ const SELECT_PROJECT = `
          (
            SELECT t.customer_quote_price
            FROM tasks t
-           WHERE t.project_id = p.id AND t.task_name = 'Formal quote generated'
+           WHERE t.project_id = p.id AND t.task_name IN ('Formal quote generated', 'Formal quote generated & sent to cust.')
            ORDER BY t.created_at, t.id
            LIMIT 1
          ) AS customer_quote_price,
