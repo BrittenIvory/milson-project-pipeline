@@ -275,14 +275,17 @@ export default function ProjectTable({
                     left: pinned ? offsets[column.id] : undefined,
                   }}
                   className={clsx(
-                    'group relative select-none px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 cursor-grab active:cursor-grabbing',
+                    'group relative select-none py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 cursor-grab active:cursor-grabbing',
+                    column.header ? 'px-1' : 'px-3',
                     pinned && 'sticky z-10 bg-slate-50',
                     dragOverId === column.id && 'bg-brand-50 ring-2 ring-inset ring-brand-300',
                   )}
                   title={`Drag to reorder ${column.label}`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <GripVertical className="h-3 w-3 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
+                    {!column.header && (
+                      <GripVertical className="h-3 w-3 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
+                    )}
                     {column.sortable === false ? (
                       column.header ?? <span className="truncate">{column.label}</span>
                     ) : (
