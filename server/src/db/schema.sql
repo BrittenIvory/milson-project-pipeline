@@ -349,3 +349,17 @@ FROM (
   FROM tasks
 ) sub
 WHERE t.id = sub.id AND t.sort_order IS NULL;
+
+-- Task comment threading + reactions (parity with project notes).
+ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS reply_to_comment_id INTEGER REFERENCES task_comments(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS task_comment_reactions (
+  id         SERIAL PRIMARY KEY,
+  comment_id INTEGER NOT NULL REFERENCES task_comments(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji      TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (comment_id, user_id, emoji)
+);
+
+CREATE INDEX IF NOT EXISTS task_comment_reactions_comment_idx ON task_comment_reactions (comment_id);
