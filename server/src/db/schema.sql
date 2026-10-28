@@ -452,4 +452,12 @@ ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 -- is deleted, so origin records the source permanently. Template application
 -- deletes only origin='seeded' rows.
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
-UPDATE tasks SET origin = 'seeded' WHERE created_by IS NULL;
+-- One-time backfill: running it every boot would reclassify manual tasks whose
+-- creator account was later deleted (created_by goes NULL via its foreign key).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM schema_meta WHERE key = 'tasks_origin_backfilled') THEN
+    UPDATE tasks SET origin = 'seeded' WHERE created_by IS NULL;
+    INSERT INTO schema_meta (key, value) VALUES ('tasks_origin_backfilled', '1') ON CONFLICT (key) DO NOTHING;
+  END IF;
+END $$;

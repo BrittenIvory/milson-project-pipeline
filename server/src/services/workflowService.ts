@@ -41,8 +41,8 @@ export async function seedStageTasks(projectId: number, stage: string): Promise<
     }
     const result = await client.query(
       `INSERT INTO tasks (project_id, task_name, stage, status, priority, assigned_user_id, created_by, sort_order, origin)
-       SELECT $1, names.task_name, $2, 'not_started', 'medium', NULL, NULL,'seeded',
-              pos.max_order + names.rn
+       SELECT $1, names.task_name, $2, 'not_started', 'medium', NULL, NULL,
+              pos.max_order + names.rn, 'seeded'
        FROM unnest($3::text[]) WITH ORDINALITY AS names(task_name, rn),
             (SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM tasks WHERE project_id = $1) pos
        WHERE NOT EXISTS (
