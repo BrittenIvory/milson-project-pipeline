@@ -70,6 +70,7 @@ function ProjectCard({ project }: { project: Project }) {
         <ProjectComments
           projectId={project.id}
           projectNumber={project.projectNumber}
+          projectName={project.projectName}
           partNumber={project.internalPartNumber ?? project.customerPartNumber}
         />
       </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, MessageSquare, Reply, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
@@ -18,18 +18,24 @@ const OPEN_EVENT = 'milson-project-comments-open';
 interface ProjectCommentsProps {
   projectId: number;
   projectNumber: string;
+  projectName?: string | null;
   partNumber?: string | null;
 }
 
-export default function ProjectComments({ projectId, projectNumber, partNumber }: ProjectCommentsProps) {
+const PANEL_WIDTH_KEY = 'milson-comments-panel-width';
+const PANEL_MIN_WIDTH = 280;
+
+export default function ProjectComments({ projectId, projectNumber, projectName, partNumber }: ProjectCommentsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const notesListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
-  const [popoverPosition, setPopoverPosition] = useState({ left: 8, top: 8 });
-  const [popoverWidth, setPopoverWidth] = useState(320);
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
+    return Number.isFinite(stored) && stored >= PANEL_MIN_WIDTH ? stored : 384;
+  });
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -87,35 +93,25 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
     };
   }, [open]);
 
-  const updatePosition = useCallback(() => {
-      const button = buttonRef.current;
-      if (!button) return;
-      const rect = button.getBoundingClientRect();
-      const popupWidth = Math.min(320, Math.max(0, window.innerWidth - 16));
-      const sidebarInset = window.matchMedia('(min-width: 1024px)').matches ? 264 : 8;
-      setPopoverWidth(popupWidth);
-      setPopoverPosition({
-        left: Math.min(
-          Math.max(sidebarInset, rect.left - popupWidth - 8),
-          window.innerWidth - popupWidth - 8,
-        ),
-        top: Math.max(
-          8,
-          Math.min(rect.top, window.innerHeight - (popoverRef.current?.offsetHeight ?? 360) - 8),
-        ),
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
+  // Drag the panel's left edge to resize; the choice persists.
+  const startResize = (event: React.PointerEvent) => {
+    event.preventDefault();
+    const start = { x: event.clientX, width: panelWidth };
+    const onMove = (move: PointerEvent) => {
+      const next = start.width + (start.x - move.clientX);
+      setPanelWidth(Math.min(Math.max(next, PANEL_MIN_WIDTH), Math.max(PANEL_MIN_WIDTH, window.innerWidth - 64)));
     };
-  }, [open, updatePosition]);
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setPanelWidth((current) => {
+        localStorage.setItem(PANEL_WIDTH_KEY, String(current));
+        return current;
+      });
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -142,7 +138,6 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
       .finally(() => {
         if (notesVersion === notesLoadVersion.current) {
           setLoading(false);
-          requestAnimationFrame(updatePosition);
         }
       });
     usersApi
@@ -292,40 +287,32 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
 
   const renderNoteCard = (note: ProjectNote, isReply: boolean) => (
     <div className={`rounded-lg p-2 ${isReply ? 'border border-slate-200 bg-slate-50' : 'bg-slate-50'}`}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] text-slate-500">
-          <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>
-          {' · '}
-          {formatDateTime(note.createdAt)}
-        </p>
+      <p className="text-[11px] text-slate-500">
+        <span className="font-medium text-slate-700">{note.authorName ?? 'Unknown'}</span>
+        {' · '}
+        {formatDateTime(note.createdAt)}
+      </p>
+      <p className="mt-1 whitespace-pre-line text-xs text-slate-700">{note.body}</p>
+      <div className="flex items-center justify-between gap-2">
+        <NoteReactions
+          projectId={projectId}
+          note={note}
+          onUpdated={(updated) =>
+            setNotes((current) =>
+              current.map((n) => (n.id === updated.id ? updated : n)),
+            )
+          }
+        />
         <button
           type="button"
           title="Reply — notifies the commenter without @tagging them"
           aria-label="Reply to comment"
           onClick={() => startReply(note)}
-          className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-400 hover:bg-slate-100 hover:text-slate-700"
         >
-          <Reply className="h-3 w-3" />
+          <Reply className="h-3 w-3" /> Reply
         </button>
       </div>
-      {note.replyToId && (
-        <p className="mt-1 border-l-2 border-slate-200 pl-2 text-[11px] text-slate-500">
-          <span className="font-medium text-slate-600">
-            {note.replyToAuthorName ?? 'Deleted comment'}
-          </span>
-          {note.replyToPreview ? `: ${note.replyToPreview}` : ''}
-        </p>
-      )}
-      <p className="mt-1 whitespace-pre-line text-xs text-slate-700">{note.body}</p>
-      <NoteReactions
-        projectId={projectId}
-        note={note}
-        onUpdated={(updated) =>
-          setNotes((current) =>
-            current.map((n) => (n.id === updated.id ? updated : n)),
-          )
-        }
-      />
     </div>
   );
 
@@ -432,12 +419,22 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
         createPortal(
         <div
           ref={popoverRef}
-          className="fixed z-50 max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
-          style={{ left: popoverPosition.left, top: popoverPosition.top, width: popoverWidth }}
+          className="fixed bottom-2 right-2 top-14 z-50 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+          style={{ width: Math.min(panelWidth, Math.max(PANEL_MIN_WIDTH, window.innerWidth - 16)) }}
         >
-          <div className="mb-2 flex items-start justify-between gap-2">
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize comments panel"
+            title="Drag to resize"
+            onPointerDown={startResize}
+            className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-ew-resize hover:bg-brand-200"
+          />
+          <div className="mb-2 flex items-start justify-between gap-2 px-3 pt-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-700">Project comments</p>
+              <p className="text-xs font-semibold text-slate-700">
+                {projectName ?? 'Project comments'}
+              </p>
               <p className="truncate text-[11px] text-slate-500">
                 {projectNumber}
                 {partNumber ? ` · ${partNumber}` : ''}
@@ -452,16 +449,17 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
               <X className="h-4 w-4" />
             </button>
           </div>
-          <ErrorBanner message={error} />
-          {mentionError && <p className="mb-2 text-xs text-amber-700">{mentionError}</p>}
-          {loading ? (
-            <SkeletonRows rows={2} />
-          ) : (
-            <>
-              {notes.length === 0 ? (
-                <EmptyState title="No comments yet" description="Add the first project comment." />
-              ) : (
-                <div ref={notesListRef} className="mb-3 max-h-72 space-y-2 overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+            <ErrorBanner message={error} />
+            {mentionError && <p className="mb-2 text-xs text-amber-700">{mentionError}</p>}
+            {loading ? (
+              <SkeletonRows rows={2} />
+            ) : (
+              <>
+                {notes.length === 0 ? (
+                  <EmptyState title="No comments yet" description="Add the first project comment." />
+                ) : (
+                  <div ref={notesListRef} className="mb-3 min-h-0 flex-1 space-y-2 overflow-y-auto">
                   {topLevel.map((note) => {
                     const replies = repliesByRoot.get(note.id) ?? [];
                     const earlierOpen = earlierRepliesOpen.has(note.id);
@@ -540,8 +538,9 @@ export default function ProjectComments({ projectId, projectNumber, partNumber }
                   </Button>
                 </div>
               </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>,
         document.body,
       )}
