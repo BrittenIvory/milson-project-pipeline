@@ -102,6 +102,23 @@ export default function ProjectDetailPage() {
   const [showAllDetails, setShowAllDetails] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState(false);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+
+  const applyTemplate = async () => {
+    if (applyingTemplate) return;
+    setApplyingTemplate(true);
+    setError(null);
+    try {
+      await projectsApi.applyTemplate(projectId);
+      setPendingTemplate(false);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to apply the new template'));
+    } finally {
+      setApplyingTemplate(false);
+    }
+  };
 
   const deleteProject = async () => {
     if (deleting || !project) return;
@@ -271,6 +288,7 @@ export default function ProjectDetailPage() {
           error={error}
           submitLabel="Save changes"
           projectNumber={project.projectNumber}
+          stageOptions={project.stages}
         />
       </div>
     );
@@ -322,12 +340,17 @@ export default function ProjectDetailPage() {
               onChange={(e) => patch({ currentStage: e.target.value })}
               className="w-48"
             >
-              {PROJECT_STAGES.map((stage) => (
-                <option key={stage.value} value={stage.value}>
+              {(project.stages.length ? project.stages : PROJECT_STAGES.map((s) => ({ key: s.value, label: s.label }))).map((stage) => (
+                <option key={stage.key} value={stage.key}>
                   {stage.label}
                 </option>
               ))}
             </Select>
+            {project.templateUpdateAvailable && (
+              <Button variant="secondary" onClick={() => setPendingTemplate(true)}>
+                Update to new template
+              </Button>
+            )}
             <Select
               aria-label="Priority"
               value={project.priority}
@@ -548,7 +571,7 @@ export default function ProjectDetailPage() {
       <Suspense fallback={<Card><SkeletonRows rows={4} /></Card>}>
         {tab === 'tasks' && (
           <Card>
-            <TasksPanel projectId={projectId} currentStage={project.currentStage} onChanged={load} />
+            <TasksPanel projectId={projectId} currentStage={project.currentStage} stages={project.stages} onChanged={load} />
           </Card>
         )}
 
@@ -603,6 +626,15 @@ export default function ProjectDetailPage() {
         loading={deleting}
         onConfirm={deleteProject}
         onCancel={() => setPendingDelete(false)}
+      />
+      <ConfirmDialog
+        open={pendingTemplate}
+        title="Update project template"
+        message={`Apply the latest “${project.projectTypeName ?? 'project'}” template to this project? The stage checklist is rebuilt — tasks added by hand are kept, tasks whose stage no longer exists move to Other.`}
+        confirmLabel="Apply template"
+        loading={applyingTemplate}
+        onConfirm={applyTemplate}
+        onCancel={() => setPendingTemplate(false)}
       />
     </div>
   );

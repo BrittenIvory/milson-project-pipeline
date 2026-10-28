@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { query, queryOne } from '../db/pool';
 import { HttpError } from '../middleware/errors';
+import { PROJECT_STAGES, STAGE_LABELS } from '../types';
+import { STAGE_TASK_TEMPLATES } from './workflowService';
 
 export interface ProjectTypeRow {
   id: number;
@@ -22,6 +24,69 @@ export const projectTypeSchema = z.object({
   sortOrder: z.coerce.number().int().optional(),
   isActive: z.coerce.boolean().optional(),
 });
+
+export interface TemplateStage {
+  key: string;
+  label: string;
+  tasks: string[];
+}
+
+export const templateSchema = z.object({
+  stages: z
+    .array(
+      z.object({
+        key: z
+          .string()
+          .trim()
+          .min(1, 'Stage key is required')
+          .max(80)
+          .regex(/^[a-z0-9_]+$/, 'Stage keys may only use lowercase letters, numbers, and underscores'),
+        label: z.string().trim().min(1, 'Stage label is required').max(120),
+        tasks: z.array(z.string().trim().min(1).max(300)).max(200),
+      }),
+    )
+    .min(1, 'At least one stage is required')
+    .max(50),
+});
+
+/** The standard pipeline checklist, used when a type has no saved template. */
+export function defaultTemplate(): TemplateStage[] {
+  return PROJECT_STAGES.map((key) => ({
+    key,
+    label: STAGE_LABELS[key],
+    tasks: STAGE_TASK_TEMPLATES[key] ?? [],
+  }));
+}
+
+/** The type's current editable template (or the default) with its version. */
+export async function getTypeTemplate(
+  typeId: number | null,
+): Promise<{ version: number; stages: TemplateStage[] }> {
+  if (typeId == null) return { version: 0, stages: defaultTemplate() };
+  const row = await queryOne<{ template: unknown; template_version: number }>(
+    'SELECT template, template_version FROM project_types WHERE id = $1',
+    [typeId],
+  );
+  const parsed = templateSchema.shape.stages.safeParse(row?.template);
+  if (parsed.success && parsed.data.length > 0) {
+    return { version: row!.template_version, stages: parsed.data };
+  }
+  return { version: row?.template_version ?? 0, stages: defaultTemplate() };
+}
+
+/** Saves a new template version; existing projects only pick it up via apply-template. */
+export async function saveTemplate(
+  id: number,
+  stages: TemplateStage[],
+): Promise<{ version: number; stages: TemplateStage[] }> {
+  const row = await queryOne<{ template_version: number }>(
+    `UPDATE project_types SET template = $2::jsonb, template_version = template_version + 1
+     WHERE id = $1 RETURNING template_version`,
+    [id, JSON.stringify(stages)],
+  );
+  if (!row) throw new HttpError(404, 'Project type not found');
+  return { version: row.template_version, stages };
+}
 
 /** Active types for pickers; `includeInactive` for the admin manager. */
 export async function listProjectTypes(includeInactive = false) {

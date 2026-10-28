@@ -74,6 +74,10 @@ export interface Project {
   priority: 'low' | 'medium' | 'high' | 'critical';
   projectTypeId: number | null;
   projectTypeName: string | null;
+  /** The stage list this project snapped from its type template, in order. */
+  stages: { key: string; label: string }[];
+  /** True when the type's template was saved again after this project's snapshot. */
+  templateUpdateAvailable: boolean;
   targetQuoteDate: string | null;
   notes: string | null;
   partImageFileName: string | null;
@@ -241,6 +245,17 @@ export interface DashboardSummary extends ProjectStats {
 }
 
 /** Filters accepted by the project list endpoint. */
+export interface TemplateStage {
+  key: string;
+  label: string;
+  tasks: string[];
+}
+
+export interface TypeTemplate {
+  version: number;
+  stages: TemplateStage[];
+}
+
 export interface ProjectType {
   id: number;
   name: string;

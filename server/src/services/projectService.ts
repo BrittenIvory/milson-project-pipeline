@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import { pool, query, queryOne } from '../db/pool';
 import { HttpError } from '../middleware/errors';
-import { PRIORITIES, PROJECT_STAGES } from '../types';
+import { PRIORITIES } from '../types';
 import { calculateQuickQuote } from './quickQuoteService';
-import { seedStageTasks } from './workflowService';
-import { assertProjectTypeAssignable, defaultProjectTypeId } from './projectTypeService';
+import { applyStageSnapshot, assertProjectStage } from './workflowService';
+import {
+  assertProjectTypeAssignable,
+  defaultProjectTypeId,
+  getTypeTemplate,
+} from './projectTypeService';
 
 export interface ProjectRow {
   id: number;
@@ -49,6 +53,9 @@ export interface ProjectRow {
   updated_at: string;
   customer_name?: string;
   customer_number?: string;
+  template_version: number;
+  type_template_version?: number | null;
+  stages_json?: { key: string; label: string }[];
   engineer_name?: string | null;
   sales_name?: string | null;
 }
@@ -83,7 +90,7 @@ export const projectSchema = z.object({
   projectTypeId: emptyToNull(z.coerce.number().int().positive()).optional(),
   targetQuoteDate: emptyToNull(z.string()).optional(),
   notes: z.string().trim().max(5000).optional().nullable(),
-  currentStage: z.enum(PROJECT_STAGES).default('intake'),
+  currentStage: z.string().trim().min(1).max(80).default('intake'),
 });
 
 export type ProjectInput = z.infer<typeof projectSchema>;
@@ -161,6 +168,8 @@ export function toProjectDto(row: ProjectRow) {
     partImageFileName: row.part_image_file_name,
     partImageMimeType: row.part_image_mime_type,
     partImageSizeBytes: row.part_image_size_bytes === null ? null : Number(row.part_image_size_bytes),
+    stages: row.stages_json ?? [],
+    templateUpdateAvailable: row.template_version < (row.type_template_version ?? 0),
     currentStage: row.current_stage,
     stageStartedAt: row.stage_started_at,
     currentStageDays: row.current_stage_days,
@@ -176,7 +185,10 @@ export const PART_NUMBER_KEY = `COALESCE(NULLIF(p.internal_part_number, ''), NUL
 const SELECT_PROJECT = `
   SELECT p.*, c.company_name AS customer_name, c.customer_number,
          e.full_name AS engineer_name, s.full_name AS sales_name,
-         pt.name AS type_name,
+         pt.name AS type_name, pt.template_version AS type_template_version,
+         (SELECT COALESCE(json_agg(json_build_object('key', ps.key, 'label', ps.label)
+            ORDER BY ps.sort_order), '[]'::json)
+          FROM project_stages ps WHERE ps.project_id = p.id) AS stages_json,
          (
            SELECT t.customer_quote_price
            FROM tasks t
@@ -375,6 +387,10 @@ export async function createProject(input: ProjectInput, createdBy: number) {
     input.projectTypeId != null
       ? await assertProjectTypeAssignable(input.projectTypeId)
       : await defaultProjectTypeId();
+  const template = await getTypeTemplate(typeId);
+  if (!template.stages.some((s) => s.key === input.currentStage)) {
+    throw new HttpError(400, 'Selected stage is not part of this project type');
+  }
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO projects (project_number, customer_id, customer_contact, customer_part_number,
        internal_part_number, customer_machined_part_number, customer_painted_part_number,
@@ -400,9 +416,7 @@ export async function createProject(input: ProjectInput, createdBy: number) {
     ],
   );
   const projectId = (inserted as { id: number }).id;
-  for (const stage of PROJECT_STAGES) {
-    await seedStageTasks(projectId, stage);
-  }
+  await applyStageSnapshot(projectId, template.stages, template.version);
   return getProject(projectId);
 }
 
@@ -414,6 +428,7 @@ export async function updateProject(id: number, input: ProjectInput) {
   if (input.projectTypeId != null) {
     await assertProjectTypeAssignable(input.projectTypeId);
   }
+  await assertProjectStage(id, input.currentStage);
   await pool.query(
     `UPDATE projects SET customer_id=$2, customer_contact=$3, customer_part_number=$4,
        internal_part_number=$5, customer_machined_part_number=$6, customer_painted_part_number=$7,

@@ -401,3 +401,54 @@ BEGIN
 END $$;
 
 CREATE INDEX IF NOT EXISTS projects_type_idx ON projects (project_type_id);
+
+-- Per-type workflow templates + per-project stage snapshots.
+-- project_types.template holds the editable master (version bumps on every
+-- save); each project snapshots it into project_stages at creation, so saved
+-- template changes only reach existing projects via the apply-template action.
+ALTER TABLE project_types ADD COLUMN IF NOT EXISTS template JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE project_types ADD COLUMN IF NOT EXISTS template_version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS template_version INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS project_stages (
+  id         SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  key        TEXT NOT NULL,
+  label      TEXT NOT NULL,
+  tasks      JSONB NOT NULL DEFAULT '[]'::jsonb,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (project_id, key)
+);
+CREATE INDEX IF NOT EXISTS project_stages_project_idx ON project_stages (project_id, sort_order);
+
+-- One-time backfill: existing projects snapshot the standard stage checklist.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM schema_meta WHERE key = 'project_stages_seeded') THEN
+    INSERT INTO project_stages (project_id, key, label, tasks, sort_order)
+    SELECT p.id, s.key, s.label, s.tasks::jsonb, s.rn
+    FROM projects p
+    JOIN (VALUES
+      (1, 'intake', 'Project Intake',
+        '["Information reviewed","Create Engineering number","Setup SharePoint folder","Setup PDM folder"]'),
+      (2, 'stage_1_engineering', 'Stage 1 Engineering',
+        '["Define scope and product requirements","Creating MFL quotation drawing"]'),
+      (3, 'production_team_quoting', 'Production Team Quoting',
+        '["Supplier(s) selected","Sent out for quote","Quotes received and stored in Project folder","Quote reviewed and accepted"]'),
+      (4, 'sales', 'Sales',
+        '["Formal quote generated","Advise salesperson","Sent quote to customer","Quote accepted or declined by customer","Advise Engineering","Notify Supplier(s) not go ahead","Send Customer Credit Form","Enter Customer into ERP","Enter Sales Order for Samples and Pattern"]'),
+      (5, 'stage_2_production', 'Stage 2 Engineering',
+        '["Detailed design study","FEA study","MFL production CAD created","MFL production drawing created","MFL balloon drawing peer review","MFL balloon drawing accepted","Customer design review and feedback","Customer approval of MFL design","Customer Signed drawing stored in project folder","MFL FAIR and PSA document created"]'),
+      (6, 'production', 'Tooling & Sampling',
+        '["Sample & Pattern Purchase order created","PO, Design files, FAIR sent to supplier","Add Sample Due Date to system","Sample Production Completed","Completed FAIR received and store in project folder","Sample 3D scanned","Sample 3d Scan and FAIR Approved"]'),
+      (7, 'qa', 'Shipping & QA',
+        '["Sample has been Shipped","Samples Received","Scan Samples","Complete PSA","PSA sent to Customer","Sample has been shipped to Customer","Customer Received Sample","Customer return signed and approved PSA","Completed PSA stored in project folder","Sign FAIR and send to Supplier","Load Part into MYOB","Add Pattern to Register","Logistics set Weight, MOQ, Pallet qty","Enter Production PO from Customer","Confirm Customers Part Number in System"]'),
+      (8, 'completed', 'Completed', '[]')
+    ) AS s(rn, key, label, tasks) ON TRUE;
+    INSERT INTO schema_meta (key, value) VALUES ('project_stages_seeded', '1');
+  END IF;
+END $$;
+
+-- Stage keys are now per-project (template snapshots), so the fixed-list
+-- CHECK no longer applies; membership is validated against project_stages.
+ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
