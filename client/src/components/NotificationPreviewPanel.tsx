@@ -22,6 +22,7 @@ import type {
   ProjectTaskComment,
   User,
 } from '../types';
+import CommentBody from './CommentBody';
 
 const STAGE_LABELS = new Map<string, string>(
   PROJECT_STAGES.map((stage) => [stage.value, stage.label]),
@@ -302,7 +303,7 @@ export default function NotificationPreviewPanel({
           {note.replyToPreview ? `: ${note.replyToPreview}` : ''}
         </p>
       )}
-      <p className="mt-1 whitespace-pre-line text-xs text-slate-700">{note.body}</p>
+      <CommentBody body={note.body} className="mt-1 text-xs" />
       <NoteReactions
         projectId={projectId}
         note={note}
@@ -468,9 +469,7 @@ export default function NotificationPreviewPanel({
                       {' · '}
                       {formatDateTime(comment.createdAt)}
                     </p>
-                    <p className="mt-1 whitespace-pre-line text-xs text-slate-700">
-                      {comment.body}
-                    </p>
+                    <CommentBody body={comment.body} className="mt-1 text-xs" />
                   </div>
                 ))}
               </div>

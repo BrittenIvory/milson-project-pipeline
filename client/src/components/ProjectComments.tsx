@@ -12,6 +12,7 @@ import {
 } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import type { ProjectNote, User } from '../types';
+import CommentBody from './CommentBody';
 
 const OPEN_EVENT = 'milson-project-comments-open';
 
@@ -316,7 +317,7 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
         {' · '}
         {formatDateTime(note.createdAt)}
       </p>
-      <p className="mt-1 whitespace-pre-line text-xs text-slate-700">{note.body}</p>
+      <CommentBody body={note.body} className="mt-1 text-xs" />
       <div className="flex items-center justify-between gap-2">
         <NoteReactions
           projectId={projectId}
