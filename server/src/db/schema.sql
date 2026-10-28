@@ -300,8 +300,14 @@ CREATE TABLE IF NOT EXISTS project_stage_seeds (
   PRIMARY KEY (project_id, stage)
 );
 
-INSERT INTO tasks (project_id, task_name, stage, status, priority)
-SELECT s.project_id, 'Sample Production Completed', 'production', 'not_started', 'medium'
+-- Seeded vs. user-added tasks: created_by goes NULL when the creator's account
+-- is deleted, so origin records the source permanently. Template application
+-- deletes only origin='seeded' rows. Declared here (before the first insert
+-- that sets it); the one-time backfill runs at the end of this file.
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
+
+INSERT INTO tasks (project_id, task_name, stage, status, priority, origin)
+SELECT s.project_id, 'Sample Production Completed', 'production', 'not_started', 'medium', 'seeded'
 FROM project_stage_seeds s
 WHERE s.stage = 'production'
   AND NOT EXISTS (
@@ -448,11 +454,7 @@ END $$;
 -- CHECK no longer applies; membership is validated against project_stages.
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
 
--- Seeded vs. user-added tasks: created_by goes NULL when the creator's account
--- is deleted, so origin records the source permanently. Template application
--- deletes only origin='seeded' rows.
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
--- One-time backfill: running it every boot would reclassify manual tasks whose
+-- One-time origin backfill: running it every boot would reclassify manual tasks whose
 -- creator account was later deleted (created_by goes NULL via its foreign key).
 DO $$
 BEGIN
