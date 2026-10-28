@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button, Card, Checkbox, ErrorBanner, Field, Select, TextArea, TextInput } from './ui';
-import { customersApi, usersApi } from '../lib/api';
+import { customersApi, projectTypesApi, usersApi } from '../lib/api';
 import type { ProjectPayload } from '../lib/api';
 import { PRIORITIES, PROJECT_STAGES } from '../lib/constants';
-import type { Customer, Project, User } from '../types';
+import type { Customer, Project, ProjectType, User } from '../types';
 import CustomerFormModal from './CustomerFormModal';
 
 /** Blank project, defaulted to the Pipeline stage. */
@@ -31,6 +31,7 @@ export const emptyProject: ProjectPayload = {
   assignedEngineerId: null,
   assignedSalesId: null,
   priority: 'medium',
+  projectTypeId: null,
   targetQuoteDate: null,
   notes: '',
   currentStage: 'intake',
@@ -61,6 +62,7 @@ export function projectToPayload(project: Project): ProjectPayload {
     assignedEngineerId: project.assignedEngineerId,
     assignedSalesId: project.assignedSalesId,
     priority: project.priority,
+    projectTypeId: project.projectTypeId,
     targetQuoteDate: project.targetQuoteDate ? project.targetQuoteDate.slice(0, 10) : null,
     notes: project.notes ?? '',
     currentStage: project.currentStage,
@@ -92,11 +94,13 @@ export default function ProjectForm({
 }: ProjectFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
 
   useEffect(() => {
     customersApi.list({ status: 'active' }).then(setCustomers);
     usersApi.list().then(setUsers);
+    projectTypesApi.list().then(setProjectTypes);
   }, []);
 
   const engineers = useMemo(
@@ -313,6 +317,21 @@ export default function ProjectForm({
               {PRIORITIES.map((priority) => (
                 <option key={priority.value} value={priority.value}>
                   {priority.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Project Type">
+            <Select
+              value={value.projectTypeId ?? ''}
+              onChange={(e) =>
+                set('projectTypeId', e.target.value === '' ? null : Number(e.target.value))
+              }
+            >
+              {value.projectTypeId === null && <option value="">Standard Project</option>}
+              {projectTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
                 </option>
               ))}
             </Select>

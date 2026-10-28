@@ -380,6 +380,16 @@ export default function ProjectDetailPage() {
               <DetailItem label="Project Number" value={project.projectNumber} />
               <DetailItem label="Project Name" value={project.projectName} />
               <DetailItem
+                label="Project Type"
+                value={
+                  project.projectTypeName ? (
+                    <Badge tone="bg-indigo-100 text-indigo-700">{project.projectTypeName}</Badge>
+                  ) : (
+                    '—'
+                  )
+                }
+              />
+              <DetailItem
                 label="Internal Part Number"
                 value={<PartLink partNumber={project.internalPartNumber} />}
               />

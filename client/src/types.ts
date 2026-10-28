@@ -72,6 +72,8 @@ export interface Project {
   assignedSalesId: number | null;
   assignedSalesName: string | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  projectTypeId: number | null;
+  projectTypeName: string | null;
   targetQuoteDate: string | null;
   notes: string | null;
   partImageFileName: string | null;
@@ -239,10 +241,18 @@ export interface DashboardSummary extends ProjectStats {
 }
 
 /** Filters accepted by the project list endpoint. */
+export interface ProjectType {
+  id: number;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
 export interface ProjectFilters {
   search?: string;
   stage?: string;
   customerId?: number | '';
+  typeId?: number | '';
   engineerId?: number | '';
   salesId?: number | '';
   priority?: string;

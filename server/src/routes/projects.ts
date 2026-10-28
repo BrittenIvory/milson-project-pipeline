@@ -98,6 +98,7 @@ router.get(
       engineerId: num(req.query.engineerId),
       salesId: num(req.query.salesId),
       priority: str(req.query.priority),
+      typeId: num(req.query.typeId),
       material: str(req.query.material),
       castingProcess: str(req.query.castingProcess),
       createdFrom: str(req.query.createdFrom),

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Field, Select, TextInput } from './ui';
 import { PRIORITIES, PROJECT_STAGES } from '../lib/constants';
-import type { Customer, ProjectFilters, User } from '../types';
+import { projectTypesApi } from '../lib/api';
+import type { Customer, ProjectFilters, ProjectType, User } from '../types';
 
 interface ProjectFilterBarProps {
   filters: ProjectFilters;
@@ -23,6 +25,12 @@ export default function ProjectFilterBar({
   materials,
   castingProcesses,
 }: ProjectFilterBarProps) {
+  const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
+
+  useEffect(() => {
+    projectTypesApi.list().then(setProjectTypes).catch(() => undefined);
+  }, []);
+
   const set = (patch: Partial<ProjectFilters>) => onChange({ ...filters, ...patch });
 
   return (
@@ -75,6 +83,20 @@ export default function ProjectFilterBar({
           {PROJECT_STAGES.map((stage) => (
             <option key={stage.value} value={stage.value}>
               {stage.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <Field label="Project Type">
+        <Select
+          value={filters.typeId ?? ''}
+          onChange={(e) => set({ typeId: e.target.value ? Number(e.target.value) : '' })}
+        >
+          <option value="">All types</option>
+          {projectTypes.map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.name}
             </option>
           ))}
         </Select>

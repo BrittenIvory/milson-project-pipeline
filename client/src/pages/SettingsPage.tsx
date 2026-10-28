@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Card,
+  ConfirmDialog,
   ErrorBanner,
   Field,
   Modal,
@@ -14,14 +15,14 @@ import {
   TextInput,
 } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
-import { apiErrorMessage, usersApi } from '../lib/api';
+import { apiErrorMessage, projectTypesApi, usersApi } from '../lib/api';
 import {
   effectivePermission,
   PERMISSIONS,
   ROLE_LABELS,
   type Permission,
 } from '../lib/constants';
-import type { ManagedUser, Role } from '../types';
+import type { ManagedUser, ProjectType, Role } from '../types';
 
 const ROLE_OPTIONS: Role[] = ['administrator', 'engineering', 'sales', 'production', 'quality'];
 
@@ -124,6 +125,7 @@ export default function SettingsPage() {
           <SkeletonRows rows={5} />
         </Card>
       ) : (
+        <div className="space-y-3">
         <Card>
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <h2 className="text-base font-semibold text-slate-900">User Management</h2>
@@ -215,6 +217,8 @@ export default function SettingsPage() {
             </p>
           </div>
         </Card>
+        <ProjectTypesCard />
+        </div>
       )}
 
       {showCreate && (
@@ -436,5 +440,181 @@ function PermissionsModal({
         </>
       )}
     </Modal>
+  );
+}
+
+/** Administrator management of the project type labels shown on projects. */
+function ProjectTypesCard() {
+  const [types, setTypes] = useState<ProjectType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ProjectType | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    projectTypesApi
+      .list(true)
+      .then(setTypes)
+      .catch((err) => setError(apiErrorMessage(err, 'Unable to load project types')))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(load, [load]);
+
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to save project type'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addType = (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = newName.trim();
+    if (!name) return;
+    setNewName('');
+    void run(() => projectTypesApi.create({ name }));
+  };
+
+  const saveRename = () => {
+    if (!editing || !editing.name.trim()) return;
+    const current = types.find((t) => t.id === editing.id);
+    void run(() =>
+      projectTypesApi.update(editing.id, {
+        name: editing.name.trim(),
+        sortOrder: current?.sortOrder,
+        isActive: current?.isActive,
+      }),
+    );
+    setEditing(null);
+  };
+
+  const toggleActive = (type: ProjectType) =>
+    run(() =>
+      projectTypesApi.update(type.id, {
+        name: type.name,
+        sortOrder: type.sortOrder,
+        isActive: !type.isActive,
+      }),
+    );
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+        <h2 className="text-base font-semibold text-slate-900">Project Types</h2>
+        <form onSubmit={addType} className="flex items-center gap-2">
+          <TextInput
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="New type name"
+          />
+          <Button type="submit" disabled={busy || !newName.trim()}>
+            <Plus className="h-4 w-4" /> Add type
+          </Button>
+        </form>
+      </div>
+      <div className="px-4 py-3">
+        <ErrorBanner message={error} />
+        {loading ? (
+          <SkeletonRows rows={4} />
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {types.map((type) => (
+                <tr key={type.id} className="border-b border-slate-100 last:border-0">
+                  <td className="py-2 pr-4 font-medium text-slate-800">
+                    {editing?.id === type.id ? (
+                      <div className="flex items-center gap-2">
+                        <TextInput
+                          value={editing.name}
+                          onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveRename();
+                            if (e.key === 'Escape') setEditing(null);
+                          }}
+                          autoFocus
+                        />
+                        <Button variant="ghost" disabled={busy} onClick={saveRename}>
+                          Save
+                        </Button>
+                        <Button variant="ghost" onClick={() => setEditing(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      type.name
+                    )}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <Badge tone={type.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                      {type.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <div className="flex justify-end gap-1">
+                      {editing?.id !== type.id && (
+                        <Button
+                          variant="ghost"
+                          disabled={busy}
+                          onClick={() => setEditing({ id: type.id, name: type.name })}
+                        >
+                          Rename
+                        </Button>
+                      )}
+                      <Button variant="ghost" disabled={busy} onClick={() => toggleActive(type)}>
+                        {type.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => setPendingDelete(type)}
+                        title="Delete type"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
+          <ShieldAlert className="h-3.5 w-3.5" />
+          Types label projects for filtering and reporting. Deactivated types stay on existing
+          projects but can no longer be selected; deleting one clears it from its projects.
+        </p>
+      </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete project type"
+        message={`Delete the project type "${pendingDelete?.name}"? Projects using it lose the label. This cannot be undone.`}
+        confirmLabel="Delete type"
+        loading={busy}
+        onConfirm={() => {
+          const type = pendingDelete;
+          setPendingDelete(null);
+          if (type) void run(() => projectTypesApi.remove(type.id));
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
+    </Card>
   );
 }

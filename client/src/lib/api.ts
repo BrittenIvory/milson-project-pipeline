@@ -16,6 +16,7 @@ import type {
   ProjectStats,
   ProjectTask,
   ProjectTaskComment,
+  ProjectType,
   Supplier,
   SupplierQuote,
   User,
@@ -108,8 +109,19 @@ export type ProjectPayload = Omit<
   | 'assignedSalesName' | 'isArchived' | 'createdAt' | 'updatedAt' | 'stageStartedAt' | 'currentStageDays'
   | 'estimatePartPrice' | 'projectValue'
   | 'customerQuotePrice' | 'projectValueCurrency'
-  | 'partImageFileName' | 'partImageMimeType' | 'partImageSizeBytes'
+  | 'partImageFileName' | 'partImageMimeType' | 'partImageSizeBytes' | 'projectTypeName'
 >;
+
+export const projectTypesApi = {
+  /** Active types for pickers; admins pass `all` to include inactive. */
+  list: (all = false) =>
+    http.get<ProjectType[]>('/project-types', { params: all ? { all: true } : {} }).then((r) => r.data),
+  create: (payload: { name: string; sortOrder?: number; isActive?: boolean }) =>
+    http.post<ProjectType>('/project-types', payload).then((r) => r.data),
+  update: (id: number, payload: { name: string; sortOrder?: number; isActive?: boolean }) =>
+    http.put<ProjectType>(`/project-types/${id}`, payload).then((r) => r.data),
+  remove: (id: number) => http.delete(`/project-types/${id}`),
+};
 
 export const projectsApi = {
   list: (params: { search?: string; stage?: string; customerId?: number } = {}) =>
