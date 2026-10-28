@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pencil, Reply, Trash2, X } from 'lucide-react';
 import {
   Button,
@@ -9,28 +9,13 @@ import {
   TextArea,
 } from './ui';
 import { useAuth } from '../context/AuthContext';
+import CommentBody from './CommentBody';
 import NoteReactions from './NoteReactions';
 import { apiErrorMessage, notesApi, usersApi } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import type { ProjectNote, User } from '../types';
 
 /** Highlights `@mentions` inside a note body. */
-function NoteBody({ body }: { body: string }) {
-  const parts = body.split(/(@[\w.-]+(?: [A-Za-z-]+)?)/g);
-  return (
-    <p className="whitespace-pre-line text-sm text-slate-700">
-      {parts.map((part, index) =>
-        part.startsWith('@') ? (
-          <span key={index} className="font-medium text-brand-700">
-            {part}
-          </span>
-        ) : (
-          <Fragment key={index}>{part}</Fragment>
-        ),
-      )}
-    </p>
-  );
-}
 
 /** Threaded project comments with @mention autocomplete, oldest first, composer at bottom. */
 export default function NotesPanel({
@@ -408,7 +393,7 @@ export default function NotesPanel({
                   </div>
                 </div>
               ) : (
-                <NoteBody body={note.body} />
+                <CommentBody body={note.body} />
               )}
               <div className="flex items-center justify-between gap-2">
                 <NoteReactions
@@ -499,7 +484,7 @@ export default function NotesPanel({
                             </div>
                           </div>
                         ) : (
-                          <NoteBody body={reply.body} />
+                          <CommentBody body={reply.body} />
                         )}
                         <div className="flex items-center justify-between gap-2">
                           <NoteReactions

@@ -16,6 +16,7 @@ import {
   TextInput,
 } from './ui';
 import { useAuth } from '../context/AuthContext';
+import CommentBody from './CommentBody';
 import TaskCommentReactions from './TaskCommentReactions';
 import {
   apiErrorMessage,
@@ -68,20 +69,6 @@ function taskToPayload(task: ProjectTask): TaskPayload {
   };
 }
 
-function NoteBody({ body }: { body: string }) {
-  const parts = body.split(/(@[\w.-]+(?: [A-Za-z-]+)?)/g);
-  return (
-    <p className="whitespace-pre-line text-sm text-slate-700">
-      {parts.map((part, index) =>
-        part.startsWith('@') ? (
-          <span key={index} className="font-medium text-brand-700">{part}</span>
-        ) : (
-          <Fragment key={index}>{part}</Fragment>
-        ),
-      )}
-    </p>
-  );
-}
 
 export default function TasksPanel({
   projectId,
@@ -750,7 +737,7 @@ export default function TasksPanel({
                                         <Button onClick={() => saveComment(comment)}>Save</Button>
                                       </div>
                                     </div>
-                                  ) : <NoteBody body={comment.body} />}
+                                  ) : <CommentBody body={comment.body} />}
                                   <div className="flex items-center justify-between gap-2">
                                     <TaskCommentReactions
                                       projectId={projectId}
