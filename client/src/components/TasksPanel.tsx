@@ -61,7 +61,9 @@ function taskToPayload(task: ProjectTask): TaskPayload {
     customerQuotePrice: task.customerQuotePrice,
     priority: task.priority,
     status: task.status,
-    stage: task.stage,
+    // undefined drops the key from the JSON body — stage-less tasks can't send
+    // null (the schema rejects it) and the server ignores stage on update anyway.
+    stage: task.stage ?? undefined,
   };
 }
 

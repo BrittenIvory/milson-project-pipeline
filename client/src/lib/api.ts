@@ -202,8 +202,11 @@ export const activityApi = {
 
 export type TaskPayload = Pick<
   ProjectTask,
-  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'startDate' | 'completedDate' | 'requestedDate' | 'actualDate' | 'customerQuotePrice' | 'priority' | 'status' | 'stage'
->;
+  'taskName' | 'description' | 'assignedUserId' | 'dueDate' | 'startDate' | 'completedDate' | 'requestedDate' | 'actualDate' | 'customerQuotePrice' | 'priority' | 'status'
+> & {
+  // Only sent on create; omitted entirely when the task has no stage.
+  stage?: string;
+};
 
 export const tasksApi = {
   list: (projectId: number) =>
