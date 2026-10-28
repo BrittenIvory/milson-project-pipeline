@@ -174,7 +174,12 @@ export default function NotificationPreviewPanel({
     setSaving(true);
     try {
       if (taskId) {
-        const comment = await taskCommentsApi.create(projectId, taskId, draft.trim());
+        const comment = await taskCommentsApi.create(
+          projectId,
+          taskId,
+          draft.trim(),
+          notification.entityType === 'task_comment' ? notification.entityId ?? undefined : undefined,
+        );
         setTaskComments((current) => [...current, comment]);
       } else {
         const note = await notesApi.create(projectId, draft.trim());

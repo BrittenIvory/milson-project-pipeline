@@ -164,6 +164,11 @@ export default function NotificationsPage() {
           notification.entityId,
           replyDraft.trim(),
         );
+      } else if (notification.entityType === 'task_comment') {
+        // The alerted comment was deleted — there's no thread to reply into,
+        // and falling through would post a project note on the wrong list.
+        setReplyError('That comment was deleted.');
+        return;
       } else {
         await notesApi.create(
           notification.projectId,
