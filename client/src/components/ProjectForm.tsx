@@ -115,7 +115,14 @@ export default function ProjectForm({
     }
     let active = true;
     projectTypesApi.template(value.projectTypeId).then((template) => {
-      if (active) setTemplateStages(template.stages);
+      if (!active) return;
+      setTemplateStages(template.stages);
+      if (
+        template.stages.length > 0 &&
+        !template.stages.some((stage) => stage.key === value.currentStage)
+      ) {
+        onChange({ ...value, currentStage: template.stages[0].key });
+      }
     }).catch(() => active && setTemplateStages(null));
     return () => {
       active = false;

@@ -233,13 +233,12 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS stage TEXT;
 
--- 'pipeline' stays allowed here: stage_started_at may not exist yet on older
--- databases, so the rehome runs later in this file after the column is added.
+-- 'pipeline' stays allowed historically: stage_started_at may not exist yet on
+-- older databases, so the rehome runs later in this file after the column is
+-- added. The fixed-list CHECK is intentionally not re-created: stage keys are
+-- now per-project (template snapshots) and the constraint is dropped at the
+-- end of this file.
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
-ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
-  'pipeline','intake','stage_1_engineering','production_team_quoting','sales',
-  'stage_2_production','production','qa','completed'
-));
 
 ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
 UPDATE tasks SET status = 'on_hold' WHERE status = 'waiting';
@@ -334,10 +333,6 @@ DELETE FROM tasks WHERE created_by IS NULL AND task_name IN (
 );
 UPDATE tasks SET stage = 'intake' WHERE stage = 'pipeline';
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
-ALTER TABLE projects ADD CONSTRAINT projects_current_stage_check CHECK (current_stage IN (
-  'intake','stage_1_engineering','production_team_quoting','sales',
-  'stage_2_production','production','qa','completed'
-));
 ALTER TABLE projects ALTER COLUMN current_stage SET DEFAULT 'intake';
 
 -- Per-stage manual ordering for tasks. Backfill preserves the existing
@@ -396,7 +391,7 @@ BEGIN
     ON CONFLICT (name) DO NOTHING;
     UPDATE projects SET project_type_id = (SELECT id FROM project_types WHERE name = 'Standard Project')
     WHERE project_type_id IS NULL;
-    INSERT INTO schema_meta (key, value) VALUES ('project_types_seeded', '1');
+    INSERT INTO schema_meta (key, value) VALUES ('project_types_seeded', '1') ON CONFLICT (key) DO NOTHING;
   END IF;
 END $$;
 
@@ -445,10 +440,16 @@ BEGIN
         '["Sample has been Shipped","Samples Received","Scan Samples","Complete PSA","PSA sent to Customer","Sample has been shipped to Customer","Customer Received Sample","Customer return signed and approved PSA","Completed PSA stored in project folder","Sign FAIR and send to Supplier","Load Part into MYOB","Add Pattern to Register","Logistics set Weight, MOQ, Pallet qty","Enter Production PO from Customer","Confirm Customers Part Number in System"]'),
       (8, 'completed', 'Completed', '[]')
     ) AS s(rn, key, label, tasks) ON TRUE;
-    INSERT INTO schema_meta (key, value) VALUES ('project_stages_seeded', '1');
+    INSERT INTO schema_meta (key, value) VALUES ('project_stages_seeded', '1') ON CONFLICT (key) DO NOTHING;
   END IF;
 END $$;
 
 -- Stage keys are now per-project (template snapshots), so the fixed-list
 -- CHECK no longer applies; membership is validated against project_stages.
 ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_current_stage_check;
+
+-- Seeded vs. user-added tasks: created_by goes NULL when the creator's account
+-- is deleted, so origin records the source permanently. Template application
+-- deletes only origin='seeded' rows.
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
+UPDATE tasks SET origin = 'seeded' WHERE created_by IS NULL;

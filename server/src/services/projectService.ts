@@ -421,11 +421,13 @@ export async function createProject(input: ProjectInput, createdBy: number) {
 }
 
 export async function updateProject(id: number, input: ProjectInput) {
-  await getProject(id);
+  const existing = await getProject(id);
   await assertCustomerExists(input.customerId);
   // undefined leaves the label untouched; explicit null clears it; an id is
   // validated so deactivated/deleted types cannot be assigned via the API.
-  if (input.projectTypeId != null) {
+  // An unchanged label is allowed even when that type was since deactivated,
+  // so other edits to projects carrying it aren't blocked.
+  if (input.projectTypeId != null && input.projectTypeId !== existing.projectTypeId) {
     await assertProjectTypeAssignable(input.projectTypeId);
   }
   await assertProjectStage(id, input.currentStage);
