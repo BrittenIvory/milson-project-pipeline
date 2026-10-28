@@ -51,7 +51,7 @@ export default function NotificationPreviewPanel({
   onClose,
 }: NotificationPreviewPanelProps) {
   const projectId = notification.projectId!;
-  const taskId = notification.entityType === 'task' ? notification.entityId : null;
+  const taskId = notification.entityType === 'task' ? notification.entityId : notification.entityType === 'task_comment' ? notification.taskCommentTaskId : null;
   const [project, setProject] = useState<Project | null>(null);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [taskComments, setTaskComments] = useState<ProjectTaskComment[]>([]);

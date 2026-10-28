@@ -92,7 +92,15 @@ export default function NotificationBell() {
     setReplying(true);
     setReplyError(null);
     try {
-      if (notification.entityType === 'task' && notification.entityId) {
+      if (notification.entityType === 'task_comment' && notification.entityId && notification.taskCommentTaskId) {
+        // Reply into the thread the alert came from.
+        await taskCommentsApi.create(
+          notification.projectId,
+          notification.taskCommentTaskId,
+          replyDraft.trim(),
+          notification.entityId,
+        );
+      } else if (notification.entityType === 'task' && notification.entityId) {
         await taskCommentsApi.create(
           notification.projectId,
           notification.entityId,
