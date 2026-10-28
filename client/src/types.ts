@@ -212,6 +212,7 @@ export interface AppNotification {
   commentAuthorName: string | null;
   repliedToAuthorName: string | null;
   repliedToPreview: string | null;
+  taskCommentTaskId: number | null;
 }
 
 export interface PartSummary {

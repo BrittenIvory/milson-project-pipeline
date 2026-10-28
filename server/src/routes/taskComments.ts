@@ -86,8 +86,11 @@ router.post(
         title: `${req.user?.fullName} replied to your comment`,
         body: `${project.projectNumber} — ${task.taskName}: ${input.body.slice(0, 120)}`,
         projectId,
-        entityType: 'task',
-        entityId: taskId,
+        // task_comment entities carry the reply's comment id so clients can
+        // reply into the same thread; taskCommentTaskId (joined at list time)
+        // locates the comment list.
+        entityType: 'task_comment',
+        entityId: comment.id,
       });
     }
     res.status(201).json(comment);
