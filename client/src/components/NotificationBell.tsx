@@ -131,7 +131,8 @@ export default function NotificationBell() {
     notification.projectId !== null &&
     (notification.type === 'note_mention' ||
       notification.type === 'comment_mention' ||
-      notification.type === 'note_reply');
+      notification.type === 'note_reply' ||
+      notification.type === 'task_reply');
 
   /** Send requires text beyond the prefilled @mention, however its trailing
       whitespace is edited. */

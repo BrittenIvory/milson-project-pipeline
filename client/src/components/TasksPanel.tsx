@@ -121,6 +121,7 @@ export default function TasksPanel({
   const [replyTarget, setReplyTarget] = useState<ProjectTaskComment | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
   const [earlierRepliesOpen, setEarlierRepliesOpen] = useState<Set<number>>(new Set());
+  const replySendRef = useRef(new Set<number>());
   const quoteLoadId = useRef(0);
 
   const load = useCallback(async () => {
@@ -328,7 +329,8 @@ export default function TasksPanel({
 
   const addReply = async (taskId: number, parent: ProjectTaskComment) => {
     const body = replyDrafts[parent.id]?.trim();
-    if (!body) return;
+    if (!body || replySendRef.current.has(parent.id)) return;
+    replySendRef.current.add(parent.id);
     try {
       const comment = await taskCommentsApi.create(projectId, taskId, body, parent.id);
       setComments((current) => ({ ...current, [taskId]: [...(current[taskId] ?? []), comment] }));
@@ -336,6 +338,8 @@ export default function TasksPanel({
       setReplyTarget(null);
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to add reply'));
+    } finally {
+      replySendRef.current.delete(parent.id);
     }
   };
 
