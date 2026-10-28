@@ -5,10 +5,11 @@ const TOKEN_SPLIT = /(https?:\/\/[^\s<>"']+|@[\w.-]+(?: [A-Za-z-]+)?)/g;
 const URL_MATCH = /^https?:\/\//;
 // Sentence punctuation at the end of a pasted URL ("see https://x.com.") is not
 // part of the address — strip it back out of the link text.
-const TRAILING_PUNCT = /[.,;:!?'"()\[\]{}]+$/;
+const TRAILING_PUNCT = /[.,;:!?'"()[\]{}]+$/;
 
 /** Strips sentence punctuation glued to a pasted URL, keeping balanced
- *  trailing closers (e.g. `Foo_(bar)` in wiki links). */
+ *  trailing closers (e.g. `Foo_(bar)` in wiki links) and real `?`/`!`
+ *  inside the URL (e.g. `?q=urgent!` keeps its bang). */
 function splitUrlTrailing(url: string): [string, string] {
   let href = url;
   while (TRAILING_PUNCT.test(href)) {
@@ -16,6 +17,10 @@ function splitUrlTrailing(url: string): [string, string] {
     if (')]}'.includes(last)) {
       const open = last === ')' ? '(' : last === ']' ? '[' : '{';
       if (href.split(last).length <= href.split(open).length) break;
+    } else if (last === '?' || last === '!') {
+      // A ?/! after other ?/! characters belongs to the URL (query syntax);
+      // only a lone trailing one reads as sentence punctuation.
+      if (href.slice(0, -1).includes('?') || href.slice(0, -1).includes('!')) break;
     }
     href = href.slice(0, -1);
   }
