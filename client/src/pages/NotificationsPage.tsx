@@ -128,7 +128,8 @@ export default function NotificationsPage() {
     notification.projectId !== null &&
     (notification.type === 'note_mention' ||
       notification.type === 'comment_mention' ||
-      notification.type === 'note_reply');
+      notification.type === 'note_reply' ||
+      notification.type === 'task_reply');
 
   const escapeRegExp = (value: string) =>
     value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
