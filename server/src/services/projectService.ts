@@ -4,7 +4,7 @@ import { HttpError } from '../middleware/errors';
 import { PRIORITIES, PROJECT_STAGES } from '../types';
 import { calculateQuickQuote } from './quickQuoteService';
 import { seedStageTasks } from './workflowService';
-import { defaultProjectTypeId } from './projectTypeService';
+import { assertProjectTypeAssignable, defaultProjectTypeId } from './projectTypeService';
 
 export interface ProjectRow {
   id: number;
@@ -371,7 +371,10 @@ async function assertCustomerExists(customerId: number) {
 export async function createProject(input: ProjectInput, createdBy: number) {
   await assertCustomerExists(input.customerId);
   const projectNumber = await nextProjectNumber();
-  const typeId = input.projectTypeId ?? (await defaultProjectTypeId());
+  const typeId =
+    input.projectTypeId != null
+      ? await assertProjectTypeAssignable(input.projectTypeId)
+      : await defaultProjectTypeId();
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO projects (project_number, customer_id, customer_contact, customer_part_number,
        internal_part_number, customer_machined_part_number, customer_painted_part_number,
@@ -406,6 +409,11 @@ export async function createProject(input: ProjectInput, createdBy: number) {
 export async function updateProject(id: number, input: ProjectInput) {
   await getProject(id);
   await assertCustomerExists(input.customerId);
+  // undefined leaves the label untouched; explicit null clears it; an id is
+  // validated so deactivated/deleted types cannot be assigned via the API.
+  if (input.projectTypeId != null) {
+    await assertProjectTypeAssignable(input.projectTypeId);
+  }
   await pool.query(
     `UPDATE projects SET customer_id=$2, customer_contact=$3, customer_part_number=$4,
        internal_part_number=$5, customer_machined_part_number=$6, customer_painted_part_number=$7,
@@ -414,9 +422,10 @@ export async function updateProject(id: number, input: ProjectInput) {
        alternate_material_acceptable=$15, estimated_weight=$16, casting_process=$17,
        machining_required=$18, heat_treatment=$19, painting_required=$20,
        assigned_engineer_id=$21, assigned_sales_id=$22,
-       priority=$23, project_type_id=COALESCE($24, project_type_id),
-       target_quote_date=$25, notes=$26, current_stage=$27,
-       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $27 THEN NOW() ELSE stage_started_at END,
+       priority=$23,
+       project_type_id = CASE WHEN $24::boolean THEN $25 ELSE project_type_id END,
+       target_quote_date=$26, notes=$27, current_stage=$28,
+       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $28 THEN NOW() ELSE stage_started_at END,
        updated_at=NOW()
      WHERE id=$1`,
     [
@@ -429,8 +438,8 @@ export async function updateProject(id: number, input: ProjectInput) {
       input.alternateMaterialAcceptable, input.estimatedWeight ?? null,
       input.castingProcess ?? null, input.machiningRequired, input.heatTreatment,
       input.paintingRequired, input.assignedEngineerId ?? null, input.assignedSalesId ?? null,
-      input.priority, input.projectTypeId ?? null, input.targetQuoteDate ?? null,
-      input.notes ?? null, input.currentStage,
+      input.priority, input.projectTypeId !== undefined, input.projectTypeId ?? null,
+      input.targetQuoteDate ?? null, input.notes ?? null, input.currentStage,
     ],
   );
   return getProject(id);

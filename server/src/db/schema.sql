@@ -377,14 +377,27 @@ CREATE TABLE IF NOT EXISTS project_types (
 
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_type_id INTEGER REFERENCES project_types(id) ON DELETE SET NULL;
 
-INSERT INTO project_types (name, sort_order) VALUES
-  ('Standard Project', 1),
-  ('Complex Project', 2),
-  ('Development Project', 3),
-  ('Project Revisit', 4)
-ON CONFLICT (name) DO NOTHING;
+-- One-time seed + backfill: schema_meta records that the defaults were
+-- installed, so types an admin later deletes are not resurrected by the
+-- next restart and projects cleared by a deletion stay unlabeled.
+CREATE TABLE IF NOT EXISTS schema_meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 
-UPDATE projects SET project_type_id = (SELECT id FROM project_types WHERE name = 'Standard Project')
-WHERE project_type_id IS NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM schema_meta WHERE key = 'project_types_seeded') THEN
+    INSERT INTO project_types (name, sort_order) VALUES
+      ('Standard Project', 1),
+      ('Complex Project', 2),
+      ('Development Project', 3),
+      ('Project Revisit', 4)
+    ON CONFLICT (name) DO NOTHING;
+    UPDATE projects SET project_type_id = (SELECT id FROM project_types WHERE name = 'Standard Project')
+    WHERE project_type_id IS NULL;
+    INSERT INTO schema_meta (key, value) VALUES ('project_types_seeded', '1');
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS projects_type_idx ON projects (project_type_id);
