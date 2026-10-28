@@ -26,13 +26,18 @@ const PANEL_WIDTH_KEY = 'milson-comments-panel-width';
 const PANEL_MIN_WIDTH = 280;
 const PANEL_VIEWPORT_MARGIN = 16;
 
+// Fallback shared across every project row when localStorage is blocked or a
+// write fails, so a resize still sticks for the rest of the session.
+let sessionPanelWidth: number | null = null;
+
 const readStoredPanelWidth = () => {
   try {
     const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
-    return Number.isFinite(stored) && stored >= PANEL_MIN_WIDTH ? stored : 384;
+    if (Number.isFinite(stored) && stored >= PANEL_MIN_WIDTH) return stored;
   } catch {
-    return 384;
+    // Storage unavailable — fall through to the session/default width.
   }
+  return sessionPanelWidth ?? 384;
 };
 
 export default function ProjectComments({ projectId, projectNumber, projectName, partNumber }: ProjectCommentsProps) {
@@ -113,10 +118,11 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       setPanelWidth((current) => {
+        sessionPanelWidth = current;
         try {
           localStorage.setItem(PANEL_WIDTH_KEY, String(current));
         } catch {
-          // Storage unavailable — keep the in-memory width for this session.
+          // Storage unavailable — the session width above keeps it.
         }
         return current;
       });
