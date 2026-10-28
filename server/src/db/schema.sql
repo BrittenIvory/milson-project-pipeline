@@ -391,7 +391,7 @@ BEGIN
     ON CONFLICT (name) DO NOTHING;
     UPDATE projects SET project_type_id = (SELECT id FROM project_types WHERE name = 'Standard Project')
     WHERE project_type_id IS NULL;
-    INSERT INTO schema_meta (key, value) VALUES ('project_types_seeded', '1');
+    INSERT INTO schema_meta (key, value) VALUES ('project_types_seeded', '1') ON CONFLICT (key) DO NOTHING;
   END IF;
 END $$;
 
@@ -440,7 +440,7 @@ BEGIN
         '["Sample has been Shipped","Samples Received","Scan Samples","Complete PSA","PSA sent to Customer","Sample has been shipped to Customer","Customer Received Sample","Customer return signed and approved PSA","Completed PSA stored in project folder","Sign FAIR and send to Supplier","Load Part into MYOB","Add Pattern to Register","Logistics set Weight, MOQ, Pallet qty","Enter Production PO from Customer","Confirm Customers Part Number in System"]'),
       (8, 'completed', 'Completed', '[]')
     ) AS s(rn, key, label, tasks) ON TRUE;
-    INSERT INTO schema_meta (key, value) VALUES ('project_stages_seeded', '1');
+    INSERT INTO schema_meta (key, value) VALUES ('project_stages_seeded', '1') ON CONFLICT (key) DO NOTHING;
   END IF;
 END $$;
 
