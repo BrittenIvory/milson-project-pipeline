@@ -4,6 +4,7 @@ import { HttpError } from '../middleware/errors';
 import { PRIORITIES, PROJECT_STAGES } from '../types';
 import { calculateQuickQuote } from './quickQuoteService';
 import { seedStageTasks } from './workflowService';
+import { defaultProjectTypeId } from './projectTypeService';
 
 export interface ProjectRow {
   id: number;
@@ -31,6 +32,8 @@ export interface ProjectRow {
   assigned_engineer_id: number | null;
   assigned_sales_id: number | null;
   priority: string;
+  project_type_id: number | null;
+  type_name?: string | null;
   target_quote_date: string | null;
   notes: string | null;
   part_image_storage_key: string | null;
@@ -77,6 +80,7 @@ export const projectSchema = z.object({
   assignedEngineerId: emptyToNull(z.coerce.number().int().positive()).optional(),
   assignedSalesId: emptyToNull(z.coerce.number().int().positive()).optional(),
   priority: z.enum(PRIORITIES).default('medium'),
+  projectTypeId: emptyToNull(z.coerce.number().int().positive()).optional(),
   targetQuoteDate: emptyToNull(z.string()).optional(),
   notes: z.string().trim().max(5000).optional().nullable(),
   currentStage: z.enum(PROJECT_STAGES).default('intake'),
@@ -148,6 +152,8 @@ export function toProjectDto(row: ProjectRow) {
     assignedSalesId: row.assigned_sales_id,
     assignedSalesName: row.sales_name ?? null,
     priority: row.priority,
+    projectTypeId: row.project_type_id,
+    projectTypeName: row.type_name ?? null,
     targetQuoteDate: row.target_quote_date,
     notes: row.notes,
     partImageStorageKey: row.part_image_storage_key,
@@ -170,6 +176,7 @@ export const PART_NUMBER_KEY = `COALESCE(NULLIF(p.internal_part_number, ''), NUL
 const SELECT_PROJECT = `
   SELECT p.*, c.company_name AS customer_name, c.customer_number,
          e.full_name AS engineer_name, s.full_name AS sales_name,
+         pt.name AS type_name,
          (
            SELECT t.customer_quote_price
            FROM tasks t
@@ -181,7 +188,8 @@ const SELECT_PROJECT = `
   FROM projects p
   JOIN customers c ON c.id = p.customer_id
   LEFT JOIN users e ON e.id = p.assigned_engineer_id
-  LEFT JOIN users s ON s.id = p.assigned_sales_id`;
+  LEFT JOIN users s ON s.id = p.assigned_sales_id
+  LEFT JOIN project_types pt ON pt.id = p.project_type_id`;
 
 /**
  * Reserves the next project number (`P-0001`, `P-0002`, ...). Uses a Postgres
@@ -199,6 +207,7 @@ export interface ProjectFilters {
   engineerId?: number;
   salesId?: number;
   priority?: string;
+  typeId?: number;
   material?: string;
   castingProcess?: string;
   createdFrom?: string;
@@ -223,6 +232,7 @@ const SORTABLE_COLUMNS: Record<string, string> = {
   assignedEngineerName: 'e.full_name',
   assignedSalesName: 's.full_name',
   priority: `CASE p.priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END`,
+  projectType: 'pt.name',
   targetQuoteDate: 'p.target_quote_date',
   createdAt: 'p.created_at',
   updatedAt: 'p.updated_at',
@@ -260,6 +270,7 @@ function buildProjectWhere(options: ProjectFilters) {
   eq(options.engineerId, (i) => `p.assigned_engineer_id = $${i}`);
   eq(options.salesId, (i) => `p.assigned_sales_id = $${i}`);
   eq(options.priority, (i) => `p.priority = $${i}`);
+  eq(options.typeId, (i) => `p.project_type_id = $${i}`);
   eq(options.material, (i) => `LOWER(COALESCE(p.material,'')) = LOWER($${i})`);
   eq(options.castingProcess, (i) => `LOWER(COALESCE(p.casting_process,'')) = LOWER($${i})`);
   eq(options.createdFrom, (i) => `p.created_at >= $${i}::date`);
@@ -309,7 +320,8 @@ export async function listProjectsPage(
     `SELECT COUNT(*)::text AS count FROM projects p
      JOIN customers c ON c.id = p.customer_id
      LEFT JOIN users e ON e.id = p.assigned_engineer_id
-     LEFT JOIN users s ON s.id = p.assigned_sales_id ${clause}`,
+     LEFT JOIN users s ON s.id = p.assigned_sales_id
+     LEFT JOIN project_types pt ON pt.id = p.project_type_id ${clause}`,
     params,
   );
   const rows = await query<ProjectRow>(
@@ -359,15 +371,16 @@ async function assertCustomerExists(customerId: number) {
 export async function createProject(input: ProjectInput, createdBy: number) {
   await assertCustomerExists(input.customerId);
   const projectNumber = await nextProjectNumber();
+  const typeId = input.projectTypeId ?? (await defaultProjectTypeId());
   const inserted = await queryOne<{ id: number }>(
     `INSERT INTO projects (project_number, customer_id, customer_contact, customer_part_number,
        internal_part_number, customer_machined_part_number, customer_painted_part_number,
        customer_unpainted_part_number, project_name, project_description, annual_usage, material,
        client_part_description, material_grade, alternate_material_acceptable,
        estimated_weight, casting_process, machining_required, heat_treatment, painting_required,
-       assigned_engineer_id, assigned_sales_id, priority, target_quote_date, notes, current_stage,
-       created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+       assigned_engineer_id, assigned_sales_id, priority, project_type_id, target_quote_date, notes,
+       current_stage, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
      RETURNING id`,
     [
       projectNumber, input.customerId, input.customerContact ?? null,
@@ -379,7 +392,7 @@ export async function createProject(input: ProjectInput, createdBy: number) {
       input.alternateMaterialAcceptable,
       input.estimatedWeight ?? null, input.castingProcess ?? null, input.machiningRequired,
       input.heatTreatment, input.paintingRequired, input.assignedEngineerId ?? null,
-      input.assignedSalesId ?? null, input.priority, input.targetQuoteDate ?? null,
+      input.assignedSalesId ?? null, input.priority, typeId, input.targetQuoteDate ?? null,
       input.notes ?? null, input.currentStage, createdBy,
     ],
   );
@@ -401,8 +414,9 @@ export async function updateProject(id: number, input: ProjectInput) {
        alternate_material_acceptable=$15, estimated_weight=$16, casting_process=$17,
        machining_required=$18, heat_treatment=$19, painting_required=$20,
        assigned_engineer_id=$21, assigned_sales_id=$22,
-       priority=$23, target_quote_date=$24, notes=$25, current_stage=$26,
-       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $26 THEN NOW() ELSE stage_started_at END,
+       priority=$23, project_type_id=COALESCE($24, project_type_id),
+       target_quote_date=$25, notes=$26, current_stage=$27,
+       stage_started_at=CASE WHEN current_stage IS DISTINCT FROM $27 THEN NOW() ELSE stage_started_at END,
        updated_at=NOW()
      WHERE id=$1`,
     [
@@ -415,7 +429,8 @@ export async function updateProject(id: number, input: ProjectInput) {
       input.alternateMaterialAcceptable, input.estimatedWeight ?? null,
       input.castingProcess ?? null, input.machiningRequired, input.heatTreatment,
       input.paintingRequired, input.assignedEngineerId ?? null, input.assignedSalesId ?? null,
-      input.priority, input.targetQuoteDate ?? null, input.notes ?? null, input.currentStage,
+      input.priority, input.projectTypeId ?? null, input.targetQuoteDate ?? null,
+      input.notes ?? null, input.currentStage,
     ],
   );
   return getProject(id);

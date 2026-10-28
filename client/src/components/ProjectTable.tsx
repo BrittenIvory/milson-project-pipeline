@@ -145,6 +145,17 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
     render: (p) => <Badge tone={priorityMeta(p.priority).tone}>{priorityMeta(p.priority).label}</Badge>,
   },
   {
+    id: 'projectType',
+    label: 'Project Type',
+    width: 160,
+    render: (p) =>
+      p.projectTypeName ? (
+        <Badge tone="bg-indigo-100 text-indigo-700">{p.projectTypeName}</Badge>
+      ) : (
+        <span className="text-slate-400">—</span>
+      ),
+  },
+  {
     id: 'targetQuoteDate',
     label: 'Target Quote Date',
     width: 160,

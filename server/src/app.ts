@@ -11,6 +11,7 @@ import customersRouter from './routes/customers';
 import notificationsRouter from './routes/notifications';
 import partsRouter from './routes/parts';
 import projectsRouter from './routes/projects';
+import projectTypesRouter from './routes/projectTypes';
 import searchRouter from './routes/search';
 import suppliersRouter from './routes/suppliers';
 import usersRouter from './routes/users';
@@ -47,6 +48,7 @@ export function createApp(): Express {
   app.use('/api/users', usersRouter);
   app.use('/api/customers', customersRouter);
   app.use('/api/projects', projectsRouter);
+  app.use('/api/project-types', projectTypesRouter);
   app.use('/api/activity', activityRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/parts', partsRouter);

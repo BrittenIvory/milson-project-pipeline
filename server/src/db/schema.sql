@@ -363,3 +363,28 @@ CREATE TABLE IF NOT EXISTS task_comment_reactions (
 );
 
 CREATE INDEX IF NOT EXISTS task_comment_reactions_comment_idx ON task_comment_reactions (comment_id);
+
+-- Project types ("templates" in Settings): admin-managed labels like
+-- Standard / Complex / Development / Project Revisit. Existing projects
+-- backfill to Standard Project.
+CREATE TABLE IF NOT EXISTS project_types (
+  id         SERIAL PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active  BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_type_id INTEGER REFERENCES project_types(id) ON DELETE SET NULL;
+
+INSERT INTO project_types (name, sort_order) VALUES
+  ('Standard Project', 1),
+  ('Complex Project', 2),
+  ('Development Project', 3),
+  ('Project Revisit', 4)
+ON CONFLICT (name) DO NOTHING;
+
+UPDATE projects SET project_type_id = (SELECT id FROM project_types WHERE name = 'Standard Project')
+WHERE project_type_id IS NULL;
+
+CREATE INDEX IF NOT EXISTS projects_type_idx ON projects (project_type_id);
