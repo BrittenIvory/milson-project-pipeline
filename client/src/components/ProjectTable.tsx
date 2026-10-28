@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
-import { ArrowDown, ArrowUp, GripVertical, Pin, PinOff } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripVertical, MessageSquare, Pin, PinOff } from 'lucide-react';
 import { Badge } from './ui';
 import { projectsApi } from '../lib/api';
 import { PROJECT_STAGES } from '../lib/constants';
@@ -44,6 +44,8 @@ function PartImageCell({ project }: { project: Project }) {
 export interface ProjectColumn {
   id: string;
   label: string;
+  /** Replaces the text label in the column header (the Columns menu still shows `label`). */
+  header?: React.ReactNode;
   /** Default width in pixels; users can resize from the header handle. */
   width: number;
   sortable?: boolean;
@@ -55,7 +57,8 @@ export const PROJECT_COLUMNS: ProjectColumn[] = [
   {
     id: 'comments',
     label: 'Comments',
-    width: 150,
+    header: <MessageSquare className="h-4 w-4" aria-label="Comments" />,
+    width: 60,
     sortable: false,
     render: (p) => (
       <ProjectComments
@@ -210,7 +213,7 @@ export default function ProjectTable({
       const move = (moveEvent: MouseEvent) => {
         const state = dragState.current;
         if (!state) return;
-        onWidthChange(state.id, Math.max(90, state.startWidth + moveEvent.clientX - state.startX));
+        onWidthChange(state.id, Math.max(56, state.startWidth + moveEvent.clientX - state.startX));
       };
       const up = () => {
         dragState.current = null;
@@ -281,7 +284,7 @@ export default function ProjectTable({
                   <div className="flex items-center gap-1.5">
                     <GripVertical className="h-3 w-3 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
                     {column.sortable === false ? (
-                      <span className="truncate">{column.label}</span>
+                      column.header ?? <span className="truncate">{column.label}</span>
                     ) : (
                       <button
                         type="button"
@@ -289,7 +292,7 @@ export default function ProjectTable({
                         className="flex items-center gap-1 truncate hover:text-slate-800"
                         title={`Sort by ${column.label}`}
                       >
-                        <span className="truncate">{column.label}</span>
+                        {column.header ?? <span className="truncate">{column.label}</span>}
                         {sortBy === column.id &&
                           (sortDir === 'asc' ? (
                             <ArrowUp className="h-3 w-3" />
@@ -311,8 +314,10 @@ export default function ProjectTable({
                   <span
                     role="separator"
                     aria-orientation="vertical"
+                    aria-label={`Resize ${column.label} column`}
+                    title="Drag to resize column"
                     onMouseDown={(event) => startResize(event, column)}
-                    className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-brand-300"
+                    className="absolute -right-px top-0 h-full w-2 cursor-col-resize border-r-2 border-slate-200 transition-colors hover:border-brand-400"
                   />
                 </th>
               );

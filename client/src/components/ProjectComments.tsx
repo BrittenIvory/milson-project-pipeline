@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronUp, MessageSquare, Reply, X } from 'lucide-react';
+import { MessageSquare, Reply, X } from 'lucide-react';
 import { Button, EmptyState, ErrorBanner, SkeletonRows, TextArea } from './ui';
 import NoteReactions from './NoteReactions';
 import {
@@ -421,24 +421,22 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
   };
 
   return (
-    <div ref={rootRef} className="min-w-[13rem]">
+    <div ref={rootRef}>
       <button
         ref={buttonRef}
         type="button"
         onClick={toggleComments}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700 hover:text-brand-900"
+        title="Comments"
+        aria-label="Comments"
+        className="relative inline-flex items-center rounded-md p-1.5 text-brand-700 hover:bg-brand-50 hover:text-brand-900"
       >
-        <span className="relative inline-flex">
-          <MessageSquare className="h-3.5 w-3.5" />
-          {hasUnread && (
-            <span
-              aria-label="Unread comment notification"
-              className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-rose-500"
-            />
-          )}
-        </span>
-        Comments
-        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        <MessageSquare className="h-4 w-4" />
+        {hasUnread && (
+          <span
+            aria-label="Unread comment notification"
+            className="absolute right-0 top-0 h-2 w-2 rounded-full bg-rose-500"
+          />
+        )}
       </button>
       {open &&
         createPortal(
