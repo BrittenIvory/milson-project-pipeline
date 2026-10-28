@@ -34,11 +34,12 @@ export default function App() {
       })
       .catch(() => undefined);
   }, []);
-  const deployHref = deploy?.pr
-    ? `${REPO_URL}/pull/${deploy.pr}`
-    : deploy?.commit
-      ? `${REPO_URL}/commit/${deploy.commit}`
-      : null;
+  // The badge identifies the deployed build — it needs the commit SHA either way.
+  const deployHref = !deploy?.commit
+    ? null
+    : deploy.pr
+      ? `${REPO_URL}/pull/${deploy.pr}`
+      : `${REPO_URL}/commit/${deploy.commit}`;
   return (
     <div className="flex h-full flex-col">
       {sandbox && (
