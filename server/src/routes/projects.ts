@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { config } from '../config';
-import { pool, query, queryOne } from '../db/pool';
+import { pool, queryOne } from '../db/pool';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errors';
 import { listActivity, logActivity, toActivityDto } from '../services/activityService';

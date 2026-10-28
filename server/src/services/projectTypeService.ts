@@ -40,6 +40,16 @@ export async function defaultProjectTypeId(): Promise<number | null> {
   return row?.id ?? null;
 }
 
+/** 400s when the id is missing or no longer active — pickers hide it, and so does the API. */
+export async function assertProjectTypeAssignable(id: number): Promise<number> {
+  const row = await queryOne<{ id: number }>(
+    'SELECT id FROM project_types WHERE id = $1 AND is_active = TRUE',
+    [id],
+  );
+  if (!row) throw new HttpError(400, 'Selected project type is not available');
+  return row.id;
+}
+
 /** Turns a duplicate-name unique violation into a friendly 400. */
 async function guardDuplicate<T>(run: () => Promise<T>): Promise<T> {
   try {
