@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import { query, queryOne } from '../db/pool';
 import { HttpError } from '../middleware/errors';
-import { PROJECT_STAGES, STAGE_LABELS } from '../types';
-import { STAGE_TASK_TEMPLATES } from './workflowService';
 
 export interface ProjectTypeRow {
   id: number;
@@ -49,13 +47,169 @@ export const templateSchema = z.object({
     .max(50),
 });
 
-/** The standard pipeline checklist, used when a type has no saved template. */
-export function defaultTemplate(): TemplateStage[] {
-  return PROJECT_STAGES.map((key) => ({
-    key,
-    label: STAGE_LABELS[key],
-    tasks: STAGE_TASK_TEMPLATES[key] ?? [],
-  }));
+// Default workflow templates per project type, from the "Project Tasks by
+// Project Type" sheet. Stage keys reuse the app's canonical keys so stage
+// coloring and advancement behave the same; labels match the sheet.
+const PRODUCTION_TEAM_QUOTING_TASKS = [
+  'Supplier(s) selected [tick boxes below for each supplier]',
+  'Sent out for quote [task per supplier ticked]',
+  'Quotes received & stored in Project folder [task per supplier ticked]',
+  'Quotes reviewed & accepted [task per supplier ticked]',
+  'Advise suppliers quote unsucessful [task per supplier ticked]',
+  'Move Project to Sales',
+];
+
+const SALES_TASKS = [
+  'Advise sales quote is ready to review',
+  'Formal quote generated & sent to cust.',
+  'Quoted cost to customer [entry box]',
+  'Quote accepted or declined by customer [milsestone]',
+  'Advise Engineering of customer decision',
+  'Notify chosen Supplier quote declined',
+  'New Customer Credit Form',
+  'Enter Customer into ERP',
+  'Email customer order receipt, notified of steps until tooling start',
+  'QA check customer QA requirements',
+  'Move Project to Stage 2 Engineering',
+];
+
+const STAGE_2_ENGINEERING_TASKS = [
+  'Milson production CAD created',
+  'Milson production drawing created',
+  'Milson production drawing peer review',
+  'Customer - Milson production design &/or drawing reviewed & approved',
+  'Customer - Signed Milson drawing stored in project folder [milestone]',
+  'Milson FAIR & PSA created',
+  'Move Project to Tooling & Sampling',
+];
+
+const TOOLING_AND_SAMPLING_TASKS = [
+  'Sample & Pattern PO created',
+  'Sample & Pattern SO created',
+  'PO, Design files & FAIR sent to supplier [milstone]',
+  'Tooling manufacturing',
+  'Completed tooling image received',
+  'Sampling',
+  'Samples completed [milestone]',
+  'Sample inspection - supplier & 3D scan co.',
+  'Completed FAIRs received & stored in project folder',
+  'FAIR reviewed & approved [milestone]',
+  'Declined FAIR, inform foundry to isolate current samples',
+  'Move Project to QA',
+];
+
+const QA_AND_SHIPPING_TASKS = [
+  'Sample shipping to HQ',
+  'Samples 3D scanned & files saved in project folder',
+  'PSA completed & sent to customer',
+  'Ship sample to customer',
+  'Customer received sample',
+  'Customer return signed & approved PSA [milsestone]',
+  'Completed PSA stored in project folder',
+  'Approved FAIR sent to supplier',
+  'Load approved part to ERP',
+  'Confirm vendor default is selected & pricing is loaded in ERP',
+  'Add pattern to register',
+  'Logistics set Weight, MOQ, Pallet qty',
+  'Enter Production PO from Customer',
+  'Check Customer part number is correct in system',
+  'Check Milson to be set as the default supplier',
+  'QA review tasks and notify closure of project',
+  'Move Project to Archive',
+];
+
+function sheetTemplate(intake: string[], stage1: string[], archive: string[]): TemplateStage[] {
+  return [
+    { key: 'intake', label: 'INTAKE', tasks: intake },
+    { key: 'stage_1_engineering', label: 'STAGE 1 ENGINEERING', tasks: stage1 },
+    { key: 'production_team_quoting', label: 'PRODUCTION TEAM QUOTING', tasks: PRODUCTION_TEAM_QUOTING_TASKS },
+    { key: 'sales', label: 'SALES', tasks: SALES_TASKS },
+    { key: 'stage_2_production', label: 'STAGE 2 ENGINEERING', tasks: STAGE_2_ENGINEERING_TASKS },
+    { key: 'production', label: 'TOOLING & SAMPLING', tasks: TOOLING_AND_SAMPLING_TASKS },
+    { key: 'qa', label: 'QA & SHIPPING', tasks: QA_AND_SHIPPING_TASKS },
+    { key: 'completed', label: 'ARCHIVE', tasks: archive },
+  ];
+}
+
+const TYPE_TEMPLATES: Record<string, TemplateStage[]> = {
+  // "Part as Received" column.
+  'Standard Project': sheetTemplate(
+    [
+      'Project reviewed. Go/No-Go',
+      'Create Internal P/N & PDM folder',
+      'Create SharePoint folder',
+      'Estimate quote generated & sent to cust.',
+      'Customer accepted estimate',
+      'Move Project to Stage 1 Engineering',
+    ],
+    [
+      'Define scope & product requirements',
+      'RFQ sheet created',
+      'Move Project to Production team Quoting',
+    ],
+    ['Project Closed'],
+  ),
+  // "Complex Part as Received" column.
+  'Complex Project': sheetTemplate(
+    [
+      'Project reviewed. Go/No-Go',
+      'Create Internal P/N & PDM folder',
+      'Create SharePoint folder',
+      'Estimate quote generated & sent to cust.',
+      'Customer accepted estimate',
+      'Move Project to Stage 1 Engineering',
+    ],
+    [
+      'Define scope & product requirements',
+      'MFL quotation drawing',
+      'MFL drawing peer reviewed & approved',
+      'Move Project to Production team Quoting',
+    ],
+    [],
+  ),
+  // "Milson Development" column.
+  'Development Project': sheetTemplate(
+    [
+      'Project reviewed. Go/No-Go',
+      'Create Internal P/N & PDM folder',
+      'Create SharePoint folder',
+      'Development time quote generated',
+      'Estimate quote generated',
+      'Development & part estimate quote sent to customer',
+      'Customer accepted estimate',
+      'Move Project to Stage 1 Engineering',
+    ],
+    [
+      'Define scope & product requirements',
+      'Create concept CAD & Drawing',
+      'Customer review & accepted design',
+      'RFQ sheet created',
+      'Move Project to Production team Quoting',
+    ],
+    [],
+  ),
+  // "Re-Quote" column.
+  'Project Revisit': sheetTemplate(
+    [
+      'Review Changes. Go/No-Go',
+      'Updated files added to PDM',
+      'Move Project to Stage 1 Engineering',
+    ],
+    [
+      'Define scope & product requirements',
+      'Customer CAD updated',
+      'RFQ sheet/drawing updated',
+      'MFL drawing peer reviewed & approved (if required)',
+      'Move Project to Production team Quoting',
+    ],
+    [],
+  ),
+};
+
+/** The sheet-derived checklist for a type (or the standard one for unknown/new types). */
+export function defaultTemplate(typeName?: string): TemplateStage[] {
+  const template = (typeName ? TYPE_TEMPLATES[typeName] : undefined) ?? TYPE_TEMPLATES['Standard Project'];
+  return template.map((stage) => ({ ...stage, tasks: [...stage.tasks] }));
 }
 
 /** The type's current editable template (or the default) with its version. */
@@ -63,15 +217,15 @@ export async function getTypeTemplate(
   typeId: number | null,
 ): Promise<{ version: number; stages: TemplateStage[] }> {
   if (typeId == null) return { version: 0, stages: defaultTemplate() };
-  const row = await queryOne<{ template: unknown; template_version: number }>(
-    'SELECT template, template_version FROM project_types WHERE id = $1',
+  const row = await queryOne<{ template: unknown; template_version: number; name: string }>(
+    'SELECT template, template_version, name FROM project_types WHERE id = $1',
     [typeId],
   );
   const parsed = templateSchema.shape.stages.safeParse(row?.template);
   if (parsed.success && parsed.data.length > 0) {
     return { version: row!.template_version, stages: parsed.data };
   }
-  return { version: row?.template_version ?? 0, stages: defaultTemplate() };
+  return { version: row?.template_version ?? 0, stages: defaultTemplate(row?.name) };
 }
 
 /** Saves a new template version; existing projects only pick it up via apply-template. */
