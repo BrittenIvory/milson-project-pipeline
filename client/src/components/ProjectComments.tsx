@@ -24,6 +24,16 @@ interface ProjectCommentsProps {
 
 const PANEL_WIDTH_KEY = 'milson-comments-panel-width';
 const PANEL_MIN_WIDTH = 280;
+const PANEL_VIEWPORT_MARGIN = 16;
+
+const readStoredPanelWidth = () => {
+  try {
+    const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
+    return Number.isFinite(stored) && stored >= PANEL_MIN_WIDTH ? stored : 384;
+  } catch {
+    return 384;
+  }
+};
 
 export default function ProjectComments({ projectId, projectNumber, projectName, partNumber }: ProjectCommentsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -32,10 +42,7 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
   const notesListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(() => {
-    const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
-    return Number.isFinite(stored) && stored >= PANEL_MIN_WIDTH ? stored : 384;
-  });
+  const [panelWidth, setPanelWidth] = useState(readStoredPanelWidth);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [draft, setDraft] = useState('');
@@ -96,16 +103,21 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
   // Drag the panel's left edge to resize; the choice persists.
   const startResize = (event: React.PointerEvent) => {
     event.preventDefault();
-    const start = { x: event.clientX, width: panelWidth };
+    const maxWidth = () => Math.max(PANEL_MIN_WIDTH, window.innerWidth - PANEL_VIEWPORT_MARGIN);
+    const start = { x: event.clientX, width: Math.min(panelWidth, maxWidth()) };
     const onMove = (move: PointerEvent) => {
       const next = start.width + (start.x - move.clientX);
-      setPanelWidth(Math.min(Math.max(next, PANEL_MIN_WIDTH), Math.max(PANEL_MIN_WIDTH, window.innerWidth - 64)));
+      setPanelWidth(Math.min(Math.max(next, PANEL_MIN_WIDTH), maxWidth()));
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       setPanelWidth((current) => {
-        localStorage.setItem(PANEL_WIDTH_KEY, String(current));
+        try {
+          localStorage.setItem(PANEL_WIDTH_KEY, String(current));
+        } catch {
+          // Storage unavailable — keep the in-memory width for this session.
+        }
         return current;
       });
     };
@@ -115,6 +127,8 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
 
   useEffect(() => {
     if (!open) return;
+    // Pick up a width another project row's panel saved since this mounted.
+    setPanelWidth(readStoredPanelWidth());
     const notesVersion = ++notesLoadVersion.current;
     const usersVersion = ++usersLoadVersion.current;
     setLoading(true);
@@ -420,7 +434,7 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
         <div
           ref={popoverRef}
           className="fixed bottom-2 right-2 top-14 z-50 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
-          style={{ width: Math.min(panelWidth, Math.max(PANEL_MIN_WIDTH, window.innerWidth - 16)) }}
+          style={{ width: Math.min(panelWidth, Math.max(PANEL_MIN_WIDTH, window.innerWidth - PANEL_VIEWPORT_MARGIN)) }}
         >
           <div
             role="separator"
