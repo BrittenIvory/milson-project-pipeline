@@ -29,11 +29,13 @@ const PANEL_VIEWPORT_MARGIN = 16;
 // Fallback shared across every project row when localStorage is blocked or a
 // write fails, so a resize still sticks for the rest of the session.
 let sessionPanelWidth: number | null = null;
+// Set once a persist fails so a stale stored value can't win over the session.
+let panelWriteFailed = false;
 
 const readStoredPanelWidth = () => {
   try {
     const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
-    if (Number.isFinite(stored) && stored >= PANEL_MIN_WIDTH) return stored;
+    if (Number.isFinite(stored) && stored >= PANEL_MIN_WIDTH && !panelWriteFailed) return stored;
   } catch {
     // Storage unavailable — fall through to the session/default width.
   }
@@ -121,8 +123,10 @@ export default function ProjectComments({ projectId, projectNumber, projectName,
         sessionPanelWidth = current;
         try {
           localStorage.setItem(PANEL_WIDTH_KEY, String(current));
+          panelWriteFailed = false;
         } catch {
-          // Storage unavailable — the session width above keeps it.
+          // Storage rejected the write — trust the session width from now on.
+          panelWriteFailed = true;
         }
         return current;
       });
