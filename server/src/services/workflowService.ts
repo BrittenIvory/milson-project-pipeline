@@ -40,8 +40,8 @@ export async function seedStageTasks(projectId: number, stage: string): Promise<
       return 0;
     }
     const result = await client.query(
-      `INSERT INTO tasks (project_id, task_name, stage, status, priority, assigned_user_id, created_by, sort_order)
-       SELECT $1, names.task_name, $2, 'not_started', 'medium', NULL, NULL,
+      `INSERT INTO tasks (project_id, task_name, stage, status, priority, assigned_user_id, created_by, sort_order, origin)
+       SELECT $1, names.task_name, $2, 'not_started', 'medium', NULL, NULL,'seeded',
               pos.max_order + names.rn
        FROM unnest($3::text[]) WITH ORDINALITY AS names(task_name, rn),
             (SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM tasks WHERE project_id = $1) pos
@@ -173,7 +173,7 @@ export async function applyProjectTemplate(projectId: number) {
   try {
     await client.query('BEGIN');
     // Seeded checklist rows are regenerated; user-added tasks are kept.
-    await client.query('DELETE FROM tasks WHERE project_id = $1 AND created_by IS NULL', [projectId]);
+    await client.query("DELETE FROM tasks WHERE project_id = $1 AND origin = 'seeded'", [projectId]);
     await client.query(
       'UPDATE tasks SET stage = NULL WHERE project_id = $1 AND stage IS NOT NULL AND stage <> ALL($2::text[])',
       [projectId, keys],
